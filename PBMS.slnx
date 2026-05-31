@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PBMS.API/PBMS.API.csproj" />
+    <Project Path="src/PBMS.Application/PBMS.Application.csproj" />
+    <Project Path="src/PBMS.Domain/PBMS.Domain.csproj" />
+    <Project Path="src/PBMS.Infrastructure/PBMS.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PBMS.UnitTests/PBMS.UnitTests.csproj" />
+  </Folder>
+</Solution>
