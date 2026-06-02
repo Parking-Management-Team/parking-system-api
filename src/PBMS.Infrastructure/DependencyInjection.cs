@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Contracts;
 using PBMS.Infrastructure.Data;
+using PBMS.Infrastructure.ExternalServices;
 using PBMS.Infrastructure.Repositories;
 
 namespace PBMS.Infrastructure;
@@ -24,6 +26,7 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<ITokenService, TokenService>();
 
         return services;
     }
