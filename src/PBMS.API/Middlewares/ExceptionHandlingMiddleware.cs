@@ -95,6 +95,14 @@ namespace PBMS.API.Middlewares
                     exception.Message
                 );
             }
+            else if (exception is UnauthorizedAccessException unauthorizedEx)
+            {
+                statusCode = HttpStatusCode.Unauthorized;
+                response = BaseResponse<object>.Fail(
+                    "UNAUTHORIZED",
+                    unauthorizedEx.Message
+                );
+            }
             else if (exception is AppException appEx)
             {
                 statusCode = HttpStatusCode.InternalServerError;
