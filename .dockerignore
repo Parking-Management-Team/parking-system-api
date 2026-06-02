@@ -6,5 +6,5 @@
 **/obj
 **/out
 **/appsettings.Development.json
-Dockerfile
+docker/Dockerfile
 docker-compose.yml
