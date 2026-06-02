@@ -77,7 +77,15 @@ namespace PBMS.Infrastructure.Configurations
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
 
-            // 12. Cấu hình mối quan hệ N-1 (Nhiều Accounts thuộc về 1 Role)
+            // 12. Cấu hình cột RowVersion (thuộc tính kế thừa từ BaseEntity):
+            // Dùng để kiểm soát xung đột đồng thời (Concurrency Control).
+            // Khi Update/Delete, EF Core sẽ kiểm tra giá trị này khớp với DB hay không.
+            // Nếu không khớp → nghĩa là bản ghi đã bị người khác sửa → ném DbUpdateConcurrencyException.
+            builder.Property(a => a.RowVersion)
+                .HasColumnName("row_version")
+                .IsRowVersion();
+
+            // 13. Cấu hình mối quan hệ N-1 (Nhiều Accounts thuộc về 1 Role)
             // - Sử dụng khóa ngoại RoleId liên kết với cột khóa chính của bảng Role
             // - Tránh xóa dây chuyền (DeleteBehavior.Restrict) - Không cho phép xóa Role nếu đang có Account tham chiếu tới
             builder.HasOne(a => a.Role)

@@ -84,6 +84,17 @@ namespace PBMS.API.Middlewares
                     exception.Message
                 );
             }
+            // Xử lý xung đột đồng thời (Concurrency Conflict):
+            // Khi 2 người cùng sửa/xóa cùng 1 bản ghi, EF Core ném DbUpdateConcurrencyException.
+            // Repository sẽ bắt và ném lại ConcurrencyException → middleware trả về HTTP 409.
+            else if (exception is ConcurrencyException concurrencyEx)
+            {
+                statusCode = HttpStatusCode.Conflict;
+                response = BaseResponse<object>.Fail(
+                    concurrencyEx.ErrorCode,
+                    exception.Message
+                );
+            }
             else if (exception is AppException appEx)
             {
                 statusCode = HttpStatusCode.InternalServerError;

@@ -38,7 +38,15 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("description")
                 .HasMaxLength(100);
 
-            // 6. Thời điểm tạo bản ghi (CreatedAt - thuộc tính kế thừa từ BaseEntity):
+            // 6. Cấu hình cột RowVersion (thuộc tính kế thừa từ BaseEntity):
+            // Dùng để kiểm soát xung đột đồng thời (Concurrency Control).
+            // Khi Update/Delete, EF Core sẽ kiểm tra giá trị này khớp với DB hay không.
+            // Nếu không khớp → nghĩa là bản ghi đã bị người khác sửa → ném DbUpdateConcurrencyException.
+            builder.Property(r => r.RowVersion)
+                .HasColumnName("row_version")
+                .IsRowVersion();
+
+            // 7. Thời điểm tạo bản ghi (CreatedAt - thuộc tính kế thừa từ BaseEntity):
             // Ánh xạ cột "created_at", mặc định lấy giờ hệ thống database (PostgreSQL: CURRENT_TIMESTAMP)
             builder.Property(r => r.CreatedAt)
                 .HasColumnName("created_at")
