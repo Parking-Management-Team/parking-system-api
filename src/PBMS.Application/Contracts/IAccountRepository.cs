@@ -4,16 +4,16 @@ using PBMS.Domain.Entities;
 namespace PBMS.Application.Contracts
 {
     /// <summary>
-    /// Contract for account-specific database operations.
-    /// Extends the generic repository contract for the Account entity.
+    /// Hợp đồng Repository chuyên biệt cho thực thể Tài khoản (Account).
+    /// Định nghĩa các truy vấn riêng ngoài các hàm CRUD chung trong IRepository.
     /// </summary>
     public interface IAccountRepository : IRepository<Account>
     {
         /// <summary>
-        /// Retrieves an account by its unique email address.
+        /// Tìm kiếm tài khoản trong hệ thống thông qua địa chỉ Email.
         /// </summary>
-        /// <param name="email">The email of the account to retrieve.</param>
-        /// <returns>The account if found; otherwise, null.</returns>
+        /// <param name="email">Địa chỉ email của tài khoản cần tìm.</param>
+        /// <returns>Thực thể Account nếu tồn tại; ngược lại là null.</returns>
         Task<Account?> GetByEmailAsync(string email);
     }
 }
