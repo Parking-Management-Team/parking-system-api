@@ -1,5 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.Contracts;
+using PBMS.Infrastructure.Data;
+using PBMS.Infrastructure.Repositories;
 
 namespace PBMS.Infrastructure;
 
@@ -16,11 +20,11 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // TODO: Register DbContext, repositories, external services, and infrastructure settings.
-        // Example:
-        // services.AddDbContext<ApplicationDbContext>(options =>
-        //     options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-        // services.AddScoped<IBookingRepository, BookingRepository>();
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddScoped<IAccountRepository, AccountRepository>();
+
         return services;
     }
 }
