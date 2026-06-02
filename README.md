@@ -47,6 +47,22 @@ Infrastructure  →  Domain
 
 ---
 
+## Dependency Injection (DI)
+
+- Mỗi tầng có một file riêng `DependencyInjection.cs` để đăng ký các dịch vụ của chính tầng đó.
+- `PBMS.Application/DependencyInjection.cs` đăng ký application services, use case, validator và mapper.
+- `PBMS.Infrastructure/DependencyInjection.cs` đăng ký concrete repository, `DbContext`, external service và cấu hình hạ tầng.
+- `PBMS.API/Program.cs` chỉ chịu trách nhiệm compose và gọi các extension method của từng tầng:
+  - `builder.Services.AddApplicationServices();`
+  - `builder.Services.AddInfrastructureServices(builder.Configuration);`
+- Quy tắc đơn giản:
+  - interface/service của application chỉ đăng ký trong `PBMS.Application`.
+  - implementation của infrastructure chỉ đăng ký trong `PBMS.Infrastructure`.
+  - một service chỉ nên đăng ký một lần, ở đúng layer tương ứng.
+- Team có thể để từng thành viên đăng ký service của module mình, nhưng cần review PR để tránh duplicate và sai layer.
+
+---
+
 ## Cấu trúc thư mục
 
 ### PBMS.API
@@ -81,6 +97,11 @@ Mỗi domain có folder riêng, bên trong gồm `DTOs/`, `Interfaces/`, `Servic
 ```
 PBMS.Application/
 ├── Common/
+│   ├── Exception/
+│   │   ├── AppException.cs          ← Base class cho lỗi ở tầng Application
+│   │   ├── NotFoundException.cs     ← Throw khi tìm ID không thấy (dùng cho mọi entity) -> Middleware sẽ map ra lỗi 404
+│   │   ├── ValidationException.cs   ← Throw khi dữ liệu request bị sai lệch -> Middleware sẽ map ra lỗi 400
+│   │   └── ForbiddenException.cs    ← Throw khi user sai role -> Middleware sẽ map ra lỗi 403
 │   ├── BaseResponse.cs
 │   └── PagedResult.cs
 ├── Contracts/                       ← Repository interfaces (Infrastructure implement)
