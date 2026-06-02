@@ -12,9 +12,8 @@ namespace PBMS.Application.Common.Exceptions
         /// Initializes a new instance of the <see cref="AppException"/> class.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
-        public AppException(string message) : base(message)
+        public AppException(string message) : base("APP_ERROR", message)
         {
-            ErrorCode = "APP_ERROR";
         }
 
         /// <summary>
@@ -31,9 +30,8 @@ namespace PBMS.Application.Common.Exceptions
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public AppException(string message, Exception innerException) : base(message, innerException)
+        public AppException(string message, Exception innerException) : base("APP_ERROR", message, innerException)
         {
-            ErrorCode = "APP_ERROR";
         }
 
         /// <summary>

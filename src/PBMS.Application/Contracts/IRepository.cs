@@ -84,7 +84,7 @@ namespace PBMS.Application.Contracts
         /// </summary>
         /// <param name="predicate">The condition to filter entities. If null, counts all entities.</param>
         /// <returns>The count of entities matching the condition.</returns>
-        Task<int> CountAsync(Expression<Func<TEntity, bool>> predicate = null);
+        Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null);
 
         /// <summary>
         /// Determines whether any entity matches the specified predicate asynchronously.
