@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  api:
+    image: pbms-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5029:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Database=pbms_db;Username=postgres;Password=your_secure_password_here
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: pbms-postgres-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=pbms_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your_secure_password_here
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
