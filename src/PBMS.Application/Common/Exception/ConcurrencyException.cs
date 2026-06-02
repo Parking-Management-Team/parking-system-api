@@ -13,7 +13,7 @@ namespace PBMS.Application.Common.Exceptions
         /// Khởi tạo ConcurrencyException với thông báo lỗi mặc định.
         /// </summary>
         public ConcurrencyException()
-            : base("CONFLICT", "Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang và thử lại.")
+            : base("CONFLICT", "The data has been modified by another user. Please refresh and try again.")
         {
         }
 
