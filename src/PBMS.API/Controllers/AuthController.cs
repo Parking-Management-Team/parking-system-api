@@ -36,7 +36,7 @@ namespace PBMS.API.Controllers
             var response = await _authService.LoginAsync(request);
 
             // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
-            return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Đăng nhập thành công."));
+            return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
         }
     }
 }

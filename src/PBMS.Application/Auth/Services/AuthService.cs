@@ -38,14 +38,14 @@ namespace PBMS.Application.Auth.Services
             // (Thông báo chung chung để tránh rò rỉ thông tin tài khoản tồn tại trong hệ thống)
             if (account == null)
             {
-                throw new UnauthorizedAccessException("Email hoặc mật khẩu không chính xác.");
+                throw new UnauthorizedAccessException("Incorrect email or password.");
             }
 
             // 3. Kiểm tra trạng thái hoạt động của tài khoản
             // Nếu tài khoản đã bị Block hoặc không hoạt động, từ chối đăng nhập
             if (!account.IsActive)
             {
-                throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa. Vui lòng liên hệ Quản trị viên.");
+                throw new UnauthorizedAccessException("Your account has been locked or disabled. Please contact the administrator.");
             }
 
             // 4. Kiểm tra sự trùng khớp của mật khẩu gửi lên và mật khẩu mã hóa lưu trong DB
@@ -53,7 +53,7 @@ namespace PBMS.Application.Auth.Services
             bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash);
             if (!isPasswordValid)
             {
-                throw new UnauthorizedAccessException("Email hoặc mật khẩu không chính xác.");
+                throw new UnauthorizedAccessException("Incorrect email or password.");
             }
 
             // 5. Nếu tất cả thông tin đều chính xác, tiến hành sinh Token JWT thông qua TokenService
