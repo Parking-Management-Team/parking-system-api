@@ -14,7 +14,11 @@ var builder = WebApplication.CreateBuilder(args);
 // =========================================================================
 
 // Đăng ký các Controller vào DI Container để ASP.NET Core nhận diện các API endpoints
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API
 builder.Services.AddOpenApi();

@@ -37,15 +37,15 @@ public class Account : BaseEntity
     public string? Phone { get; set; }
 
     /// <summary>
-    /// Trạng thái hoạt động của tài khoản (Ví dụ: "Active", "Blocked", "Inactive").
-    /// Mặc định là "Active" khi tạo mới.
+    /// Trạng thái hoạt động của tài khoản (Active hoặc Inactive).
+    /// Mặc định là AccountStatus.Active khi tạo mới.
     /// </summary>
-    public string AccountStatus { get; set; } = "Active";
+    public AccountStatus AccountStatus { get; set; } = AccountStatus.Active;
 
     /// <summary>
     /// Thuộc tính logic tự động xác định tài khoản có đang ở trạng thái hoạt động bình thường hay không.
     /// </summary>
-    public bool IsActive => AccountStatus == "Active";
+    public bool IsActive => AccountStatus == AccountStatus.Active;
 
     /// <summary>
     /// Thông tin vai trò (Role) liên kết trực tiếp với tài khoản này.

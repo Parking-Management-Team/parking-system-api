@@ -67,7 +67,8 @@ namespace PBMS.Infrastructure.Configurations
             builder.Property(a => a.AccountStatus)
                 .HasColumnName("account_status")
                 .HasMaxLength(20)
-                .HasDefaultValue("Active")
+                .HasConversion<string>()
+                .HasDefaultValue(AccountStatus.Active)
                 .IsRequired();
 
             // 11. Thời điểm tạo bản ghi (CreatedAt - thuộc tính kế thừa từ BaseEntity):

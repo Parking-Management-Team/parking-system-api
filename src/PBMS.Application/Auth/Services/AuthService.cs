@@ -100,7 +100,7 @@ namespace PBMS.Application.Auth.Services
                     // Tên đăng nhập độc nhất tự sinh từ email
                     Username = googleUser.Email.Split('@')[0] + "_" + Guid.NewGuid().ToString().Substring(0, 4),
                     FullName = googleUser.Name,
-                    AccountStatus = "Active",
+                    AccountStatus = AccountStatus.Active,
                     RoleId = 3, // Vai trò Driver mặc định
                     // Hash một GUID ngẫu nhiên làm mật khẩu để không thể dùng cách đăng nhập mật khẩu truyền thống
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())

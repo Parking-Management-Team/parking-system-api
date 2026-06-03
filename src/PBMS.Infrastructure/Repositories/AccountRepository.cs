@@ -24,7 +24,7 @@ namespace PBMS.Infrastructure.Repositories
                 Email = "admin@pbms.com",
                 Username = "admin",
                 FullName = "System Administrator",
-                AccountStatus = "Active",
+                AccountStatus = AccountStatus.Active,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 RoleId = 1,
                 Role = new Role
@@ -40,7 +40,7 @@ namespace PBMS.Infrastructure.Repositories
                 Email = "manager@pbms.com",
                 Username = "manager",
                 FullName = "Project Manager",
-                AccountStatus = "Active",
+                AccountStatus = AccountStatus.Active,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 RoleId = 2,
                 Role = new Role
