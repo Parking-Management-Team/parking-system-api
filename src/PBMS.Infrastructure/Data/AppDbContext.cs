@@ -24,16 +24,16 @@ public class AppDbContext : DbContext
     // phụ trách vào bên dưới dòng này.
     // Ví dụ: public DbSet<Zone> Zones { get; set; }
     // =======================================================
-    
+
     /// <summary>
     /// Tập hợp dữ liệu bảng Tài khoản (Accounts).
     /// </summary>
-    public DbSet<Account> Accounts { get; set; }
+    public DbSet<Account> Accounts { get; set; } = null!;
 
     /// <summary>
     /// Tập hợp dữ liệu bảng Vai trò (Roles).
     /// </summary>
-    public DbSet<Role> Roles { get; set; }
+    public DbSet<Role> Roles { get; set; } = null!;
 
     // =======================================================
 
@@ -44,7 +44,7 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         // Lệnh này giúp EF Core tự động quét và áp dụng các file 
         // cấu hình bảng (Fluent API) mà team dev tạo ra trong Assembly này
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
