@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PBMS.API.Middlewares;
 using PBMS.Application;
 using PBMS.Infrastructure;
+using PBMS.Infrastructure.Data;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,6 +64,25 @@ builder.Services.AddAuthentication(options =>
 });
 
 var app = builder.Build();
+
+// Tự động chạy Migration khi ứng dụng khởi động ở môi trường Development
+if (app.Environment.IsDevelopment())
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<AppDbContext>();
+            context.Database.Migrate();
+            Console.WriteLine("--> Database migration completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"--> Error applying database migrations: {ex.Message}");
+        }
+    }
+}
 
 // =========================================================================
 // 2. CẤU HÌNH PIPELINE XỬ LÝ REQUEST (MIDDLEWARES)
