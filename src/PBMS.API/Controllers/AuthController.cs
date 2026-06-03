@@ -38,5 +38,21 @@ namespace PBMS.API.Controllers
             // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
             return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
         }
+
+        /// <summary>
+        /// API đăng nhập bằng Google OAuth2.
+        /// Route: POST /api/auth/google
+        /// </summary>
+        /// <param name="request">DTO chứa Google ID Token từ Client gửi lên.</param>
+        /// <returns>Thông tin Token JWT của hệ thống và tài khoản đăng nhập thành công.</returns>
+        [HttpPost("google")]
+        public async Task<ActionResult<BaseResponse<LoginResponseDto>>> LoginWithGoogle([FromBody] GoogleLoginRequest request)
+        {
+            // Gọi tầng nghiệp vụ để kiểm tra Google ID Token và đăng nhập/đăng ký lái xe
+            var response = await _authService.LoginWithGoogleAsync(request);
+
+            // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
+            return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
+        }
     }
 }

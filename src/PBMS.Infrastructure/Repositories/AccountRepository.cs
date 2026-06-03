@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
 using PBMS.Infrastructure.Data;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace PBMS.Infrastructure.Repositories
@@ -12,6 +15,43 @@ namespace PBMS.Infrastructure.Repositories
     /// </summary>
     public class AccountRepository : BaseRepository<Account>, IAccountRepository
     {
+        // 1. Khai báo danh sách tĩnh làm Database ảo lưu trong RAM của ứng dụng
+        private static readonly List<Account> _mockAccounts = new List<Account>
+        {
+            new Account
+            {
+                Id = 1,
+                Email = "admin@pbms.com",
+                Username = "admin",
+                FullName = "System Administrator",
+                AccountStatus = "Active",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                RoleId = 1,
+                Role = new Role
+                {
+                    Id = 1,
+                    RoleName = "Admin",
+                    Description = "System Administrator"
+                }
+            },
+            new Account
+            {
+                Id = 2,
+                Email = "manager@pbms.com",
+                Username = "manager",
+                FullName = "Project Manager",
+                AccountStatus = "Active",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                RoleId = 2,
+                Role = new Role
+                {
+                    Id = 2,
+                    RoleName = "Manager",
+                    Description = "Project Manager"
+                }
+            }
+        };
+
         // Constructor truyền DbContext cho lớp cha (BaseRepository) để thực hiện kết nối
         public AccountRepository(AppDbContext context) : base(context)
         {
@@ -20,65 +60,23 @@ namespace PBMS.Infrastructure.Repositories
         /// <summary>
         /// Tìm kiếm tài khoản dựa vào địa chỉ Email và nạp kèm thông tin vai trò (Role).
         /// </summary>
-        /// <param name="email">Email cần tìm kiếm</param>
-        /// <returns>Tài khoản nếu tìm thấy kèm theo thông tin Role; ngược lại trả về null.</returns>
         public async Task<Account?> GetByEmailAsync(string email)
         {
-            // 1. Kiểm tra nhanh chuỗi đầu vào (tránh lỗi null hoặc rỗng)
             if (string.IsNullOrWhiteSpace(email))
             {
                 return null;
             }
 
-            // 2. Chuyển chuỗi về chữ thường và cắt khoảng trắng thừa để việc so khớp chính xác
             var normalizedEmail = email.Trim().ToLower();
 
-            // =========================================================================
-            // MOCK DATA: Hỗ trợ chạy thử nghiệm khi chưa cấu hình Database thành công
-            // =========================================================================
-            if (normalizedEmail == "admin@pbms.com")
+            // 2. Tìm kiếm trong danh sách ảo static trước
+            var mockAccount = _mockAccounts.FirstOrDefault(a => a.Email != null && a.Email.ToLower() == normalizedEmail);
+            if (mockAccount != null)
             {
-                return new Account
-                {
-                    Id = 1,
-                    Email = "admin@pbms.com",
-                    Username = "admin",
-                    FullName = "System Administrator",
-                    AccountStatus = "Active",
-                    // Mật khẩu hash của "Admin@123"
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
-                    RoleId = 1,
-                    Role = new Role
-                    {
-                        Id = 1,
-                        RoleName = "Admin",
-                        Description = "System Administrator"
-                    }
-                };
-            }
-            if (normalizedEmail == "manager@pbms.com")
-            {
-                return new Account
-                {
-                    Id = 2,
-                    Email = "manager@pbms.com",
-                    Username = "manager",
-                    FullName = "Project Manager",
-                    AccountStatus = "Active",
-                    // Mật khẩu hash của "Manager@123"
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
-                    RoleId = 2,
-                    Role = new Role
-                    {
-                        Id = 2,
-                        RoleName = "Manager",
-                        Description = "Project Manager"
-                    }
-                };
+                return mockAccount;
             }
 
-            // 3. Thực thi truy vấn EF Core (nếu có Database):
-            // - Dùng .Include(a => a.Role) để thực hiện JOIN bảng role ở mức DB và nạp sẵn đối tượng Role vào Account (Eager Loading)
+            // 3. Thực thi truy vấn EF Core (nếu có Database thật):
             try
             {
                 return await _dbSet
@@ -89,6 +87,56 @@ namespace PBMS.Infrastructure.Repositories
             {
                 // Bắt các ngoại lệ kết nối DB để tránh sập app khi chưa kết nối Database thành công
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Thêm mới tài khoản (Hỗ trợ ghi vào cả mock list và EF Core)
+        /// </summary>
+        public override async Task AddAsync(Account entity)
+        {
+            if (entity == null) return;
+
+            // Thiết lập ID tự tăng cho tài khoản ảo mới
+            entity.Id = _mockAccounts.Any() ? _mockAccounts.Max(a => a.Id) + 1 : 1;
+
+            // Gán thông tin Role ảo để tránh lỗi NullReferenceException khi xuất token
+            if (entity.Role == null)
+            {
+                entity.Role = new Role
+                {
+                    Id = entity.RoleId,
+                    RoleName = entity.RoleId == 3 ? "Driver" : "Customer",
+                    Description = entity.RoleId == 3 ? "Driver Role" : "Customer Role"
+                };
+            }
+
+            // Thêm vào danh sách static
+            _mockAccounts.Add(entity);
+
+            try
+            {
+                await base.AddAsync(entity);
+            }
+            catch (Exception)
+            {
+                // Bỏ qua lỗi DB nếu chưa kết nối DB thành công
+            }
+        }
+
+        /// <summary>
+        /// Ghi đè phương thức Lưu thay đổi để hỗ trợ chạy thử không cần Database
+        /// </summary>
+        public override async Task<int> SaveChangesAsync()
+        {
+            try
+            {
+                return await base.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                // Trả về 1 dòng bị ảnh hưởng để mô phỏng lưu thành công khi không có DB
+                return 1;
             }
         }
     }

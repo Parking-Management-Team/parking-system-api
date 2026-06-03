@@ -105,7 +105,7 @@ namespace PBMS.Infrastructure.Repositories
         }
 
         // --- CÁC HÀM HELPER ĐỂ ĐẢM BẢO KHÔNG BỊ LỖI CHÊNH LỆCH KIỂU NULLABLE VỚI INTERFACE ---
-        
+
         async Task<TEntity> IRepository<TEntity>.GetByIdAsync(int id)
         {
             var entity = await GetByIdAsync(id);
@@ -117,5 +117,11 @@ namespace PBMS.Infrastructure.Repositories
             var entity = await FirstOrDefaultAsync(predicate);
             return entity!;
         }
+        // 13. Lưu các thay đổi vào cơ sở dữ liệu (Triển khai thực tế thông qua DbContext)
+        public virtual async Task<int> SaveChangesAsync()
+        {
+            return await _context.SaveChangesAsync();
+        }
+
     }
 }

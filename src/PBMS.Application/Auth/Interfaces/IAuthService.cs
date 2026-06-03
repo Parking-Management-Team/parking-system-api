@@ -15,5 +15,13 @@ namespace PBMS.Application.Auth.Interfaces
         /// <param name="request">Yêu cầu đăng nhập chứa Email và Mật khẩu.</param>
         /// <returns>Đối tượng LoginResponseDto chứa mã JWT Token và thông tin định danh người dùng.</returns>
         Task<LoginResponseDto> LoginAsync(LoginRequest request);
+
+        /// <summary>
+        /// Xử lý yêu cầu đăng nhập bằng Google OAuth2.
+        /// Xác thực ID Token của Google, tự động tạo tài khoản hoặc liên kết nếu hợp lệ.
+        /// </summary>
+        /// <param name="request">Yêu cầu đăng nhập chứa Google ID Token.</param>
+        /// <returns>Đối tượng LoginResponseDto chứa mã JWT Token của hệ thống và thông tin định danh.</returns>
+        Task<LoginResponseDto> LoginWithGoogleAsync(GoogleLoginRequest request);
     }
 }
