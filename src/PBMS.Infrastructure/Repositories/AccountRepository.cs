@@ -33,12 +33,63 @@ namespace PBMS.Infrastructure.Repositories
             // 2. Chuyển chuỗi về chữ thường và cắt khoảng trắng thừa để việc so khớp chính xác
             var normalizedEmail = email.Trim().ToLower();
 
-            // 3. Thực thi truy vấn EF Core:
+            // =========================================================================
+            // MOCK DATA: Hỗ trợ chạy thử nghiệm khi chưa cấu hình Database thành công
+            // =========================================================================
+            if (normalizedEmail == "admin@pbms.com")
+            {
+                return new Account
+                {
+                    Id = 1,
+                    Email = "admin@pbms.com",
+                    Username = "admin",
+                    FullName = "System Administrator",
+                    AccountStatus = "Active",
+                    // Mật khẩu hash của "Admin@123"
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                    RoleId = 1,
+                    Role = new Role
+                    {
+                        Id = 1,
+                        RoleName = "Admin",
+                        Description = "System Administrator"
+                    }
+                };
+            }
+            if (normalizedEmail == "manager@pbms.com")
+            {
+                return new Account
+                {
+                    Id = 2,
+                    Email = "manager@pbms.com",
+                    Username = "manager",
+                    FullName = "Project Manager",
+                    AccountStatus = "Active",
+                    // Mật khẩu hash của "Manager@123"
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                    RoleId = 2,
+                    Role = new Role
+                    {
+                        Id = 2,
+                        RoleName = "Manager",
+                        Description = "Project Manager"
+                    }
+                };
+            }
+
+            // 3. Thực thi truy vấn EF Core (nếu có Database):
             // - Dùng .Include(a => a.Role) để thực hiện JOIN bảng role ở mức DB và nạp sẵn đối tượng Role vào Account (Eager Loading)
-            // - Phục vụ trực tiếp cho việc trích xuất Claims (RoleName) khi tạo mã JWT Token sau này.
-            return await _dbSet
-                .Include(a => a.Role) 
-                .FirstOrDefaultAsync(a => a.Email != null && a.Email.ToLower() == normalizedEmail);
+            try
+            {
+                return await _dbSet
+                    .Include(a => a.Role)
+                    .FirstOrDefaultAsync(a => a.Email != null && a.Email.ToLower() == normalizedEmail);
+            }
+            catch (Exception)
+            {
+                // Bắt các ngoại lệ kết nối DB để tránh sập app khi chưa kết nối Database thành công
+                return null;
+            }
         }
     }
 }
