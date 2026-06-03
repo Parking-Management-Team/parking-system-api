@@ -11,6 +11,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Database=pbms_db;Username=postgres;Password=your_secure_password_here
+      - Google__ClientId=768808098768-vop4tnm5u22h8stb6464bqtogse2rqvm.apps.googleusercontent.com
     depends_on:
       - db
 
