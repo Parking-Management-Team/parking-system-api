@@ -28,6 +28,9 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITokenService, TokenService>();
 
+        // Card Management — Repository
+        services.AddScoped<ICardRepository, CardRepository>();
+
         //Google OauthServiceDI
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 

@@ -35,6 +35,12 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Role> Roles { get; set; } = null!;
 
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Thẻ gửi xe (Cards).
+    /// Mỗi Card là một mã thẻ mô phỏng dùng để nhận diện lượt gửi xe.
+    /// </summary>
+    public DbSet<Card> Cards { get; set; } = null!;
+
     // =======================================================
 
     /// <summary>
