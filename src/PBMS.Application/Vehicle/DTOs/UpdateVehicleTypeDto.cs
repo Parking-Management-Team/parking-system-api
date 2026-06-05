@@ -1,9 +1,9 @@
-namespace PBMS.Domain.Entities;
+namespace PBMS.Application.Vehicle.DTOs;
 
 /// <summary>
-/// Represents a type of vehicle (e.g., Motorcycle, Car).
+/// DTO for updating an existing vehicle type.
 /// </summary>
-public class VehicleType : BaseEntity
+public class UpdateVehicleTypeDto
 {
     /// <summary>
     /// Name of the vehicle type.
@@ -13,5 +13,5 @@ public class VehicleType : BaseEntity
     /// <summary>
     /// Indicates if the vehicle type is active (True) or inactive (False).
     /// </summary>
-    public bool IsActive { get; set; } = true;
+    public bool IsActive { get; set; }
 }

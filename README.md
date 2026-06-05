@@ -295,7 +295,7 @@ PBMS.Infrastructure.Data
 
 ### Yêu cầu
 
-- .NET 8 SDK
+- .NET SDK
 - SQL Server (hoặc PostgreSQL — tuỳ config của team)
 - Visual Studio 2022 hoặc Rider hoặc VS Code + C# extension
 

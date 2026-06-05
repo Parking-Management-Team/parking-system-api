@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.Vehicle.Interfaces;
+using PBMS.Application.Vehicle.Services;
 
 namespace PBMS.Application;
 
@@ -14,9 +16,9 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // TODO: Register application services, handlers, validators, mappers, etc.
-        // Example:
-        // services.AddScoped<IBookingService, BookingService>();
+        // Register application services
+        services.AddScoped<IVehicleTypeService, VehicleTypeService>();
+
         return services;
     }
 }
