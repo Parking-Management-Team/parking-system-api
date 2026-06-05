@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PBMS.Domain.Entities;
 using System.Reflection;
 
 namespace PBMS.Infrastructure.Data;
@@ -15,7 +16,7 @@ public class AppDbContext : DbContext
     // phụ trách vào bên dưới dòng này.
     // Ví dụ: public DbSet<Zone> Zones { get; set; }
     // =======================================================
-    
+    public DbSet<Zone> Zones { get; set; } = null!;
     
 
     // =======================================================

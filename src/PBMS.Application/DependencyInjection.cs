@@ -1,22 +1,25 @@
 using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.ParkingStructure.Interfaces;
+using PBMS.Application.ParkingStructure.Services;
 
 namespace PBMS.Application;
-
 /// <summary>
-/// Extension methods for registering application layer services.
+/// Phương thức mở rộng để đăng ký dịch vụ tầng Application.
 /// </summary>
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers application layer services into the DI container.
+    /// Đăng ký các dịch vụ tầng Application vào DI container.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The updated service collection.</returns>
+    /// <param name="services">Tập hợp dịch vụ.</param>
+    /// <returns>Tập hợp dịch vụ đã được cập nhật.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // TODO: Register application services, handlers, validators, mappers, etc.
-        // Example:
+        // TODO: Đăng ký các dịch vụ ứng dụng, handler, validator, mapper, v.v.
+        // Ví dụ:
         // services.AddScoped<IBookingService, BookingService>();
+        services.AddAutoMapper(cfg => { }, typeof(DependencyInjection));
+        services.AddScoped<IZoneService, ZoneService>();
         return services;
     }
 }
