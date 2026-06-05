@@ -7,5 +7,11 @@
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning"
     }
+  },
+  "Jwt": {
+    "Key": "A_Super_Secret_Key_For_JWT_Auth_System_PBMS_Project_2026_SWP391",
+    "Issuer": "PBMS",
+    "Audience": "PBMSUsers",
+    "ExpiryInMinutes": 1440
   }
 }

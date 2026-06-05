@@ -1,4 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.Auth.Interfaces;
+using PBMS.Application.Auth.Services;
+using PBMS.Application.Card.Interfaces;
+using PBMS.Application.Card.Services;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
 
@@ -15,6 +19,13 @@ public static class DependencyInjection
     /// <returns>Tập hợp dịch vụ đã được cập nhật.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        // Auth module
+        services.AddScoped<IAuthService, AuthService>();
+
+        // Card Management module
+        // Scoped: mỗi HTTP request tạo một instance mới → an toàn với EF Core DbContext
+        services.AddScoped<ICardService, CardService>();
+
         // TODO: Đăng ký các dịch vụ ứng dụng, handler, validator, mapper, v.v.
         // Ví dụ:
         // services.AddScoped<IBookingService, BookingService>();

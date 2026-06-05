@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Contracts;
 using PBMS.Infrastructure.Data;
+using PBMS.Infrastructure.ExternalServices;
 using PBMS.Infrastructure.Repositories;
 
 namespace PBMS.Infrastructure;
@@ -20,15 +22,22 @@ public static class DependencyInjection
     /// <returns>Tập hợp dịch vụ đã được cập nhật.</returns>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // TODO: Đăng ký DbContext, repository, dịch vụ ngoài và cấu hình infrastructure.
-        // Ví dụ:
-        // services.AddDbContext<ApplicationDbContext>(options =>
-        //     options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-
-        // Register ParkingStructure repositories
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<ITokenService, TokenService>();
+
+        // Card Management — Repository
+        services.AddScoped<ICardRepository, CardRepository>();
+
+        //Google OauthServiceDI
+        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+
+        // Đăng ký repository chung
         services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
+
+        // Đăng ký repository Zone
         services.AddScoped<IZoneRepository, ZoneRepository>();
 
         return services;
