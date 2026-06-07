@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=pbms_db;Username=postgres;Password=your_secure_password_here"
+    "DefaultConnection": "Your ConnectionStrings here"
   },
   "Logging": {
     "LogLevel": {
@@ -8,14 +8,10 @@
       "Microsoft.AspNetCore": "Warning"
     }
   },
-  "AllowedHosts": "*",
   "Jwt": {
     "Key": "A_Super_Secret_Key_For_JWT_Auth_System_PBMS_Project_2026_SWP391",
     "Issuer": "PBMS",
     "Audience": "PBMSUsers",
     "ExpiryInMinutes": 1440
-  },
-  "Google": {
-    "ClientId": "768808098768-vop4tnm5u22h8stb6464bqtogse2rqvm.apps.googleusercontent.com"
   }
 }

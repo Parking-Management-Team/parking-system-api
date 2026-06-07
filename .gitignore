@@ -435,3 +435,7 @@ appsettings.Development.json
 # Local database
 *.db
 *.sqlite
+
+# Agents
+.agents/
+GEMINI.md

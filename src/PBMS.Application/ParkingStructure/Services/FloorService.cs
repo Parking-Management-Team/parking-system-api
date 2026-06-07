@@ -1,0 +1,153 @@
+using AutoMapper;
+using PBMS.Application.Common;
+using PBMS.Application.Common.Exceptions;
+using PBMS.Application.Contracts;
+using PBMS.Application.ParkingStructure.DTOs;
+using PBMS.Application.ParkingStructure.Interfaces;
+using PBMS.Domain.Entities;
+
+namespace PBMS.Application.ParkingStructure.Services;
+
+/// <summary>
+/// Triển khai service cho logic nghiệp vụ Floor.
+/// </summary>
+public class FloorService : IFloorService
+{
+    private readonly IFloorRepository _floorRepository;
+    private readonly IRepository<Building> _buildingRepository;
+    private readonly IMapper _mapper;
+
+    public FloorService(
+        IFloorRepository floorRepository,
+        IRepository<Building> buildingRepository,
+        IMapper mapper)
+    {
+        _floorRepository = floorRepository;
+        _buildingRepository = buildingRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<FloorDto> CreateFloorAsync(FloorCreateRequest request)
+    {
+        // 1. Kiểm tra building tồn tại
+        var building = await _buildingRepository.GetByIdAsync(request.BuildingId);
+        if (building == null)
+        {
+            throw new NotFoundException("Building", request.BuildingId);
+        }
+
+        // 2. Kiểm tra số tầng đã tồn tại trong building chưa
+        var floorExists = await _floorRepository.FloorNumberExistsInBuildingAsync(request.FloorNumber, request.BuildingId);
+        if (floorExists)
+        {
+            throw new ValidationException($"Floor number {request.FloorNumber} already exists in this building.");
+        }
+
+        // 3. Tạo entity
+        var floor = new Floor
+        {
+            BuildingId = request.BuildingId,
+            FloorNumber = request.FloorNumber,
+            Name = request.Name,
+            Status = Domain.Enums.FloorStatus.Available
+        };
+
+        await _floorRepository.AddAsync(floor);
+        return _mapper.Map<FloorDto>(floor);
+    }
+
+    public async Task<FloorDto> GetFloorByIdAsync(int id)
+    {
+        var floor = await _floorRepository.GetByIdAsync(id);
+        if (floor == null)
+        {
+            throw new NotFoundException("Floor", id);
+        }
+
+        return _mapper.Map<FloorDto>(floor);
+    }
+
+    public async Task<IEnumerable<FloorDto>> GetAllFloorsAsync()
+    {
+        var floors = await _floorRepository.GetAllAsync();
+        return _mapper.Map<IEnumerable<FloorDto>>(floors);
+    }
+
+    public async Task<IEnumerable<FloorDto>> GetFloorsByBuildingAsync(int buildingId)
+    {
+        var building = await _buildingRepository.GetByIdAsync(buildingId);
+        if (building == null)
+        {
+            throw new NotFoundException("Building", buildingId);
+        }
+
+        var floors = await _floorRepository.GetFloorsByBuildingIdAsync(buildingId);
+        return _mapper.Map<IEnumerable<FloorDto>>(floors);
+    }
+
+    public async Task<PagedResult<FloorDto>> GetFloorsPagedAsync(int pageIndex, int pageSize)
+    {
+        var floors = await _floorRepository.GetAllAsync();
+        var totalCount = floors.Count();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        var pagedFloors = floors
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        var floorDtos = _mapper.Map<IEnumerable<FloorDto>>(pagedFloors);
+
+        return new PagedResult<FloorDto>
+        {
+            Items = floorDtos,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<FloorDto> UpdateFloorAsync(int id, FloorUpdateRequest request)
+    {
+        var floor = await _floorRepository.GetByIdAsync(id);
+        if (floor == null)
+        {
+            throw new NotFoundException("Floor", id);
+        }
+
+        // Nếu thay đổi số tầng, kiểm tra xem số mới đã tồn tại chưa
+        if (floor.FloorNumber != request.FloorNumber)
+        {
+            var floorExists = await _floorRepository.FloorNumberExistsInBuildingAsync(request.FloorNumber, floor.BuildingId);
+            if (floorExists)
+            {
+                throw new ValidationException($"Floor number {request.FloorNumber} already exists in this building.");
+            }
+        }
+
+        floor.FloorNumber = request.FloorNumber;
+        floor.Name = request.Name;
+        floor.Status = request.Status;
+
+        _floorRepository.Update(floor);
+        return _mapper.Map<FloorDto>(floor);
+    }
+
+    public async Task DeleteFloorAsync(int id)
+    {
+        var floor = await _floorRepository.GetFloorWithDetailsAsync(id);
+        if (floor == null)
+        {
+            throw new NotFoundException("Floor", id);
+        }
+
+        // Kiểm tra xem tầng có chứa khu vực (Zone) nào không
+        if (floor.Zones.Any())
+        {
+            throw new ValidationException("Cannot delete floor that contains zones.");
+        }
+
+        await _floorRepository.RemoveAsync(floor);
+    }
+}
