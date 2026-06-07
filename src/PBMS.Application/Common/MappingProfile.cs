@@ -15,5 +15,10 @@ public class MappingProfile : Profile
         CreateMap<Zone, ZoneDto>();
         CreateMap<ZoneCreateRequest, Zone>();
         CreateMap<ZoneUpdateRequest, Zone>();
+
+        // Floor mappings
+        CreateMap<Floor, FloorDto>();
+        CreateMap<FloorCreateRequest, Floor>();
+        CreateMap<FloorUpdateRequest, Floor>();
     }
 }
