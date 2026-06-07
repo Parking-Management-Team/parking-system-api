@@ -46,6 +46,9 @@ public static class DependencyInjection
         // Đăng ký repository ParkingSlot
         services.AddScoped<IParkingSlotRepository, ParkingSlotRepository>();
 
+        // Đăng ký repository Building
+        services.AddScoped<IBuildingRepository, BuildingRepository>();
+
         return services;
     }
 }
