@@ -20,5 +20,10 @@ public class MappingProfile : Profile
         CreateMap<Floor, FloorDto>();
         CreateMap<FloorCreateRequest, Floor>();
         CreateMap<FloorUpdateRequest, Floor>();
+
+        // ParkingSlot mappings
+        CreateMap<ParkingSlot, ParkingSlotDto>();
+        CreateMap<ParkingSlotCreateRequest, ParkingSlot>();
+        CreateMap<ParkingSlotUpdateRequest, ParkingSlot>();
     }
 }
