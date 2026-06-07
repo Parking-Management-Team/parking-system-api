@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PBMS.Application.Common;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
 
@@ -27,15 +28,9 @@ public class ZonesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateZone([FromBody] ZoneCreateRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _zoneService.CreateZoneAsync(request);
-        
-        if (!result.Success)
-            return BadRequest(result);
-
-        return CreatedAtAction(nameof(GetZoneById), new { id = result.Data!.Id }, result);
+        var zone = await _zoneService.CreateZoneAsync(request);
+        var response = BaseResponse<ZoneDto>.Ok(zone, "Zone created successfully.");
+        return CreatedAtAction(nameof(GetZoneById), new { id = zone.Id }, response);
     }
 
     /// <summary>
@@ -46,12 +41,8 @@ public class ZonesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetZoneById(int id)
     {
-        var result = await _zoneService.GetZoneByIdAsync(id);
-        
-        if (!result.Success)
-            return NotFound(result);
-
-        return Ok(result);
+        var zone = await _zoneService.GetZoneByIdAsync(id);
+        return Ok(BaseResponse<ZoneDto>.Ok(zone));
     }
 
     /// <summary>
@@ -61,8 +52,8 @@ public class ZonesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllZones()
     {
-        var result = await _zoneService.GetAllZonesAsync();
-        return Ok(result);
+        var zones = await _zoneService.GetAllZonesAsync();
+        return Ok(BaseResponse<IEnumerable<ZoneDto>>.Ok(zones));
     }
 
     /// <summary>
@@ -73,12 +64,8 @@ public class ZonesController : ControllerBase
     [HttpGet("floor/{floorId}")]
     public async Task<IActionResult> GetZonesByFloor(int floorId)
     {
-        var result = await _zoneService.GetZonesByFloorAsync(floorId);
-        
-        if (!result.Success)
-            return NotFound(result);
-
-        return Ok(result);
+        var zones = await _zoneService.GetZonesByFloorAsync(floorId);
+        return Ok(BaseResponse<IEnumerable<ZoneDto>>.Ok(zones));
     }
 
     /// <summary>
@@ -90,11 +77,8 @@ public class ZonesController : ControllerBase
     [HttpGet("paged")]
     public async Task<IActionResult> GetZonesPaged([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
     {
-        if (pageIndex < 1 || pageSize < 1)
-            return BadRequest("Page index and page size must be greater than 0.");
-
         var result = await _zoneService.GetZonesPagedAsync(pageIndex, pageSize);
-        return Ok(result);
+        return Ok(BaseResponse<PagedResult<ZoneDto>>.Ok(result));
     }
 
     /// <summary>
@@ -106,15 +90,8 @@ public class ZonesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateZone(int id, [FromBody] ZoneUpdateRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _zoneService.UpdateZoneAsync(id, request);
-        
-        if (!result.Success)
-            return NotFound(result);
-
-        return Ok(result);
+        var zone = await _zoneService.UpdateZoneAsync(id, request);
+        return Ok(BaseResponse<ZoneDto>.Ok(zone, "Zone updated successfully."));
     }
 
     /// <summary>
@@ -125,11 +102,7 @@ public class ZonesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteZone(int id)
     {
-        var result = await _zoneService.DeleteZoneAsync(id);
-        
-        if (!result.Success)
-            return BadRequest(result);
-
-        return Ok(result);
+        await _zoneService.DeleteZoneAsync(id);
+        return Ok(BaseResponse<string>.Ok(id.ToString(), "Zone deleted successfully."));
     }
 }

@@ -7,14 +7,15 @@ namespace PBMS.Application.ParkingStructure.DTOs;
 /// </summary>
 public class ZoneUpdateRequest
 {
-    [Required]
+    [Required(ErrorMessage = "Name is required.")]
+    [MaxLength(50, ErrorMessage = "Name cannot exceed 50 characters.")]
     public string Name { get; set; } = null!;
 
-    [Required]
+    [Required(ErrorMessage = "Capacity is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "Capacity must be greater than 0.")]
     public int Capacity { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "VehicleTypeId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "VehicleTypeId must be greater than 0.")]
     public int VehicleTypeId { get; set; }
 }

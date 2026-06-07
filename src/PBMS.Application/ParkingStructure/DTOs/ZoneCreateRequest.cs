@@ -7,18 +7,19 @@ namespace PBMS.Application.ParkingStructure.DTOs;
 /// </summary>
 public class ZoneCreateRequest
 {
-    [Required(ErrorMessage = "FloorId là bắt buộc.")]
-    [Range(1, int.MaxValue, ErrorMessage = "FloorId phải lớn hơn 0.")]
+    [Required(ErrorMessage = "FloorId is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "FloorId must be greater than 0.")]
     public int FloorId { get; set; }
 
-    [Required(ErrorMessage = "Name là bắt buộc.")]
+    [Required(ErrorMessage = "Name is required.")]
+    [MaxLength(50, ErrorMessage = "Name cannot exceed 50 characters.")]
     public string Name { get; set; } = null!;
 
-    [Required(ErrorMessage = "VehicleTypeId là bắt buộc.")]
-    [Range(1, int.MaxValue, ErrorMessage = "VehicleTypeId phải lớn hơn 0.")]
+    [Required(ErrorMessage = "VehicleTypeId is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "VehicleTypeId must be greater than 0.")]
     public int VehicleTypeId { get; set; }
 
-    [Required(ErrorMessage = "Capacity là bắt buộc.")]
-    [Range(1, int.MaxValue, ErrorMessage = "Capacity phải lớn hơn 0.")]
+    [Required(ErrorMessage = "Capacity is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Capacity must be greater than 0.")]
     public int Capacity { get; set; }
 }
