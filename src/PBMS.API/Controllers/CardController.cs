@@ -12,11 +12,12 @@ namespace PBMS.API.Controllers;
 /// Actor: Parking Staff (nhân viên bãi xe)
 ///
 /// Các chức năng:
-///   POST   /api/cards                     → Tạo thẻ mới (Scenario 1)
-///   GET    /api/cards/{id}                → Lấy thông tin thẻ theo ID
-///   GET    /api/cards/by-code/{cardCode}  → Tra cứu thẻ theo mã (Scenario 3)
-///   PUT    /api/cards/{id}                → Cập nhật thông tin thẻ
-///   DELETE /api/cards/{id}                → Xóa thẻ (Scenario 2 — từ chối nếu đang bận)
+///   POST   /api/cards                        → Tạo thẻ mới (Scenario 1)
+///   GET    /api/cards/{id}                   → Lấy thông tin thẻ theo ID
+///   GET    /api/cards/by-code/{cardCode}     → Tra cứu thẻ theo mã (Scenario 3)
+///   PUT    /api/cards/{id}                   → Cập nhật thông tin thẻ (RfidCode, CardType)
+///   PATCH  /api/cards/{id}/status            → Cập nhật trạng thái thẻ (Card Status Feature)
+///   DELETE /api/cards/{id}                   → Xóa thẻ (Scenario 2 — từ chối nếu đang bận)
 /// </summary>
 [ApiController]
 [Route("api/cards")]
@@ -149,5 +150,46 @@ public class CardController : ControllerBase
 
         // 204 No Content: xóa thành công, không có data trả về
         return NoContent();
+    }
+
+    // -----------------------------------------------------------------------
+    // PATCH /api/cards/{id}/status — [Card Status Feature] Đổi trạng thái thẻ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Cập nhật trạng thái thẻ gửi xe theo state machine nghiệp vụ.
+    ///
+    /// Actor: Parking Staff, Parking Manager
+    ///
+    /// Dùng PATCH (không phải PUT) vì đây là partial update — chỉ thay đổi
+    /// một trường duy nhất (CardStatus) chứ không cập nhật toàn bộ resource.
+    ///
+    /// Luồng chuyển trạng thái hợp lệ:
+    ///   Available → Blocked  : Staff khóa thẻ (Ngưng hoạt động / Inactive)
+    ///   Blocked   → Available: Admin mở khóa thẻ
+    ///   Active    → Lost     : Staff báo mất thẻ trong session đang mở
+    ///   Lost      → Available: Staff/Admin xử lý xong sự cố mất thẻ
+    ///
+    /// Route  : PATCH /api/cards/{id}/status
+    /// Body   : UpdateCardStatusRequest { NewStatus, Reason? }
+    /// Returns: 200 OK + CardDto với trạng thái mới nếu thành công
+    ///          404 Not Found  nếu không tìm thấy thẻ
+    ///          422 Unprocessable nếu chuyển trạng thái không hợp lệ
+    ///
+    /// Ví dụ body request:
+    ///   { "newStatus": "Blocked", "reason": "Thẻ bị hư vật lý" }
+    ///   { "newStatus": "Lost" }
+    ///   { "newStatus": "Available", "reason": "Đã tìm lại thẻ" }
+    /// </summary>
+    [HttpPatch("{id:int}/status")]
+    public async Task<ActionResult<BaseResponse<CardDto>>> UpdateCardStatus(
+        int id,
+        [FromBody] UpdateCardStatusRequest request)
+    {
+        // Gọi service xử lý nghiệp vụ đổi trạng thái
+        // Service sẽ validate state machine và ném DomainException nếu vi phạm
+        var card = await _cardService.UpdateCardStatusAsync(id, request);
+
+        return Ok(BaseResponse<CardDto>.Ok(card, $"Cập nhật trạng thái thẻ thành '{card.CardStatus}' thành công."));
     }
 }

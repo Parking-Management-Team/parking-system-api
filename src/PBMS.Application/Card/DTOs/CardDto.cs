@@ -8,6 +8,7 @@ namespace PBMS.Application.Card.DTOs;
 ///   - GET /api/cards/by-code/{cardCode}
 ///   - POST /api/cards (sau khi tạo thành công)
 ///   - PUT /api/cards/{id} (sau khi cập nhật)
+///   - PATCH /api/cards/{id}/status (sau khi đổi trạng thái)
 /// </summary>
 public class CardDto
 {
@@ -29,8 +30,15 @@ public class CardDto
     /// <summary>
     /// Trạng thái hiện tại của thẻ.
     /// Các giá trị có thể: "Available", "Active", "Lost", "Blocked"
+    /// Lưu ý: "Blocked" tương đương "Inactive" trong giao diện người dùng.
     /// </summary>
     public string CardStatus { get; set; } = null!;
+
+    /// <summary>
+    /// Thời điểm thẻ được báo mất (Lost).
+    /// Null nếu thẻ chưa từng bị báo mất hoặc đã được mở lại sau sự cố.
+    /// </summary>
+    public DateTime? LostAt { get; set; }
 
     /// <summary>Thời điểm thẻ được tạo vào hệ thống.</summary>
     public DateTime CreatedAt { get; set; }

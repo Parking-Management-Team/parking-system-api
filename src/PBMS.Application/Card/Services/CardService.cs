@@ -2,6 +2,7 @@ using PBMS.Application.Card.DTOs;
 using PBMS.Application.Card.Interfaces;
 using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
 
 namespace PBMS.Application.Card.Services;
@@ -241,6 +242,124 @@ public class CardService : ICardService
     }
 
     // -----------------------------------------------------------------------
+    // [CARD STATUS FEATURE] ĐỔI TRẠNG THÁI THẺ THEO STATE MACHINE
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Cập nhật trạng thái thẻ gửi xe theo state machine nghiệp vụ.
+    ///
+    /// Task con BE-1: mở rộng xử lý kiểm tra luồng chuyển đổi trạng thái thẻ
+    ///               và bổ sung ghi nhận thời điểm báo mất (LostAt).
+    ///
+    /// Luồng xử lý:
+    ///   1. Tìm thẻ theo ID.
+    ///   2. Parse NewStatus sang enum CardStatus.
+    ///   3. Kiểm tra chuyển trạng thái hợp lệ theo state machine.
+    ///   4. Áp dụng side effect:
+    ///        Lost      → set LostAt = DateTime.UtcNow
+    ///        Available (từ Lost) → reset LostAt = null
+    ///   5. Lưu vào DB và trả về CardDto.
+    /// </summary>
+    public async Task<CardDto> UpdateCardStatusAsync(int id, UpdateCardStatusRequest request)
+    {
+        // Bước 1: Tìm thẻ — throw nếu không tồn tại
+        var card = await _cardRepository.GetByIdAsync(id);
+        if (card == null)
+        {
+            throw new DomainException(
+                errorCode: "CARD_NOT_FOUND",
+                message: $"Không tìm thấy thẻ có ID '{id}'."
+            );
+        }
+
+        // Bước 2: Parse NewStatus — kiểm tra giá trị có thuộc enum không
+        if (!Enum.TryParse<CardStatus>(request.NewStatus.Trim(), ignoreCase: true, out var targetStatus))
+        {
+            throw new DomainException(
+                errorCode: "CARD_STATUS_UNKNOWN",
+                message: $"Trạng thái '{request.NewStatus}' không hợp lệ. "
+                       + "Các giá trị cho phép: Available, Active, Lost, Blocked."
+            );
+        }
+
+        // Bước 3: Đọc trạng thái hiện tại để kiểm tra state machine
+        // Dữ liệu trong DB lưu dạng string nên cần parse ra enum để so sánh an toàn
+        if (!Enum.TryParse<CardStatus>(card.CardStatus, ignoreCase: true, out var currentStatus))
+        {
+            // Trường hợp bất thường: data trong DB bị hỏng — không nên xảy ra
+            throw new DomainException(
+                errorCode: "CARD_STATUS_CORRUPTED",
+                message: $"Trạng thái hiện tại '{card.CardStatus}' của thẻ '{card.CardCode}' "
+                       + "không hợp lệ. Liên hệ Admin để kiểm tra dữ liệu."
+            );
+        }
+
+        // Bước 4: Kiểm tra chuyển trạng thái có hợp lệ không
+        if (!IsValidStatusTransition(currentStatus, targetStatus))
+        {
+            throw new DomainException(
+                errorCode: "CARD_INVALID_STATUS_TRANSITION",
+                message: $"Không thể chuyển trạng thái thẻ '{card.CardCode}' "
+                       + $"từ '{currentStatus}' sang '{targetStatus}'. "
+                       + "Vui lòng kiểm tra lại luồng chuyển trạng thái hợp lệ."
+            );
+        }
+
+        // Bước 5: Áp dụng side effect theo target status
+        if (targetStatus == CardStatus.Lost)
+        {
+            // Ghi nhận thời điểm báo mất (Task con BE-1: bổ sung ghi nhận thời điểm báo mất)
+            // Dùng UTC để tuyệt đối không phụ thuộc timezone của server
+            card.LostAt = DateTime.UtcNow;
+        }
+        else if (targetStatus == CardStatus.Available && currentStatus == CardStatus.Lost)
+        {
+            // Mở lại thẻ từ trạng thái Lost — reset LostAt về null
+            card.LostAt = null;
+        }
+
+        // Bước 6: Cập nhật trạng thái mới vào entity
+        card.CardStatus = targetStatus.ToString();
+
+        // Bước 7: Lưu vào database thông qua Repository
+        _cardRepository.Update(card);
+        await _cardRepository.SaveChangesAsync();
+
+        return MapToDto(card);
+    }
+
+    // -----------------------------------------------------------------------
+    // STATE MACHINE HELPER — Kiểm tra chuyển trạng thái hợp lệ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Kiểm tra liệu việc chuyển từ <paramref name="current"/> sang
+    /// <paramref name="target"/> có được phép theo nghiệp vụ không.
+    ///
+    /// Bảng chuyển trạng thái HOẠT ĐỘNG:
+    ///   Available → Blocked  : Staff/Admin khóa thẻ (Ngưng hoạt động)
+    ///   Blocked   → Available: Admin mở khóa trở lại
+    ///   Active    → Lost     : Staff báo mất trong session đang mở
+    ///   Lost      → Available: Staff/Admin giải quyết xong sự cố
+    /// </summary>
+    private static bool IsValidStatusTransition(CardStatus current, CardStatus target)
+    {
+        return (current, target) switch
+        {
+            // Staff/Admin khóa thẻ đang rảnh (Ngưng hoạt động / Inactive)
+            (CardStatus.Available, CardStatus.Blocked)   => true,
+            // Admin mở lại thẻ đã bị khóa
+            (CardStatus.Blocked,   CardStatus.Available) => true,
+            // Staff báo mất thẻ trong khi xe đang gửi (phải đang Active)
+            (CardStatus.Active,    CardStatus.Lost)      => true,
+            // Staff/Admin giải quyết xong sự cố mất thẻ
+            (CardStatus.Lost,      CardStatus.Available) => true,
+            // Tất cả các chuyển đổi khác đều bị từ chối
+            _                                            => false
+        };
+    }
+
+    // -----------------------------------------------------------------------
     // HELPER — MAP ENTITY → DTO (Dùng nội bộ trong Service)
     // -----------------------------------------------------------------------
 
@@ -261,6 +380,7 @@ public class CardService : ICardService
             RfidCode = card.RfidCode,
             CardType = card.CardType,
             CardStatus = card.CardStatus,
+            LostAt = card.LostAt,
             CreatedAt = card.CreatedAt
         };
     }

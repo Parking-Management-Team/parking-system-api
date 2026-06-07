@@ -9,6 +9,9 @@ namespace PBMS.Application.Card.Interfaces;
 ///   Scenario 1 — CreateCardAsync    : Tạo thẻ mới với mã chưa tồn tại
 ///   Scenario 2 — DeleteCardAsync    : Từ chối xóa thẻ đang trong session ACTIVE
 ///   Scenario 3 — GetCardByCodeAsync : Tra cứu thông tin thẻ nhanh bằng mã
+///
+/// Tính năng Card Status:
+///   UpdateCardStatusAsync : Đổi trạng thái thẻ theo state machine nghiệp vụ
 /// </summary>
 public interface ICardService
 {
@@ -68,4 +71,27 @@ public interface ICardService
     ///   - Thẻ đang bận → DomainException "CARD_IN_ACTIVE_SESSION"
     /// </summary>
     Task DeleteCardAsync(int id);
+
+    /// <summary>
+    /// [Card Status Feature] Cập nhật trạng thái thẻ gửi xe theo state machine nghiệp vụ.
+    ///
+    /// Luồng chuyển trạng thái HỢP LỆ:
+    ///   Available → Blocked  : Staff/Admin khóa thẻ (Ngưng hoạt động / Inactive) — Scenario 2
+    ///   Blocked   → Available: Admin mở khóa thẻ trở lại
+    ///   Active    → Lost     : Staff báo mất thẻ trong khi xe đang gửi — cơ sở để Scenario 1 hoạt động
+    ///   Lost      → Available: Staff/Admin xử lý xong sự cố mất thẻ
+    ///
+    /// Hành vi khi chuyển sang Lost:
+    ///   - Hệ thống tự động set Card.LostAt = DateTime.UtcNow (ghi nhận thời điểm báo mất).
+    ///   - Dùng để tính lost_card_penalty (BR-052, BR-053).
+    ///
+    /// Hành vi khi mở lại từ Lost → Available:
+    ///   - Hệ thống reset Card.LostAt = null.
+    ///
+    /// Lỗi có thể xảy ra:
+    ///   - Không tìm thấy thẻ                    → DomainException "CARD_NOT_FOUND"
+    ///   - Chuyển trạng thái không hợp lệ        → DomainException "CARD_INVALID_STATUS_TRANSITION"
+    ///   - Giá trị NewStatus không nhận dạng được → DomainException "CARD_STATUS_UNKNOWN"
+    /// </summary>
+    Task<CardDto> UpdateCardStatusAsync(int id, UpdateCardStatusRequest request);
 }

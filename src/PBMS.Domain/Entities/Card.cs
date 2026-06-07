@@ -69,12 +69,26 @@ public class Card : BaseEntity
     ///   - Available: thẻ rảnh, có thể gán cho session mới.
     ///   - Active   : thẻ đang được dùng trong một session đang mở.
     ///   - Lost     : thẻ bị báo mất — khoá lại và áp phí phạt.
-    ///   - Blocked  : thẻ bị khoá thủ công bởi Manager/Admin.
+    ///   - Blocked  : thẻ bị khoá thủ công (Ngưng hoạt động / Inactive).
     ///
     /// Lưu trong DB dưới dạng string (tên của enum) để dễ đọc khi query trực tiếp.
     /// Ví dụ: "Available", "Active", "Lost", "Blocked"
     /// </summary>
     public string CardStatus { get; set; } = Enums.CardStatus.Available.ToString();
+
+    /// <summary>
+    /// Thời điểm Staff đánh dấu thẻ này là Đã mất (Lost).
+    /// Null nếu thẻ chưa từng bị báo mất.
+    ///
+    /// Được set tự động bởi CardService.UpdateCardStatusAsync() khi chuyển sang Lost.
+    /// Reset về null khi thẻ được mở lại (chuyển sang Available).
+    ///
+    /// Dùng để:
+    ///   - Tính lost_card_penalty theo thời điểm báo mất (BR-052).
+    ///   - Audit log — truy vết lịch sử báo mất thẻ.
+    /// Tham chiếu SRS: BR-052, BR-053, Task con BE: "bổ sung ghi nhận thời điểm báo mất"
+    /// </summary>
+    public DateTime? LostAt { get; set; }
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES (Quan hệ với các bảng khác)
@@ -110,4 +124,12 @@ public class Card : BaseEntity
     /// Tham chiếu: BR-052, BR-053
     /// </summary>
     public bool IsLost => CardStatus == Enums.CardStatus.Lost.ToString();
+
+    /// <summary>
+    /// Kiểm tra nhanh xem thẻ có đang bị khóa (Blocked / Ngưng hoạt động) không.
+    /// Trả về true khi CardStatus == "Blocked".
+    ///
+    /// Dùng trong luồng check-in để chặn thẻ bị khóa thủ công.
+    /// </summary>
+    public bool IsBlocked => CardStatus == Enums.CardStatus.Blocked.ToString();
 }
