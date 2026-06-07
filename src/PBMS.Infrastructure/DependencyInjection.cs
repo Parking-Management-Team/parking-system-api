@@ -43,6 +43,9 @@ public static class DependencyInjection
         // Đăng ký repository Floor
         services.AddScoped<IFloorRepository, FloorRepository>();
 
+        // Đăng ký repository ParkingSlot
+        services.AddScoped<IParkingSlotRepository, ParkingSlotRepository>();
+
         return services;
     }
 }

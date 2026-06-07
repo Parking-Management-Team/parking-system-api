@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddAutoMapper(cfg => { }, typeof(DependencyInjection));
         services.AddScoped<IZoneService, ZoneService>();
         services.AddScoped<IFloorService, FloorService>();
+        services.AddScoped<IParkingSlotService, ParkingSlotService>();
         return services;
     }
 }
