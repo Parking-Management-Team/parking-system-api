@@ -10,16 +10,16 @@ using PBMS.Infrastructure.Repositories;
 namespace PBMS.Infrastructure;
 
 /// <summary>
-/// Extension methods for registering infrastructure layer services.
+/// Phương thức mở rộng để đăng ký dịch vụ tầng Infrastructure.
 /// </summary>
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers infrastructure services into the DI container.
+    /// Đăng ký các dịch vụ tầng Infrastructure vào DI container.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration.</param>
-    /// <returns>The updated service collection.</returns>
+    /// <param name="services">Tập hợp dịch vụ.</param>
+    /// <param name="configuration">Cấu hình ứng dụng.</param>
+    /// <returns>Tập hợp dịch vụ đã được cập nhật.</returns>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<AppDbContext>(options =>
@@ -33,6 +33,12 @@ public static class DependencyInjection
 
         //Google OauthServiceDI
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+
+        // Đăng ký repository chung
+        services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
+
+        // Đăng ký repository Zone
+        services.AddScoped<IZoneRepository, ZoneRepository>();
 
         return services;
     }

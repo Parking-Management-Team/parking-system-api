@@ -438,3 +438,4 @@ appsettings.Development.json
 
 # Agents
 .agents/
+GEMINI.md

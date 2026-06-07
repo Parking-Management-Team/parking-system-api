@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 using PBMS.Domain.Entities;
+using System.Reflection;
 
 namespace PBMS.Infrastructure.Data;
 
@@ -40,6 +40,12 @@ public class AppDbContext : DbContext
     /// Mỗi Card là một mã thẻ mô phỏng dùng để nhận diện lượt gửi xe.
     /// </summary>
     public DbSet<Card> Cards { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Khu vực (Zones).
+    /// </summary>
+    public DbSet<Zone> Zones { get; set; } = null!;
+    
 
     // =======================================================
 
