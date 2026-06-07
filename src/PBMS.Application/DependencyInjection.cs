@@ -31,6 +31,7 @@ public static class DependencyInjection
         // services.AddScoped<IBookingService, BookingService>();
         services.AddAutoMapper(cfg => { }, typeof(DependencyInjection));
         services.AddScoped<IZoneService, ZoneService>();
+        services.AddScoped<IFloorService, FloorService>();
         return services;
     }
 }

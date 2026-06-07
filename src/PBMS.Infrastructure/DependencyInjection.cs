@@ -40,6 +40,9 @@ public static class DependencyInjection
         // Đăng ký repository Zone
         services.AddScoped<IZoneRepository, ZoneRepository>();
 
+        // Đăng ký repository Floor
+        services.AddScoped<IFloorRepository, FloorRepository>();
+
         return services;
     }
 }
