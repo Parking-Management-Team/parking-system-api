@@ -1,1 +1,0 @@
-copy /b sections\*.md PBMS_SRS_Document.md
