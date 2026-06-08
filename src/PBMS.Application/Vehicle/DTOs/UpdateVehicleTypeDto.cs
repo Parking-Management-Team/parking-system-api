@@ -11,7 +11,13 @@ public class UpdateVehicleTypeDto
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indicates if the vehicle type is active (True) or inactive (False).
+    /// Description of the vehicle type.
     /// </summary>
-    public bool IsActive { get; set; }
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Business status of the vehicle type.
+    /// </summary>
+    public string? VehicleTypeStatus { get; set; }
+
 }

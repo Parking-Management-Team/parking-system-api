@@ -29,7 +29,8 @@ public class VehicleTypeRepository : IVehicleTypeRepository
 
     public async Task<bool> NameExistsAsync(string name, int? excludeId = null)
     {
-        var query = _context.VehicleTypes.Where(vt => vt.Name == name);
+        var normalizedName = name.Trim().ToUpper();
+        var query = _context.VehicleTypes.Where(vt => vt.Name.ToUpper() == normalizedName);
         
         if (excludeId.HasValue)
         {

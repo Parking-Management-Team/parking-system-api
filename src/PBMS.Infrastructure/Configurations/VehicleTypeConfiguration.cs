@@ -11,45 +11,48 @@ public class VehicleTypeConfiguration : IEntityTypeConfiguration<VehicleType>
 {
     public void Configure(EntityTypeBuilder<VehicleType> builder)
     {
-        // Table name
-        builder.ToTable("vehicle_types");
+        builder.ToTable("vehicle_type");
 
-        // Primary key
         builder.HasKey(vt => vt.Id);
 
-        // Properties
+        builder.Property(vt => vt.Id)
+            .HasColumnName("vehicle_type_id");
+
         builder.Property(vt => vt.Name)
+            .HasColumnName("type_name")
             .IsRequired()
+            .HasMaxLength(50);
+
+        builder.Property(vt => vt.Description)
+            .HasColumnName("description")
             .HasMaxLength(100);
 
-        builder.Property(vt => vt.IsActive)
+        builder.Property(vt => vt.VehicleTypeStatus)
+            .HasColumnName("vehicle_type_status")
             .IsRequired()
-            .HasDefaultValue(true);
+            .HasMaxLength(20)
+            .HasDefaultValue(VehicleType.StatusActive);
 
-        builder.Property(vt => vt.CreatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        builder.Ignore(vt => vt.CreatedAt);
 
-        // Indexes
         builder.HasIndex(vt => vt.Name)
             .IsUnique()
-            .HasDatabaseName("ix_vehicle_types_name");
+            .HasDatabaseName("ix_vehicle_type_type_name");
 
-        // Seed data
         builder.HasData(
             new VehicleType
             {
                 Id = 1,
-                Name = "Motorcycle",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                Name = VehicleType.MotorcycleTypeName,
+                Description = "Managed by zone capacity. Slot is not required for booking or monthly card.",
+                VehicleTypeStatus = VehicleType.StatusActive
             },
             new VehicleType
             {
                 Id = 2,
-                Name = "Car",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                Name = VehicleType.CarTypeName,
+                Description = "Managed by slot for booking and monthly card.",
+                VehicleTypeStatus = VehicleType.StatusActive
             }
         );
     }

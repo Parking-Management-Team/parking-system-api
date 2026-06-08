@@ -11,6 +11,11 @@ namespace PBMS.Application.Vehicle.Services;
 public class VehicleTypeService : IVehicleTypeService
 {
     private readonly IVehicleTypeRepository _repository;
+    private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        VehicleType.StatusActive,
+        VehicleType.StatusInactive
+    };
 
     public VehicleTypeService(IVehicleTypeRepository repository)
     {
@@ -69,29 +74,26 @@ public class VehicleTypeService : IVehicleTypeService
     {
         try
         {
-            // Validation
-            if (string.IsNullOrWhiteSpace(createDto.Name))
+            var validationError = ValidateVehicleType(createDto.Name, createDto.Description, createDto.VehicleTypeStatus);
+            if (validationError != null)
             {
-                return BaseResponse<VehicleTypeDto>.Fail(
-                    "INVALID_NAME",
-                    "Vehicle type name cannot be empty."
-                );
+                return validationError;
             }
 
-            // Check for duplicate name
-            if (await _repository.NameExistsAsync(createDto.Name))
+            var normalizedName = createDto.Name.Trim();
+            if (await _repository.NameExistsAsync(normalizedName))
             {
                 return BaseResponse<VehicleTypeDto>.Fail(
                     "NAME_EXISTS",
-                    $"Vehicle type '{createDto.Name}' already exists in the system."
+                    $"Vehicle type '{normalizedName}' already exists in the system."
                 );
             }
 
             var vehicleType = new VehicleType
             {
-                Name = createDto.Name.Trim(),
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                Name = normalizedName,
+                Description = NormalizeDescription(createDto.Description),
+                VehicleTypeStatus = NormalizeStatus(createDto.VehicleTypeStatus)
             };
 
             var created = await _repository.AddAsync(vehicleType);
@@ -122,26 +124,26 @@ public class VehicleTypeService : IVehicleTypeService
                 );
             }
 
-            // Validation
-            if (string.IsNullOrWhiteSpace(updateDto.Name))
+            var requestedStatus = updateDto.VehicleTypeStatus;
+
+            var validationError = ValidateVehicleType(updateDto.Name, updateDto.Description, requestedStatus);
+            if (validationError != null)
             {
-                return BaseResponse<VehicleTypeDto>.Fail(
-                    "INVALID_NAME",
-                    "Vehicle type name cannot be empty."
-                );
+                return validationError;
             }
 
-            // Check for duplicate name (excluding current vehicle type)
-            if (await _repository.NameExistsAsync(updateDto.Name, id))
+            var normalizedName = updateDto.Name.Trim();
+            if (await _repository.NameExistsAsync(normalizedName, id))
             {
                 return BaseResponse<VehicleTypeDto>.Fail(
                     "NAME_EXISTS",
-                    $"Vehicle type '{updateDto.Name}' already exists in the system."
+                    $"Vehicle type '{normalizedName}' already exists in the system."
                 );
             }
 
-            vehicleType.Name = updateDto.Name.Trim();
-            vehicleType.IsActive = updateDto.IsActive;
+            vehicleType.Name = normalizedName;
+            vehicleType.Description = NormalizeDescription(updateDto.Description);
+            vehicleType.VehicleTypeStatus = NormalizeStatus(requestedStatus);
 
             var updated = await _repository.UpdateAsync(vehicleType);
             return BaseResponse<VehicleTypeDto>.Ok(
@@ -210,9 +212,61 @@ public class VehicleTypeService : IVehicleTypeService
         {
             Id = vehicleType.Id,
             Name = vehicleType.Name,
-            IsActive = vehicleType.IsActive,
-            Status = vehicleType.IsActive ? "Active" : "Inactive",
-            CreatedAt = vehicleType.CreatedAt
+            Description = vehicleType.Description,
+            VehicleTypeStatus = vehicleType.VehicleTypeStatus
         };
+    }
+
+    private static BaseResponse<VehicleTypeDto>? ValidateVehicleType(
+        string name,
+        string? description,
+        string? vehicleTypeStatus)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BaseResponse<VehicleTypeDto>.Fail(
+                "INVALID_NAME",
+                "Vehicle type name cannot be empty."
+            );
+        }
+
+        if (name.Trim().Length > 50)
+        {
+            return BaseResponse<VehicleTypeDto>.Fail(
+                "INVALID_NAME",
+                "Vehicle type name cannot exceed 50 characters."
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(description) && description.Trim().Length > 100)
+        {
+            return BaseResponse<VehicleTypeDto>.Fail(
+                "INVALID_DESCRIPTION",
+                "Vehicle type description cannot exceed 100 characters."
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(vehicleTypeStatus)
+            && !AllowedStatuses.Contains(vehicleTypeStatus.Trim()))
+        {
+            return BaseResponse<VehicleTypeDto>.Fail(
+                "INVALID_STATUS",
+                "Vehicle type status must be ACTIVE or INACTIVE."
+            );
+        }
+
+        return null;
+    }
+
+    private static string NormalizeStatus(string? status)
+    {
+        return string.IsNullOrWhiteSpace(status)
+            ? VehicleType.StatusActive
+            : status.Trim().ToUpperInvariant();
+    }
+
+    private static string? NormalizeDescription(string? description)
+    {
+        return string.IsNullOrWhiteSpace(description) ? null : description.Trim();
     }
 }

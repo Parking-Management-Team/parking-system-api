@@ -1,32 +1,27 @@
 namespace PBMS.Application.Vehicle.DTOs;
 
 /// <summary>
-/// DTO for returning vehicle type data.
+/// DTO for returning vehicle_type data.
 /// </summary>
 public class VehicleTypeDto
 {
     /// <summary>
-    /// Unique identifier of the vehicle type.
+    /// Maps to vehicle_type_id.
     /// </summary>
     public int Id { get; set; }
 
     /// <summary>
-    /// Name of the vehicle type (e.g., "Bike", "Car").
+    /// Maps to type_name.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Status label: "Active" or "Inactive".
+    /// Maps to description.
     /// </summary>
-    public string Status { get; set; } = "Active";
+    public string? Description { get; set; }
 
     /// <summary>
-    /// Indicates if the vehicle type is active.
+    /// Maps to vehicle_type_status.
     /// </summary>
-    public bool IsActive { get; set; }
-
-    /// <summary>
-    /// When the vehicle type was created.
-    /// </summary>
-    public DateTime CreatedAt { get; set; }
+    public string VehicleTypeStatus { get; set; } = "ACTIVE";
 }

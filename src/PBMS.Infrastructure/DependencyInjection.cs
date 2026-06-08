@@ -20,6 +20,12 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        if (bool.TryParse(configuration["VehicleType:UseMockData"], out var useMockData) && useMockData)
+        {
+            services.AddSingleton<IVehicleTypeRepository, MockVehicleTypeRepository>();
+            return services;
+        }
+
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
         
