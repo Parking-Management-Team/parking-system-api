@@ -30,24 +30,26 @@ public class Card : BaseEntity
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mã thẻ nội bộ — dùng để tra cứu trong hệ thống.
-    /// In ra vé/QR cho khách cầm khi gửi xe.
+    /// Mã RFID của con chip trên thẻ vật lý — dùng để định danh và tra cứu thẻ.
     ///
-    /// Ràng buộc: UNIQUE — không có 2 thẻ nào có cùng CardCode.
-    /// Độ dài tối đa: 20 ký tự (theo SRS varchar(20)).
-    /// Ví dụ: "CARD-00123", "PKG-2026-001"
-    /// </summary>
-    public string CardCode { get; set; } = null!;
-
-    /// <summary>
-    /// Mã RFID mô phỏng — tuỳ chọn, dùng nếu muốn mô phỏng kịch bản quét thẻ.
-    /// Trong phiên bản hiện tại hệ thống không có thiết bị đọc RFID thật,
-    /// nên trường này có thể để null.
+    /// Trong thực tế, mỗi thẻ RFID vật lý có một con chip được nhà sản xuất gán
+    /// sẵn một mã số duy nhất (UID). Đây chính là giá trị được lưu ở trường này.
     ///
     /// Ràng buộc: UNIQUE khi có giá trị (nullable unique).
     /// Độ dài tối đa: 50 ký tự (theo SRS varchar(50)).
+    /// Để null nếu thẻ không có chip RFID hoặc chưa được gán mã.
     /// </summary>
     public string? RfidCode { get; set; }
+
+    // -----------------------------------------------------------------------
+    // LIÊN KẾT TÒA NHÀ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Khóa ngoại liên kết đến tòa nhà (Building) mà thẻ này thuộc về.
+    /// Nullable — một thẻ có thể chưa được phân công cho tòa nhà cụ thể.
+    /// </summary>
+    public int? BuildingId { get; set; }
 
     // -----------------------------------------------------------------------
     // PHÂN LOẠI VÀ TRẠNG THÁI

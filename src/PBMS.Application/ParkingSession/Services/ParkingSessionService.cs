@@ -37,7 +37,7 @@ public class ParkingSessionService
     /// đảm bảo rằng không có thẻ không hợp lệ nào được tham gia vào quy trình gửi xe.
     ///
     /// Luồng xử lý:
-    ///   1. Tìm thẻ theo CardCode trong hệ thống.
+    ///   1. Tìm thẻ theo mã RFID trong hệ thống.
     ///   2. Kiểm tra trạng thái thẻ:
     ///        - Lost    → từ chối ngay, ném DomainException "CARD_IS_LOST"    (Scenario 1)
     ///        - Blocked → từ chối ngay, ném DomainException "CARD_IS_BLOCKED" (Scenario 2)
@@ -46,24 +46,24 @@ public class ParkingSessionService
     ///   3. Trả về Card entity nếu hợp lệ — để service tiếp tục gán vào session.
     ///
     /// Lỗi có thể xảy ra:
-    ///   - CARD_NOT_FOUND              : Không tìm thấy thẻ theo CardCode.
+    ///   - CARD_NOT_FOUND              : Không tìm thấy thẻ theo mã RFID.
     ///   - CARD_IS_LOST                : Thẻ đã bị báo mất — chặn tuyệt đối (Scenario 1).
     ///   - CARD_IS_BLOCKED             : Thẻ đang bị khóa (Ngưng hoạt động) (Scenario 2).
     ///   - CARD_ALREADY_IN_USE         : Thẻ đang được dùng trong session khác.
     /// </summary>
-    /// <param name="cardCode">Mã thẻ cần kiểm tra khi check-in.</param>
+    /// <param name="rfidCode">Mã RFID của thẻ cần kiểm tra khi check-in.</param>
     /// <returns>Card entity hợp lệ, sẵn sàng được gán vào ParkingSession mới.</returns>
-    public async Task<Domain.Entities.Card> ValidateCardForCheckInAsync(string cardCode)
+    public async Task<Domain.Entities.Card> ValidateCardForCheckInAsync(string rfidCode)
     {
-        // Bước 1: Chuẩn hóa và tìm thẻ theo mã
-        var normalizedCode = cardCode.Trim().ToUpper();
-        var card = await _cardRepository.GetByCardCodeAsync(normalizedCode);
+        // Bước 1: Chuẩn hóa và tìm thẻ theo mã RFID
+        var normalized = rfidCode.Trim();
+        var card = await _cardRepository.GetByRfidCodeAsync(normalized);
 
         if (card == null)
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có mã '{normalizedCode}' trong hệ thống."
+                message: $"Không tìm thấy thẻ có mã RFID '{normalized}' trong hệ thống."
             );
         }
 
@@ -73,7 +73,7 @@ public class ParkingSessionService
         {
             throw new DomainException(
                 errorCode: "CARD_STATUS_CORRUPTED",
-                message: $"Trạng thái thẻ '{card.CardCode}' không hợp lệ. Liên hệ Admin."
+                message: $"Trạng thái thẻ ID '{card.Id}' không hợp lệ. Liên hệ Admin."
             );
         }
 
@@ -85,7 +85,7 @@ public class ParkingSessionService
                 // và đưa ra cảnh báo thẻ đã bị báo mất.
                 throw new DomainException(
                     errorCode: "CARD_IS_LOST",
-                    message: $"Thẻ '{card.CardCode}' đã bị báo mất "
+                    message: $"Thẻ RFID '{normalized}' đã bị báo mất "
                            + (card.LostAt.HasValue
                                ? $"vào lúc {card.LostAt.Value:dd/MM/yyyy HH:mm} UTC. "
                                : ". ")
@@ -98,7 +98,7 @@ public class ParkingSessionService
                 // Không thể dùng để quét xe vào được nữa.
                 throw new DomainException(
                     errorCode: "CARD_IS_BLOCKED",
-                    message: $"Thẻ '{card.CardCode}' đang ở trạng thái Ngưng hoạt động (Bị khóa). "
+                    message: $"Thẻ RFID '{normalized}' đang ở trạng thái Ngưng hoạt động (Bị khóa). "
                            + "Không thể thực hiện check-in. "
                            + "Vui lòng liên hệ nhân viên để mở khóa thẻ."
                 );
@@ -107,7 +107,7 @@ public class ParkingSessionService
                 // Thẻ đang được gán cho một session khác — không thể dùng đồng thời
                 throw new DomainException(
                     errorCode: "CARD_ALREADY_IN_USE",
-                    message: $"Thẻ '{card.CardCode}' đang được sử dụng trong một phiên gửi xe khác. "
+                    message: $"Thẻ RFID '{normalized}' đang được sử dụng trong một phiên gửi xe khác. "
                            + "Mỗi thẻ chỉ được dùng cho một lượt gửi xe tại một thời điểm."
                 );
 

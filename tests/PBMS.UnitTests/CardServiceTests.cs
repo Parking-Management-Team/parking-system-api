@@ -26,52 +26,50 @@ namespace PBMS.UnitTests
         // =========================================================================
 
         [Fact]
-        public async Task CreateCardAsync_ShouldCreateCard_WhenCardCodeIsUnique()
+        public async Task CreateCardAsync_ShouldCreateCard_WhenRfidCodeIsUnique()
         {
             // Arrange
             var request = new CreateCardRequest 
             { 
-                CardCode = "card-123", 
-                CardType = "PARKING_CARD",
-                RfidCode = "rfid-123"
+                RfidCode = "rfid-123", 
+                CardType = "PARKING_CARD"
             };
 
-            // Thiết lập Mock: Trả về false khi kiểm tra xem CARD-123 đã tồn tại chưa
-            _cardRepositoryMock.IsCardCodeExistsAsync("CARD-123").Returns(false);
+            // Thiết lập Mock: Trả về false khi kiểm tra xem rfid-123 đã tồn tại chưa
+            _cardRepositoryMock.IsRfidCodeExistsAsync("rfid-123").Returns(false);
 
             // Act
             var result = await _cardService.CreateCardAsync(request);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal("CARD-123", result.CardCode); // Code phải được Trim và UpperCase
             Assert.Equal("rfid-123", result.RfidCode);
             Assert.Equal("PARKING_CARD", result.CardType);
             Assert.Equal("Available", result.CardStatus); // Trạng thái mặc định
 
             // Kiểm tra xem repository có được gọi đúng các hàm lưu trữ hay không
             await _cardRepositoryMock.Received(1).AddAsync(Arg.Is<Card>(c => 
-                c.CardCode == "CARD-123" && 
+                c.RfidCode == "rfid-123" && 
                 c.CardStatus == "Available"
             ));
             await _cardRepositoryMock.Received(1).SaveChangesAsync();
         }
 
         [Fact]
-        public async Task CreateCardAsync_ShouldThrowDomainException_WhenCardCodeAlreadyExists()
+        public async Task CreateCardAsync_ShouldThrowDomainException_WhenRfidCodeAlreadyExists()
         {
             // Arrange
-            var request = new CreateCardRequest { CardCode = "card-existing" };
+            var request = new CreateCardRequest { RfidCode = "rfid-existing" };
             
-            // Thiết lập Mock: Báo là thẻ này đã tồn tại trong DB rồi
-            _cardRepositoryMock.IsCardCodeExistsAsync("CARD-EXISTING").Returns(true);
+            // Thiết lập Mock: Báo là RFID này đã tồn tại trong DB rồi
+            _cardRepositoryMock.IsRfidCodeExistsAsync("rfid-existing").Returns(true);
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<DomainException>(() => 
                 _cardService.CreateCardAsync(request)
             );
 
-            Assert.Equal("CARD_CODE_EXISTS", exception.ErrorCode);
+            Assert.Equal("RFID_CODE_EXISTS", exception.ErrorCode);
             
             // Đảm bảo không gọi hàm thêm mới và hàm lưu vào DB
             await _cardRepositoryMock.DidNotReceive().AddAsync(Arg.Any<Card>());
@@ -87,7 +85,7 @@ namespace PBMS.UnitTests
         {
             // Arrange
             int cardId = 99;
-            var card = new Card { Id = cardId, CardCode = "CARD-FREE" };
+            var card = new Card { Id = cardId, RfidCode = "RFID-FREE" };
 
             // Thiết lập Mock: Tìm thấy thẻ và thẻ này KHÔNG bận đỗ xe
             _cardRepositoryMock.GetByIdAsync(cardId).Returns(card);
@@ -106,7 +104,7 @@ namespace PBMS.UnitTests
         {
             // Arrange
             int cardId = 100;
-            var card = new Card { Id = cardId, CardCode = "CARD-BUSY" };
+            var card = new Card { Id = cardId, RfidCode = "RFID-BUSY" };
 
             // Thiết lập Mock: Tìm thấy thẻ và thẻ này ĐANG bận đỗ xe
             _cardRepositoryMock.GetByIdAsync(cardId).Returns(card);

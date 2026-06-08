@@ -12,7 +12,7 @@ namespace PBMS.Application.Card.Services;
 ///
 /// Lớp này chứa toàn bộ business logic liên quan đến Card:
 ///   - Tạo thẻ mới (CreateCardCommand)
-///   - Tra cứu thẻ theo mã (GetCardByCodeQuery)
+///   - Tra cứu thẻ theo RFID (GetCardByRfidQuery)
 ///   - Cập nhật thông tin thẻ
 ///   - Xóa thẻ (có kiểm tra session đang mở)
 ///
@@ -40,79 +40,76 @@ public class CardService : ICardService
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Tạo mới một thẻ gửi xe với mã định danh chưa tồn tại trong hệ thống.
+    /// Tạo mới một thẻ gửi xe.
     ///
     /// Luồng xử lý:
-    ///   1. Chuẩn hóa mã thẻ (trim khoảng trắng, chuyển hoa)
-    ///   2. Kiểm tra mã thẻ chưa tồn tại → bảo đảm UNIQUE constraint
-    ///   3. Tạo entity Card mới với trạng thái Available
-    ///   4. Lưu vào DB → trả về DTO
+    ///   1. Kiểm tra RfidCode (nếu có) chưa tồn tại → bảo đảm UNIQUE constraint
+    ///   2. Tạo entity Card mới với trạng thái Available
+    ///   3. Lưu vào DB → trả về DTO
     /// </summary>
     public async Task<CardDto> CreateCardAsync(CreateCardRequest request)
     {
-        // Bước 1: Chuẩn hóa mã thẻ — loại bỏ khoảng trắng thừa
-        // Mã thẻ được chuyển thành chữ HOA để tránh trùng do case khác nhau
-        // Ví dụ: "card-001" và "CARD-001" được coi là giống nhau
-        var normalizedCode = request.CardCode.Trim().ToUpper();
-
-        // Bước 2: Kiểm tra mã thẻ đã tồn tại chưa
-        // Nếu đã tồn tại → ném DomainException ngay, không tiếp tục
-        var isExists = await _cardRepository.IsCardCodeExistsAsync(normalizedCode);
-        if (isExists)
+        // Kiểm tra RfidCode nếu Client có gửi
+        if (request.RfidCode != null)
         {
-            // [BR] Mã thẻ phải UNIQUE — không được tạo thẻ trùng mã
-            throw new DomainException(
-                errorCode: "CARD_CODE_EXISTS",
-                message: $"Mã thẻ '{normalizedCode}' đã tồn tại trong hệ thống. Vui lòng dùng mã khác."
-            );
+            var trimmedRfid = request.RfidCode.Trim();
+
+            var rfidExists = await _cardRepository.IsRfidCodeExistsAsync(trimmedRfid);
+            if (rfidExists)
+            {
+                throw new DomainException(
+                    errorCode: "RFID_CODE_EXISTS",
+                    message: $"Mã RFID '{trimmedRfid}' đã tồn tại trong hệ thống. Vui lòng dùng mã khác."
+                );
+            }
         }
 
-        // Bước 3: Tạo entity Card mới
+        // Tạo entity Card mới
         // Trạng thái mặc định là "Available" — thẻ sẵn sàng được dùng
         var card = new Domain.Entities.Card
         {
-            CardCode = normalizedCode,
-            RfidCode = request.RfidCode?.Trim(), // Null nếu không có RFID
-            CardType = request.CardType.Trim(),
+            RfidCode   = request.RfidCode?.Trim(),
+            BuildingId = request.BuildingId,
+            CardType   = request.CardType.Trim(),
             CardStatus = Domain.Enums.CardStatus.Available.ToString()
             // CreatedAt được tự động set bởi BaseEntity (DateTime.UtcNow)
         };
 
-        // Bước 4: Lưu vào database thông qua Repository
+        // Lưu vào database thông qua Repository
         await _cardRepository.AddAsync(card);
         await _cardRepository.SaveChangesAsync();
 
-        // Bước 5: Map entity vừa tạo sang DTO để trả về Client
+        // Map entity vừa tạo sang DTO để trả về Client
         return MapToDto(card);
     }
 
     // -----------------------------------------------------------------------
-    // [Scenario 3] TRA CỨU THẺ THEO MÃ
+    // [Scenario 3] TRA CỨU THẺ THEO MÃ RFID
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Tra cứu thông tin chi tiết thẻ bằng mã định danh (CardCode).
+    /// Tra cứu thông tin chi tiết thẻ bằng mã RFID.
     ///
     /// Luồng xử lý:
-    ///   1. Chuẩn hóa mã tìm kiếm
+    ///   1. Chuẩn hóa mã tìm kiếm (trim khoảng trắng)
     ///   2. Truy vấn repository
     ///   3. Nếu không tìm thấy → ném NotFoundException
     ///   4. Map và trả về DTO
     /// </summary>
-    public async Task<CardDto> GetCardByCodeAsync(string cardCode)
+    public async Task<CardDto> GetCardByRfidAsync(string rfidCode)
     {
-        // Chuẩn hóa đầu vào để tìm kiếm không phân biệt hoa thường
-        var normalizedCode = cardCode.Trim().ToUpper();
+        // Chuẩn hóa đầu vào để tìm kiếm nhất quán
+        var normalized = rfidCode.Trim();
 
-        // Gọi Repository tìm thẻ theo mã
-        var card = await _cardRepository.GetByCardCodeAsync(normalizedCode);
+        // Gọi Repository tìm thẻ theo mã RFID
+        var card = await _cardRepository.GetByRfidCodeAsync(normalized);
 
         // Nếu không tìm thấy → thông báo lỗi rõ ràng
         if (card == null)
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có mã '{normalizedCode}' trong hệ thống."
+                message: $"Không tìm thấy thẻ có mã RFID '{normalized}' trong hệ thống."
             );
         }
 
@@ -147,8 +144,7 @@ public class CardService : ICardService
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Cập nhật thông tin thẻ (chỉ RfidCode và CardType).
-    /// CardCode KHÔNG được phép thay đổi sau khi tạo (bất biến sau khi gán).
+    /// Cập nhật thông tin thẻ (RfidCode, BuildingId, CardType).
     /// </summary>
     public async Task<CardDto> UpdateCardAsync(int id, UpdateCardRequest request)
     {
@@ -185,6 +181,14 @@ public class CardService : ICardService
             }
 
             card.RfidCode = trimmedRfid;
+        }
+
+        // BuildingId: cập nhật khi key xuất hiện trong request
+        // Dùng cách gán trực tiếp (kể cả null) vì int? cần hỗ trợ xóa liên kết
+        if (request.BuildingId.HasValue || request.BuildingId == null)
+        {
+            // Gán bất kể null hay có giá trị — cho phép xóa liên kết tòa nhà
+            card.BuildingId = request.BuildingId;
         }
 
         if (request.CardType != null)
@@ -231,7 +235,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_IN_ACTIVE_SESSION",
-                message: $"Thẻ '{card.CardCode}' đang được sử dụng trong một lượt gửi xe chưa hoàn thành. " +
+                message: $"Thẻ ID '{id}' đang được sử dụng trong một lượt gửi xe chưa hoàn thành. " +
                          "Vui lòng chờ lượt gửi xe kết thúc trước khi xóa thẻ."
             );
         }
@@ -289,7 +293,7 @@ public class CardService : ICardService
             // Trường hợp bất thường: data trong DB bị hỏng — không nên xảy ra
             throw new DomainException(
                 errorCode: "CARD_STATUS_CORRUPTED",
-                message: $"Trạng thái hiện tại '{card.CardStatus}' của thẻ '{card.CardCode}' "
+                message: $"Trạng thái hiện tại '{card.CardStatus}' của thẻ ID '{id}' "
                        + "không hợp lệ. Liên hệ Admin để kiểm tra dữ liệu."
             );
         }
@@ -299,7 +303,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_INVALID_STATUS_TRANSITION",
-                message: $"Không thể chuyển trạng thái thẻ '{card.CardCode}' "
+                message: $"Không thể chuyển trạng thái thẻ ID '{id}' "
                        + $"từ '{currentStatus}' sang '{targetStatus}'. "
                        + "Vui lòng kiểm tra lại luồng chuyển trạng thái hợp lệ."
             );
@@ -375,13 +379,13 @@ public class CardService : ICardService
     {
         return new CardDto
         {
-            Id = card.Id,
-            CardCode = card.CardCode,
-            RfidCode = card.RfidCode,
-            CardType = card.CardType,
+            Id         = card.Id,
+            RfidCode   = card.RfidCode,
+            BuildingId = card.BuildingId,
+            CardType   = card.CardType,
             CardStatus = card.CardStatus,
-            LostAt = card.LostAt,
-            CreatedAt = card.CreatedAt
+            LostAt     = card.LostAt,
+            CreatedAt  = card.CreatedAt
         };
     }
 }

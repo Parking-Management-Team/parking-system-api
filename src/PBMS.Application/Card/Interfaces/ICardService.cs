@@ -6,9 +6,9 @@ namespace PBMS.Application.Card.Interfaces;
 /// Giao diện dịch vụ nghiệp vụ quản lý Thẻ gửi xe (Card Management).
 ///
 /// Các chức năng theo Acceptance Criteria:
-///   Scenario 1 — CreateCardAsync    : Tạo thẻ mới với mã chưa tồn tại
-///   Scenario 2 — DeleteCardAsync    : Từ chối xóa thẻ đang trong session ACTIVE
-///   Scenario 3 — GetCardByCodeAsync : Tra cứu thông tin thẻ nhanh bằng mã
+///   Scenario 1 — CreateCardAsync      : Tạo thẻ mới
+///   Scenario 2 — DeleteCardAsync      : Từ chối xóa thẻ đang trong session ACTIVE
+///   Scenario 3 — GetCardByRfidAsync   : Tra cứu thông tin thẻ nhanh bằng mã RFID
 ///
 /// Tính năng Card Status:
 ///   UpdateCardStatusAsync : Đổi trạng thái thẻ theo state machine nghiệp vụ
@@ -19,24 +19,24 @@ public interface ICardService
     /// [Scenario 1] Tạo mới một thẻ gửi xe.
     ///
     /// Nghiệp vụ:
-    ///   1. Kiểm tra CardCode chưa tồn tại trong hệ thống (UNIQUE constraint).
+    ///   1. Kiểm tra RfidCode (nếu có) chưa tồn tại trong hệ thống (UNIQUE constraint).
     ///   2. Tạo thẻ mới với trạng thái mặc định là "Available".
     ///   3. Lưu vào database và trả về thông tin thẻ vừa tạo.
     ///
     /// Lỗi có thể xảy ra:
-    ///   - CardCode đã tồn tại → ném DomainException "CARD_CODE_EXISTS"
+    ///   - RfidCode đã tồn tại → ném DomainException "RFID_CODE_EXISTS"
     /// </summary>
     Task<CardDto> CreateCardAsync(CreateCardRequest request);
 
     /// <summary>
-    /// [Scenario 3] Tra cứu thông tin thẻ theo mã định danh (CardCode).
+    /// [Scenario 3] Tra cứu thông tin thẻ theo mã RFID.
     ///
-    /// Dùng cho: Nhân viên kiểm tra thông tin thẻ bất kỳ trong bãi xe.
+    /// Dùng cho: Nhân viên quét thẻ hoặc nhập mã RFID để kiểm tra thông tin thẻ.
     ///
     /// Lỗi có thể xảy ra:
     ///   - Không tìm thấy thẻ → ném NotFoundException "CARD_NOT_FOUND"
     /// </summary>
-    Task<CardDto> GetCardByCodeAsync(string cardCode);
+    Task<CardDto> GetCardByRfidAsync(string rfidCode);
 
     /// <summary>
     /// Lấy thông tin thẻ theo ID.
@@ -48,9 +48,7 @@ public interface ICardService
     Task<CardDto> GetCardByIdAsync(int id);
 
     /// <summary>
-    /// Cập nhật thông tin thẻ (RfidCode, CardType).
-    ///
-    /// Lưu ý: CardCode KHÔNG được phép thay đổi sau khi tạo.
+    /// Cập nhật thông tin thẻ (RfidCode, BuildingId, CardType).
     ///
     /// Lỗi có thể xảy ra:
     ///   - Không tìm thấy thẻ → NotFoundException "CARD_NOT_FOUND"

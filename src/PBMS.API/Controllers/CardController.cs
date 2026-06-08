@@ -14,8 +14,8 @@ namespace PBMS.API.Controllers;
 /// Các chức năng:
 ///   POST   /api/cards                        → Tạo thẻ mới (Scenario 1)
 ///   GET    /api/cards/{id}                   → Lấy thông tin thẻ theo ID
-///   GET    /api/cards/by-code/{cardCode}     → Tra cứu thẻ theo mã (Scenario 3)
-///   PUT    /api/cards/{id}                   → Cập nhật thông tin thẻ (RfidCode, CardType)
+///   GET    /api/cards/by-rfid/{rfidCode}     → Tra cứu thẻ theo mã RFID (Scenario 3)
+///   PUT    /api/cards/{id}                   → Cập nhật thông tin thẻ (RfidCode, BuildingId, CardType)
 ///   PATCH  /api/cards/{id}/status            → Cập nhật trạng thái thẻ (Card Status Feature)
 ///   DELETE /api/cards/{id}                   → Xóa thẻ (Scenario 2 — từ chối nếu đang bận)
 /// </summary>
@@ -38,18 +38,18 @@ public class CardController : ControllerBase
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Tạo mới một thẻ gửi xe với mã định danh chưa tồn tại.
+    /// Tạo mới một thẻ gửi xe.
     ///
     /// Route  : POST /api/cards
-    /// Body   : CreateCardRequest (CardCode bắt buộc, RfidCode và CardType tùy chọn)
+    /// Body   : CreateCardRequest (RfidCode và BuildingId tùy chọn, CardType mặc định "PARKING_CARD")
     /// Returns: 201 Created + CardDto nếu thành công
-    ///          409 Conflict nếu CardCode đã tồn tại
+    ///          409 Conflict nếu RfidCode đã tồn tại
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<BaseResponse<CardDto>>> CreateCard([FromBody] CreateCardRequest request)
     {
         // Gọi service xử lý nghiệp vụ tạo thẻ
-        // (Service sẽ tự kiểm tra UNIQUE CardCode và ném DomainException nếu trùng)
+        // (Service sẽ tự kiểm tra UNIQUE RfidCode và ném DomainException nếu trùng)
         var card = await _cardService.CreateCardAsync(request);
 
         // 201 Created: trả về URL của resource mới tạo + data
@@ -80,25 +80,25 @@ public class CardController : ControllerBase
     }
 
     // -----------------------------------------------------------------------
-    // GET /api/cards/by-code/{cardCode} — [Scenario 3] Tra cứu thẻ theo mã
+    // GET /api/cards/by-rfid/{rfidCode} — [Scenario 3] Tra cứu thẻ theo RFID
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Tra cứu thông tin thẻ nhanh bằng mã định danh (CardCode).
+    /// Tra cứu thông tin thẻ nhanh bằng mã RFID của chip trên thẻ vật lý.
     ///
     /// Đây là endpoint chính cho Scenario 3:
-    ///   "Nhân viên nhập mã thẻ vào ô tìm kiếm
+    ///   "Nhân viên quét thẻ hoặc nhập mã RFID
     ///    → Hệ thống trả về thông tin chi tiết bao gồm mã và trạng thái hiện thời"
     ///
-    /// Route  : GET /api/cards/by-code/{cardCode}
-    ///          Ví dụ: GET /api/cards/by-code/CARD-001
+    /// Route  : GET /api/cards/by-rfid/{rfidCode}
+    ///          Ví dụ: GET /api/cards/by-rfid/A3F9B2C1
     /// Returns: 200 OK + CardDto nếu tìm thấy
-    ///          404 Not Found nếu không có thẻ với mã này
+    ///          404 Not Found nếu không có thẻ với mã RFID này
     /// </summary>
-    [HttpGet("by-code/{cardCode}")]
-    public async Task<ActionResult<BaseResponse<CardDto>>> GetCardByCode(string cardCode)
+    [HttpGet("by-rfid/{rfidCode}")]
+    public async Task<ActionResult<BaseResponse<CardDto>>> GetCardByRfid(string rfidCode)
     {
-        var card = await _cardService.GetCardByCodeAsync(cardCode);
+        var card = await _cardService.GetCardByRfidAsync(rfidCode);
 
         return Ok(BaseResponse<CardDto>.Ok(card));
     }
@@ -108,9 +108,7 @@ public class CardController : ControllerBase
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Cập nhật thông tin thẻ (RfidCode và CardType).
-    ///
-    /// Lưu ý: CardCode KHÔNG thể thay đổi sau khi tạo.
+    /// Cập nhật thông tin thẻ (RfidCode, BuildingId và CardType).
     ///
     /// Route  : PUT /api/cards/{id}
     /// Body   : UpdateCardRequest

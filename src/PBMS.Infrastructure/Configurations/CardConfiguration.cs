@@ -7,14 +7,14 @@ namespace PBMS.Infrastructure.Configurations;
 /// <summary>
 /// Cấu hình bảng "card" trong database sử dụng Fluent API của EF Core.
 ///
-/// Bảng này lưu thông tin mã thẻ gửi xe mô phỏng (thay thế thẻ vật lý thật).
+/// Bảng này lưu thông tin thẻ gửi xe mô phỏng (thay thế thẻ vật lý thật).
 /// Tham chiếu SRS: §8.3.3, Table 3.11 — Physical Model: card
 ///
 /// Ràng buộc quan trọng từ SRS:
-///   - card_code : UNIQUE, NOT NULL, varchar(20)
-///   - rfid_code : UNIQUE khi có giá trị, NULL cho phép, varchar(50)
-///   - card_type : NOT NULL, varchar(20)
+///   - rfid_code  : UNIQUE khi có giá trị, NULL cho phép, varchar(50)
+///   - card_type  : NOT NULL, varchar(20)
 ///   - card_status: NOT NULL, varchar(20), default = "Available"
+///   - building_id: NULL cho phép, khóa ngoại tới bảng building
 /// </summary>
 public class CardConfiguration : IEntityTypeConfiguration<Card>
 {
@@ -30,19 +30,8 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
             .HasColumnName("card_id")
             .ValueGeneratedOnAdd(); // PostgreSQL: SERIAL / GENERATED ALWAYS AS IDENTITY
 
-        // 3. Mã thẻ nội bộ (CardCode) — bắt buộc, tối đa 20 ký tự, UNIQUE
-        // Đây là mã in ra vé/QR cho khách cầm khi gửi xe
-        builder.Property(c => c.CardCode)
-            .HasColumnName("card_code")
-            .HasMaxLength(20)
-            .IsRequired();
-
-        // Tạo Unique Index để đảm bảo không có 2 thẻ trùng mã trong hệ thống
-        builder.HasIndex(c => c.CardCode)
-            .IsUnique()
-            .HasDatabaseName("IX_card_card_code");
-
-        // 4. Mã RFID mô phỏng (RfidCode) — tuỳ chọn, tối đa 50 ký tự, UNIQUE khi có giá trị
+        // 3. Mã RFID (RfidCode) — tuỳ chọn, tối đa 50 ký tự, UNIQUE khi có giá trị
+        // Đây là mã số của con chip RFID trên thẻ vật lý, dùng để định danh và tra cứu thẻ.
         builder.Property(c => c.RfidCode)
             .HasColumnName("rfid_code")
             .HasMaxLength(50)
@@ -53,6 +42,11 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
             .IsUnique()
             .HasFilter("rfid_code IS NOT NULL") // PostgreSQL: bỏ qua các bản ghi NULL
             .HasDatabaseName("IX_card_rfid_code");
+
+        // 4. Khóa ngoại tới tòa nhà (BuildingId) — tuỳ chọn, NULL cho phép
+        builder.Property(c => c.BuildingId)
+            .HasColumnName("building_id")
+            .IsRequired(false);
 
         // 5. Loại thẻ (CardType) — bắt buộc, tối đa 20 ký tự
         // Ví dụ giá trị: "PARKING_CARD", "ACCESS_CARD"
@@ -84,8 +78,9 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
             .IsRowVersion();
 
         // 9. Bỏ qua các Computed Properties — không map vào cột DB
-        // IsAvailable và IsLost là thuộc tính tính toán thuần C#, không lưu trong database
+        // IsAvailable, IsLost, IsBlocked là thuộc tính tính toán thuần C#, không lưu trong database
         builder.Ignore(c => c.IsAvailable);
         builder.Ignore(c => c.IsLost);
+        builder.Ignore(c => c.IsBlocked);
     }
 }
