@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PBMS.API;
 using PBMS.API.Middlewares;
 using PBMS.Application;
 using PBMS.Infrastructure;
@@ -80,6 +81,12 @@ if (app.Environment.IsDevelopment())
         catch (Exception ex)
         {
             Console.WriteLine($"--> Error applying database migrations: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"--> Inner Exception: {ex.InnerException.Message}");
+            }
+            // Log full stack trace for better debugging
+            Console.WriteLine(ex.StackTrace);
         }
     }
 }

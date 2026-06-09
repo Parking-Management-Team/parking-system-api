@@ -77,12 +77,9 @@ namespace PBMS.Infrastructure.Configurations
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
 
-            // 12. Cấu hình cột RowVersion (thuộc tính kế thừa từ BaseEntity):
-            // Dùng để kiểm soát xung đột đồng thời (Concurrency Control).
-            // Khi Update/Delete, EF Core sẽ kiểm tra giá trị này khớp với DB hay không.
-            // Nếu không khớp → nghĩa là bản ghi đã bị người khác sửa → ném DbUpdateConcurrencyException.
+            // 12. Cấu hình RowVersion để kiểm soát xung đột đồng thời (Concurrency Control).
+            // Trên PostgreSQL, khi thuộc tính là uint và dùng IsRowVersion(), Npgsql tự động ánh xạ tới cột hệ thống 'xmin'.
             builder.Property(a => a.RowVersion)
-                .HasColumnName("row_version")
                 .IsRowVersion();
 
             // 13. Cấu hình mối quan hệ N-1 (Nhiều Accounts thuộc về 1 Role)

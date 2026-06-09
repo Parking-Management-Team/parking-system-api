@@ -80,7 +80,6 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
         // 8. Cột RowVersion (kế thừa từ BaseEntity) — kiểm soát xung đột đồng thời
         // Khi 2 người cùng sửa 1 thẻ, EF Core sẽ phát hiện và ném DbUpdateConcurrencyException
         builder.Property(c => c.RowVersion)
-            .HasColumnName("row_version")
             .IsRowVersion();
 
         // 9. Bỏ qua các Computed Properties — không map vào cột DB

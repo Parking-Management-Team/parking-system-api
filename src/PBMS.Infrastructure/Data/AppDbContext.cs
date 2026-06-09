@@ -45,6 +45,46 @@ public class AppDbContext : DbContext
     /// Tập hợp dữ liệu bảng Khu vực (Zones).
     /// </summary>
     public DbSet<Zone> Zones { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Tòa nhà (Buildings).
+    /// </summary>
+    public DbSet<Building> Buildings { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Tầng (Floors).
+    /// </summary>
+    public DbSet<Floor> Floors { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Vị trí đỗ xe (ParkingSlots).
+    /// </summary>
+    public DbSet<ParkingSlot> ParkingSlots { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Lượt gửi xe (ParkingSessions).
+    /// </summary>
+    public DbSet<ParkingSession> ParkingSessions { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Phương tiện (Vehicles).
+    /// </summary>
+    public DbSet<Vehicle> Vehicles { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Loại phương tiện (VehicleTypes).
+    /// </summary>
+    public DbSet<VehicleType> VehicleTypes { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Chính sách giá (PricingPolicies).
+    /// </summary>
+    public DbSet<PricingPolicy> PricingPolicies { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Khung giờ giá (PricingWindows).
+    /// </summary>
+    public DbSet<PricingWindow> PricingWindows { get; set; } = null!;
     
 
     // =======================================================

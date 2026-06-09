@@ -63,8 +63,7 @@ public class ParkingSlotConfiguration : IEntityTypeConfiguration<ParkingSlot>
             .IsRequired();
 
         // 9. Cột RowVersion (kế thừa từ BaseEntity) - kiểm soát xung đột đồng thời
-        builder.Property(s => s.RowVersion)
-            .HasColumnName("row_version")
+        builder.Property(ps => ps.RowVersion)
             .IsRowVersion();
 
         // 10. Cấu hình mối quan hệ

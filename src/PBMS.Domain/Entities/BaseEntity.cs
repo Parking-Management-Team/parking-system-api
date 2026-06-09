@@ -21,10 +21,8 @@ public abstract class BaseEntity
 
     /// <summary>
     /// Dùng để kiểm soát xung đột đồng thời (Concurrency Control).
-    /// EF Core sẽ tự động kiểm tra giá trị này khi Update/Delete:
-    /// - Nếu RowVersion trong DB khác với RowVersion client gửi lên → ném DbUpdateConcurrencyException.
-    /// - Giá trị này tự động tăng mỗi khi bản ghi được cập nhật (do cơ chế Timestamp/RowVersion của database).
+    /// Trên PostgreSQL, thuộc tính uint kết hợp với [Timestamp] sẽ tự động ánh xạ tới cột hệ thống 'xmin'.
     /// </summary>
     [Timestamp]
-    public byte[] RowVersion { get; set; } = null!;
+    public uint RowVersion { get; set; }
 }
