@@ -43,7 +43,6 @@ namespace PBMS.Infrastructure.Configurations
             // Khi Update/Delete, EF Core sẽ kiểm tra giá trị này khớp với DB hay không.
             // Nếu không khớp → nghĩa là bản ghi đã bị người khác sửa → ném DbUpdateConcurrencyException.
             builder.Property(r => r.RowVersion)
-                .HasColumnName("row_version")
                 .IsRowVersion();
 
             // 7. Thời điểm tạo bản ghi (CreatedAt - thuộc tính kế thừa từ BaseEntity):

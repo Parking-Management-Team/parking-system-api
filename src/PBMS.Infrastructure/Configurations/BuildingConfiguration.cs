@@ -63,9 +63,8 @@ public class BuildingConfiguration : IEntityTypeConfiguration<Building>
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
-        // 9. Cột RowVersion (kế thừa từ BaseEntity) - kiểm soát xung đột đồng thời
+        // 9. Cấu hình RowVersion để kiểm soát xung đột đồng thời
         builder.Property(b => b.RowVersion)
-            .HasColumnName("row_version")
             .IsRowVersion();
 
         // 10. Cấu hình mối quan hệ
