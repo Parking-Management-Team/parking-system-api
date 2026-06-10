@@ -91,6 +91,17 @@ public class Card : BaseEntity
     /// </summary>
     public virtual ICollection<ParkingSession> ParkingSessions { get; set; } = new List<ParkingSession>();
 
+    /// <summary>
+    /// Đăng ký vé tháng (MonthlySubscription) hiện tại đang được gán thẻ này.
+    /// Quan hệ 1-1 (assigned_card_id là UNIQUE).
+    /// </summary>
+    public virtual MonthlySubscription? MonthlySubscription { get; set; }
+
+    /// <summary>
+    /// Danh sách các ghi nhận danh sách đen (Blacklist) liên quan đến thẻ này.
+    /// </summary>
+    public virtual ICollection<Blacklist> Blacklists { get; set; } = new List<Blacklist>();
+
     // -----------------------------------------------------------------------
     // HELPER PROPERTIES (Thuộc tính tiện ích — không lưu vào DB)
     // -----------------------------------------------------------------------
