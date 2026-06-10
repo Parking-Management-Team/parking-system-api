@@ -1,6 +1,6 @@
 using System;
 
-namespace PBMS.Application.Accounts.DTOs
+namespace PBMS.Application.Accounts
 {
     /// <summary>
     /// DTO đại diện cho dữ liệu Account trả về cho Client.

@@ -7,11 +7,7 @@ namespace PBMS.Application.Accounts.DTOs
     {
         public string? FullName { get; set; }
         public string? Phone { get; set; }
-        
-        // Nullable: Nếu không muốn đổi vai trò thì gửi null
-        public int? RoleId { get; set; }
-        
-        // Nullable: Nếu không muốn đổi trạng thái thì gửi null
-        public string? AccountStatus { get; set; }
+        public int? RoleId { get; set; } // Nullable: Nếu không gửi lên thì không đổi Role
+        public string? AccountStatus { get; set; } // Nullable: Nếu không gửi lên thì không đổi Trạng thái
     }
 }
