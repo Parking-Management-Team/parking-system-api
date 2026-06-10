@@ -33,4 +33,14 @@ public class ParkingSession : BaseEntity
     /// virtual → EF Core Lazy Loading tự động load khi cần.
     /// </summary>
     public virtual Card? Card { get; set; }
+
+    /// <summary>
+    /// Danh sách các giao dịch thanh toán (Payment) liên quan đến lượt gửi xe này.
+    /// </summary>
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+
+    /// <summary>
+    /// Danh sách các sự cố (Incident) phát sinh trong lượt gửi xe này.
+    /// </summary>
+    public virtual ICollection<Incident> Incidents { get; set; } = new List<Incident>();
 }

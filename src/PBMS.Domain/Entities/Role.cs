@@ -22,4 +22,9 @@ public class Role : BaseEntity
     /// Khi gọi 'role.Accounts', EF Core sẽ tự động truy vấn DB để lấy danh sách Account liên quan nếu chưa được load sẵn.
     /// </summary>
     public virtual ICollection<Account> Accounts { get; set; } = new List<Account>();
+
+    /// <summary>
+    /// Danh sách liên kết Nhiều-Nhiều thông qua bảng trung gian RolePermission.
+    /// </summary>
+    public virtual ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }

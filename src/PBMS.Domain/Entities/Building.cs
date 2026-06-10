@@ -44,4 +44,19 @@ public class Building : BaseEntity
     /// Danh sách các tầng (Floor) thuộc tòa nhà này.
     /// </summary>
     public virtual ICollection<Floor> Floors { get; set; } = new List<Floor>();
+
+    /// <summary>
+    /// Danh sách các đặt chỗ (Booking) thuộc tòa nhà này.
+    /// </summary>
+    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+    /// <summary>
+    /// Danh sách các đăng ký vé tháng (MonthlySubscription) thuộc tòa nhà này.
+    /// </summary>
+    public virtual ICollection<MonthlySubscription> MonthlySubscriptions { get; set; } = new List<MonthlySubscription>();
+
+    /// <summary>
+    /// Danh sách các thống kê doanh thu (RevenueStatistic) liên quan đến tòa nhà này.
+    /// </summary>
+    public virtual ICollection<RevenueStatistic> RevenueStatistics { get; set; } = new List<RevenueStatistic>();
 }
