@@ -5,6 +5,7 @@ using PBMS.Application.Card.Interfaces;
 using PBMS.Application.Card.Services;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
+using PBMS.Application.Accounts;
 
 namespace PBMS.Application;
 /// <summary>
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IFloorService, FloorService>();
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
         services.AddScoped<IBuildingService, BuildingService>();
+        services.AddScoped<IAccountService, AccountService>();
         return services;
     }
 }
