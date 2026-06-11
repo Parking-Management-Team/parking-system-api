@@ -2,21 +2,46 @@ namespace PBMS.Domain.Entities;
 
 /// <summary>
 /// Represents a parking session - when a vehicle parks in the facility.
+/// Thực thể Lượt gửi xe (ParkingSession) — đại diện cho một lần gửi xe từ check-in đến check-out.
+///
+/// ⚠️ FILE NÀY ĐANG Ở TRẠNG THÁI STUB (chỉ có properties cần thiết cho Card module).
+///    Toàn bộ properties sẽ được implement trong task ParkingSession riêng.
+///
+/// Tham chiếu SRS: §8.3.3, Table 3.12 — Physical Model: parking_session
 /// </summary>
 public class ParkingSession : BaseEntity
 {
     /// <summary>
-    /// Foreign key to the vehicle.
+    /// Khóa ngoại liên kết đến thẻ gửi xe (Card) được dùng trong lượt này.
+    /// Nullable vì một số lượt gửi xe có thể không dùng thẻ vật lý.
     /// </summary>
-    public int VehicleId { get; set; }
+    public int? CardId { get; set; }
 
     /// <summary>
-    /// Navigation property to the vehicle.
+    /// Trạng thái lượt gửi xe.
+    /// Các giá trị: "Active", "Completed", "Lost", "Expired", "Downgraded"
+    ///
+    /// "Active" = xe đang trong bãi, chưa check-out
     /// </summary>
-    public Vehicle? Vehicle { get; set; }
+    public string SessionStatus { get; set; } = "Active";
+
+    // -----------------------------------------------------------------------
+    // Navigation Properties — sẽ được bổ sung khi implement ParkingSession module
+    // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Indicates if the parking session is completed.
+    /// Thẻ gửi xe được dùng trong lượt này.
+    /// virtual → EF Core Lazy Loading tự động load khi cần.
     /// </summary>
-    public bool IsCompleted { get; set; } = false;
+    public virtual Card? Card { get; set; }
+
+    /// <summary>
+    /// Danh sách các giao dịch thanh toán (Payment) liên quan đến lượt gửi xe này.
+    /// </summary>
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+
+    /// <summary>
+    /// Danh sách các sự cố (Incident) phát sinh trong lượt gửi xe này.
+    /// </summary>
+    public virtual ICollection<Incident> Incidents { get; set; } = new List<Incident>();
 }

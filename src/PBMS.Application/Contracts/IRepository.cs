@@ -86,11 +86,14 @@ namespace PBMS.Application.Contracts
         /// <returns>The count of entities matching the condition.</returns>
         Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null);
 
-        /// <summary>
-        /// Determines whether any entity matches the specified predicate asynchronously.
+        // Xác định xem có thực thể nào thỏa mãn điều kiện truyền vào hay không.
         /// </summary>
-        /// <param name="predicate">The condition to check.</param>
-        /// <returns>True if any entity matches the condition; otherwise, false.</returns>
         Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
+
+        /// <summary>
+        /// Lưu tất cả các thay đổi đã thực hiện trong ngữ cảnh này vào cơ sở dữ liệu một cách bất đồng bộ.
+        /// </summary>
+        /// <returns> Một task đại diện cho operation lưu trữ bất đồng bộ. Kết quả task chứa số lượng các mục trạng thái đã được ghi vào cơ sở dữ liệu. </returns>
+        Task<int> SaveChangesAsync();
     }
 }
