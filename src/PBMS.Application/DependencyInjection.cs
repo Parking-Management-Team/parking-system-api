@@ -1,24 +1,44 @@
 using Microsoft.Extensions.DependencyInjection;
-using PBMS.Application.Vehicle.Interfaces;
-using PBMS.Application.Vehicle.Services;
+using PBMS.Application.Auth.Interfaces;
+using PBMS.Application.Auth.Services;
+using PBMS.Application.Card.Interfaces;
+using PBMS.Application.Card.Services;
+using PBMS.Application.ParkingStructure.Interfaces;
+using PBMS.Application.ParkingStructure.Services;
+using PBMS.Application.Accounts;
 
 namespace PBMS.Application;
-
 /// <summary>
-/// Extension methods for registering application layer services.
+/// Phương thức mở rộng để đăng ký dịch vụ tầng Application.
 /// </summary>
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers application layer services into the DI container.
+    /// Đăng ký các dịch vụ tầng Application vào DI container.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The updated service collection.</returns>
+    /// <param name="services">Tập hợp dịch vụ.</param>
+    /// <returns>Tập hợp dịch vụ đã được cập nhật.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         // Register application services
         services.AddScoped<IVehicleTypeService, VehicleTypeService>();
 
+        // Auth module
+        services.AddScoped<IAuthService, AuthService>();
+
+        // Card Management module
+        // Scoped: mỗi HTTP request tạo một instance mới → an toàn với EF Core DbContext
+        services.AddScoped<ICardService, CardService>();
+
+        // TODO: Đăng ký các dịch vụ ứng dụng, handler, validator, mapper, v.v.
+        // Ví dụ:
+        // services.AddScoped<IBookingService, BookingService>();
+        services.AddAutoMapper(cfg => { }, typeof(DependencyInjection));
+        services.AddScoped<IZoneService, ZoneService>();
+        services.AddScoped<IFloorService, FloorService>();
+        services.AddScoped<IParkingSlotService, ParkingSlotService>();
+        services.AddScoped<IBuildingService, BuildingService>();
+        services.AddScoped<IAccountService, AccountService>();
         return services;
     }
 }

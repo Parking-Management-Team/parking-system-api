@@ -47,22 +47,6 @@ Infrastructure  →  Domain
 
 ---
 
-## Dependency Injection (DI)
-
-- Mỗi tầng có một file riêng `DependencyInjection.cs` để đăng ký các dịch vụ của chính tầng đó.
-- `PBMS.Application/DependencyInjection.cs` đăng ký application services, use case, validator và mapper.
-- `PBMS.Infrastructure/DependencyInjection.cs` đăng ký concrete repository, `DbContext`, external service và cấu hình hạ tầng.
-- `PBMS.API/Program.cs` chỉ chịu trách nhiệm compose và gọi các extension method của từng tầng:
-  - `builder.Services.AddApplicationServices();`
-  - `builder.Services.AddInfrastructureServices(builder.Configuration);`
-- Quy tắc đơn giản:
-  - interface/service của application chỉ đăng ký trong `PBMS.Application`.
-  - implementation của infrastructure chỉ đăng ký trong `PBMS.Infrastructure`.
-  - một service chỉ nên đăng ký một lần, ở đúng layer tương ứng.
-- Team có thể để từng thành viên đăng ký service của module mình, nhưng cần review PR để tránh duplicate và sai layer.
-
----
-
 ## Cấu trúc thư mục
 
 ### PBMS.API
@@ -295,7 +279,7 @@ PBMS.Infrastructure.Data
 
 ### Yêu cầu
 
-- .NET SDK
+- .NET 10 SDK
 - SQL Server (hoặc PostgreSQL — tuỳ config của team)
 - Visual Studio 2022 hoặc Rider hoặc VS Code + C# extension
 
@@ -320,6 +304,31 @@ dotnet run --project src/PBMS.API
 ```
 
 Swagger UI sẽ có tại: `https://localhost:{port}/swagger`
+
+### Cấu hình Google OAuth2 (Đăng nhập bằng Google)
+
+Tính năng đăng nhập bằng Google OAuth2 đã được tích hợp sẵn ở Backend. Để chạy thử hoặc triển khai, bạn cần cấu hình:
+
+1. **Chạy cục bộ (Local)**:
+   Mở file `src/PBMS.API/appsettings.json` và cấu hình Google Client ID của bạn vào:
+   ```json
+   "Google": {
+     "ClientId": "768808098768-vop4tnm5u22h8stb6464bqtogse2rqvm.apps.googleusercontent.com"
+   }
+   ```
+
+2. **Chạy trong môi trường Docker**:
+   Trong file `docker-compose.yml`, biến môi trường `Google__ClientId` đã được cấu hình sẵn đè lên cấu hình `appsettings.json`:
+   ```yaml
+   environment:
+     - Google__ClientId=768808098768-vop4tnm5u22h8stb6464bqtogse2rqvm.apps.googleusercontent.com
+   ```
+
+3. **Cơ chế hoạt động**:
+   * **Endpoint tiếp nhận**: `POST /api/auth/google` (Nhận mã `IdToken` từ Client gửi lên).
+   * **Tự động đăng ký**: Nếu tài khoản Gmail chưa tồn tại trong hệ thống, Backend sẽ tự động đăng ký mới với vai trò là **Driver** (RoleId = 3) và gán trạng thái `Active`.
+   * **Tự động liên kết**: Nếu tài khoản Gmail đã đăng ký bằng email/mật khẩu thông thường từ trước, Backend tự động liên kết (link) hai tài khoản làm một mà không gây trùng lặp dữ liệu.
+   * **Kiểm thử local (Swagger)**: Để kiểm thử tính năng này trên Swagger UI khi chưa có database thật, hệ thống đã cài đặt một Database RAM ảo tĩnh (`AccountRepository.cs`). Khi tắt/bật lại server, dữ liệu đăng ký Driver ảo mới sẽ bị reset.
 
 ---
 
