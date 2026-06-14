@@ -12,6 +12,9 @@
 - [Phân chia domain](#phân-chia-domain)
 - [Quy ước đặt tên](#quy-ước-đặt-tên)
 - [Hướng dẫn bắt đầu](#hướng-dẫn-bắt-đầu)
+  - [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
+  - [Cấu hình chạy Local (Database cá nhân)](#các-bước-cấu-hình-chạy-local-database-cá-nhân)
+  - [Quy trình sửa đổi Entity & tạo Migration mới](#quy-trình-dành-cho-lập-trình-viên-khi-sửa-đổi-entity--tạo-migration-mới)
 - [Quy trình làm việc nhóm (Git workflow)](#quy-trình-làm-việc-nhóm-git-workflow)
 - [Phân công domain](#phân-công-domain)
 
@@ -277,33 +280,86 @@ PBMS.Infrastructure.Data
 
 ## Hướng dẫn bắt đầu
 
-### Yêu cầu
+### Yêu cầu hệ thống
 
-- .NET 10 SDK
-- SQL Server (hoặc PostgreSQL — tuỳ config của team)
-- Visual Studio 2022 hoặc Rider hoặc VS Code + C# extension
+- **.NET 10 SDK** (phiên bản phù hợp với dự án)
+- **PostgreSQL** (chạy trực tiếp trên máy qua pgAdmin hoặc Docker container)
+- **Visual Studio 2022**, **JetBrains Rider**, hoặc **VS Code** (cần cài đặt extension C# Dev Kit)
+- **EF Core CLI tool**: Hỗ trợ chạy lệnh tạo migration. Cài đặt bằng lệnh:
+  ```bash
+  dotnet tool install --global dotnet-ef
+  # Hoặc nếu đã cài trước đó thì cập nhật bản mới nhất:
+  dotnet tool update --global dotnet-ef
+  ```
 
-### Chạy project lần đầu
+### Các bước cấu hình chạy Local (Database cá nhân)
 
+Để tránh làm rác cơ sở dữ liệu chung trên Supabase trong quá trình phát triển và kiểm thử, các thành viên **bắt buộc** phải sử dụng Database PostgreSQL cá nhân ở local:
+
+#### Bước 1: Chuẩn bị DB PostgreSQL local
+* Hãy chắc chắn bạn đã khởi động PostgreSQL trên máy và biết tài khoản/mật khẩu kết nối.
+* Bạn không cần tạo trước cơ sở dữ liệu (Database), EF Core sẽ tự động tạo cho bạn ở bước sau.
+
+#### Bước 2: Cấu hình Connection String cục bộ
+* Mở file [appsettings.Development.json](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.API/appsettings.Development.json) trong dự án `PBMS.API` (file này đã được đưa vào `.gitignore` để tránh bị đẩy đè lên Git).
+* Thêm chuỗi kết nối local của bạn như sau:
+  ```json
+  {
+    "ConnectionStrings": {
+      "DefaultConnection": "Host=localhost;Database=pbms_local;Username=postgres;Password=MAT_KHAU_CUA_BAN;SSL Mode=Prefer;Trust Server Certificate=true"
+    },
+    "Logging": {
+      "LogLevel": {
+        "Default": "Information",
+        "Microsoft.AspNetCore": "Warning"
+      }
+    }
+  }
+  ```
+  *(Thay `MAT_KHAU_CUA_BAN` bằng mật khẩu PostgreSQL máy bạn).*
+
+#### Bước 3: Đồng bộ cấu trúc bảng và chạy ứng dụng
+Dự án đã được tích hợp cơ chế tự động chạy Migration khi khởi động ở môi trường Development. Bạn chỉ cần chạy ứng dụng:
 ```bash
-# 1. Clone repo
-git clone <repo-url>
-cd pbms-backend
-
-# 2. Restore packages
-dotnet restore
-
-# 3. Cập nhật connection string trong appsettings.Development.json
-# "ConnectionStrings": { "Default": "Server=...;Database=PBMS;..." }
-
-# 4. Chạy migration
-dotnet ef database update --project src/PBMS.Infrastructure --startup-project src/PBMS.API
-
-# 5. Chạy API
+# Di chuyển đến thư mục API và chạy
 dotnet run --project src/PBMS.API
 ```
+* **Kết quả:** EF Core sẽ tự động tạo database `pbms_local` trên máy bạn, chạy toàn bộ các file migration hiện có và hiển thị thông báo: `--> Database migration completed successfully.`
+* Swagger UI sẽ tự động mở tại địa chỉ: `http://localhost:{port}/swagger` (hoặc thông tin hiển thị trên console).
 
-Swagger UI sẽ có tại: `https://localhost:{port}/swagger`
+---
+
+### Quy trình dành cho lập trình viên khi sửa đổi Entity & tạo Migration mới
+
+Khi bạn nhận nhiệm vụ phát triển một thực thể (Entity) mới hoặc thay đổi cấu trúc bảng, hãy tuân thủ quy trình sau để tránh gây xung đột (conflict) mã nguồn DB:
+
+#### 1. Viết/Sửa Entity & Khai báo
+* Thêm thực thể mới vào thư mục `src/PBMS.Domain/Entities`.
+* Khai báo `DbSet<T>` tương ứng vào [AppDbContext.cs](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.Infrastructure/Data/AppDbContext.cs).
+* *(Tùy chọn)* Cấu hình chi tiết kiểu dữ liệu, ràng buộc khóa ngoại bằng Fluent API trong thư mục `src/PBMS.Infrastructure/Configurations`.
+
+#### 2. Tạo file Migration (ở Local)
+Chạy lệnh sau tại thư mục gốc của dự án để EF Core ghi nhận thay đổi cấu trúc:
+```bash
+dotnet ef migrations add Add<TenTinhNang> --project src/PBMS.Infrastructure --startup-project src/PBMS.API
+```
+*Lưu ý: Thay `Add<TenTinhNang>` bằng mô tả ngắn gọn (ví dụ: `AddParkingSession`, `UpdateAccountStatus`).*
+
+#### 3. Chạy thử nghiệm local
+* Khởi chạy dự án API (`dotnet run`). Hệ thống sẽ tự động cập nhật database local của bạn.
+* Thực hiện gọi thử các API để kiểm tra hoạt động của tính năng.
+
+#### 4. Quy tắc tránh xung đột (Conflict) trước khi merge PR
+Trước khi tạo Pull Request để merge nhánh tính năng của bạn vào `develop`, hãy đảm bảo nhánh của bạn đồng bộ lịch sử migration:
+1. Chuyển về nhánh `develop` và pull code mới nhất: `git checkout develop && git pull origin develop`.
+2. Quay lại nhánh của bạn: `git checkout feature/<ten-nhanh>`.
+3. Trộn `develop` vào nhánh của bạn: `git merge develop`.
+4. **Nếu xảy ra conflict ở file `AppDbContextModelSnapshot.cs`:**
+   * Cách giải quyết an toàn nhất: Xóa file Migration bạn vừa tạo ở local đi: `dotnet ef migrations remove --project src/PBMS.Infrastructure --startup-project src/PBMS.API`.
+   * Thực hiện `git merge develop` lại để đồng bộ snapshot mới nhất của nhóm.
+   * Chạy lại lệnh tạo migration (ở bước 2). Lúc này file migration mới của bạn sẽ được đặt nối tiếp sau toàn bộ các migration của các thành viên khác.
+5. Kiểm tra chạy thử lại lần cuối, sau đó push và tạo PR.
+
 
 ### Cấu hình Google OAuth2 (Đăng nhập bằng Google)
 
