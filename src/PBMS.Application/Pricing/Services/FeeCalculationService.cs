@@ -42,6 +42,7 @@ public class FeeCalculationService : IFeeCalculationService
     /// Tính phí gửi xe bằng cách:
     ///   1. Tìm PricingPolicy Active cho loại xe tại thời điểm check-in.
     ///   2. Gọi CalculateFeeFromWindows với danh sách PricingWindow.
+    ///   3. LẤY PARKING SESSION ĐỂ TÌM RA vehicleTypeId & checkIn
     /// </summary>
     public async Task<FeeCalculationResult> CalculateFeeAsync(
         int vehicleTypeId,

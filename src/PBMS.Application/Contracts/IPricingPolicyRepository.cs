@@ -56,4 +56,14 @@ public interface IPricingPolicyRepository : IRepository<PricingPolicy>
     /// Dùng để ngăn xóa window cuối cùng của chính sách (BR: phải có ít nhất 1 window).
     /// </summary>
     Task<int> CountWindowsByPolicyIdAsync(int pricingPolicyId);
+
+    /// <summary>
+    /// Kiểm tra xem có Policy nào cùng VehicleType overlap với khoảng thời gian [effectiveStart, effectiveEnd] hay không.
+    /// Dùng để validate BR-FEE-025: Pricing Policy cùng Vehicle Type không được overlap khoảng effective_start - effective_end.
+    /// </summary>
+    /// <param name="vehicleTypeId">ID loại xe cần kiểm tra.</param>
+    /// <param name="effectiveStart">Ngày bắt đầu hiệu lực của policy cần kiểm tra.</param>
+    /// <param name="effectiveEnd">Ngày kết thúc hiệu lực (null = vô thời hạn).</param>
+    /// <param name="excludePolicyId">ID policy cần loại trừ khỏi kiểm tra (dùng khi update policy hiện tại).</param>
+    Task<bool> HasOverlapPolicyAsync(int vehicleTypeId, DateTime effectiveStart, DateTime? effectiveEnd, int? excludePolicyId = null);
 }

@@ -40,15 +40,13 @@ public class PricingPoliciesController : ControllerBase
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// [Scenario 1] Tạo mới một Chính sách giá kèm danh sách Khung giờ.
-    ///
-    /// Manager nhập đầy đủ các tham số: loại xe, khung giờ áp dụng,
-    /// thời lượng gốc, giá gốc, block lũy tiến, giá lũy tiến, mức trần,
-    /// và thời gian ân hạn. Hệ thống áp dụng ngay bảng giá vào bộ quy tắc tính phí.
+    /// [Scenario 1 — Bước 1/2] Tạo mới một Chính sách giá kèm danh sách Khung giờ.
+    /// Policy được tạo với trạng thái INACTIVE.
+    /// Sau khi tạo, gọi POST /{id}/activate để kích hoạt.
     ///
     /// Route  : POST /api/pricing-policies
     /// Body   : CreatePricingPolicyRequest (VehicleTypeId, PolicyName, PricingWindows)
-    /// Returns: 201 Created + PricingPolicyDto nếu thành công
+    /// Returns: 201 Created + PricingPolicyDto (status=INACTIVE) nếu thành công
     ///          400 Bad Request nếu tham số không hợp lệ
     ///          404 Not Found nếu VehicleTypeId không tồn tại
     ///          422 Unprocessable nếu vi phạm business rule
@@ -62,8 +60,32 @@ public class PricingPoliciesController : ControllerBase
         return CreatedAtAction(
             actionName: nameof(GetPricingPolicyById),
             routeValues: new { id = policy.Id },
-            value: BaseResponse<PricingPolicyDto>.Ok(policy, "Tạo chính sách giá thành công. Hệ thống đã kích hoạt bảng giá mới.")
+            value: BaseResponse<PricingPolicyDto>.Ok(policy, "Tạo chính sách giá thành công. Hệ thống đang ở trạng thái Inactive. Vui lòng kích hoạt (activate) để áp dụng.")
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // POST /api/pricing-policies/{id}/activate — [Scenario 1 - Bước 2] Kích hoạt chính sách
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// [Scenario 1 — Bước 2/2] Kích hoạt Chính sách giá từ INACTIVE → ACTIVE.
+    ///
+    /// Validate trước khi kích hoạt:
+    ///   - Các PricingWindow phủ đủ 24h và không overlap (BR-FEE-027/028).
+    ///   - Không overlap với chính sách Active/Inactive khác cùng loại xe (BR-FEE-025).
+    ///
+    /// Route  : POST /api/pricing-policies/{id}/activate
+    /// Returns: 200 OK + PricingPolicyDto (status=Active) nếu thành công
+    ///          404 Not Found nếu không tìm thấy chính sách
+    ///          422 Unprocessable nếu vi phạm business rule (overlap, 24h coverage, ...)
+    /// </summary>
+    [HttpPost("{id:int}/activate")]
+    public async Task<ActionResult<BaseResponse<PricingPolicyDto>>> ActivatePricingPolicy(int id)
+    {
+        var policy = await _pricingPolicyService.ActivatePricingPolicyAsync(id);
+
+        return Ok(BaseResponse<PricingPolicyDto>.Ok(policy, "Kích hoạt chính sách giá thành công. Hệ thống đã áp dụng bảng giá mới vào bộ quy tắc tính phí."));
     }
 
     // -----------------------------------------------------------------------
