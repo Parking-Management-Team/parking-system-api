@@ -20,6 +20,7 @@ builder.Services.AddControllers();
 // Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
 
 // Đăng ký các dịch vụ của tầng Application và Infrastructure
 builder.Services.AddApplicationServices();
