@@ -42,7 +42,7 @@ namespace PBMS.Infrastructure.Configurations
             builder.Property(vt => vt.VehicleTypeStatus)
                 .HasColumnName("vehicle_type_status")
                 .HasMaxLength(20)
-                .HasDefaultValue("Active")
+                .HasDefaultValue(VehicleType.StatusActive)
                 .IsRequired();
 
             // 7. Cấu hình cột RowVersion (thuộc tính kế thừa từ BaseEntity) để kiểm soát xung đột đồng thời

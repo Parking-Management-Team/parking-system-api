@@ -12,6 +12,11 @@ namespace PBMS.Domain.Entities;
 public class ParkingSession : BaseEntity
 {
     /// <summary>
+    /// Khóa ngoại tới xe đang gửi.
+    /// </summary>
+    public int VehicleId { get; set; }
+
+    /// <summary>
     /// Khóa ngoại liên kết đến thẻ gửi xe (Card) được dùng trong lượt này.
     /// Nullable vì một số lượt gửi xe có thể không dùng thẻ vật lý.
     /// </summary>
@@ -25,6 +30,11 @@ public class ParkingSession : BaseEntity
     /// </summary>
     public string SessionStatus { get; set; } = "Active";
 
+    /// <summary>
+    /// Cờ tương thích với repository hiện tại để xác định phiên đã hoàn tất.
+    /// </summary>
+    public bool IsCompleted { get; set; }
+
     // -----------------------------------------------------------------------
     // Navigation Properties — sẽ được bổ sung khi implement ParkingSession module
     // -----------------------------------------------------------------------
@@ -34,6 +44,11 @@ public class ParkingSession : BaseEntity
     /// virtual → EF Core Lazy Loading tự động load khi cần.
     /// </summary>
     public virtual Card? Card { get; set; }
+
+    /// <summary>
+    /// Xe thuộc lượt gửi này.
+    /// </summary>
+    public virtual Vehicle Vehicle { get; set; } = null!;
 
     /// <summary>
     /// Danh sách các giao dịch thanh toán (Payment) liên quan đến lượt gửi xe này.

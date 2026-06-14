@@ -27,6 +27,8 @@ public static class DependencyInjection
         // Card Management module
         // Scoped: mỗi HTTP request tạo một instance mới → an toàn với EF Core DbContext
         services.AddScoped<ICardService, CardService>();
+        services.AddScoped<IVehicleTypeService, VehicleTypeService>();
+        services.AddScoped<IVehicleService, VehicleService>();
 
         // TODO: Đăng ký các dịch vụ ứng dụng, handler, validator, mapper, v.v.
         // Ví dụ:

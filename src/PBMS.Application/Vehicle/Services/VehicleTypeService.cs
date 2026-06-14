@@ -91,7 +91,7 @@ public class VehicleTypeService : IVehicleTypeService
 
             var vehicleType = new VehicleType
             {
-                Name = normalizedName,
+                TypeName = normalizedName,
                 Description = NormalizeDescription(createDto.Description),
                 VehicleTypeStatus = NormalizeStatus(createDto.VehicleTypeStatus)
             };
@@ -99,7 +99,7 @@ public class VehicleTypeService : IVehicleTypeService
             var created = await _repository.AddAsync(vehicleType);
             return BaseResponse<VehicleTypeDto>.Ok(
                 MapToDto(created),
-                $"Created vehicle type '{created.Name}' successfully."
+                $"Created vehicle type '{created.TypeName}' successfully."
             );
         }
         catch (Exception ex)
@@ -141,14 +141,14 @@ public class VehicleTypeService : IVehicleTypeService
                 );
             }
 
-            vehicleType.Name = normalizedName;
+            vehicleType.TypeName = normalizedName;
             vehicleType.Description = NormalizeDescription(updateDto.Description);
             vehicleType.VehicleTypeStatus = NormalizeStatus(requestedStatus);
 
             var updated = await _repository.UpdateAsync(vehicleType);
             return BaseResponse<VehicleTypeDto>.Ok(
                 MapToDto(updated),
-                $"Updated vehicle type '{updated.Name}' successfully."
+                $"Updated vehicle type '{updated.TypeName}' successfully."
             );
         }
         catch (Exception ex)
@@ -178,7 +178,7 @@ public class VehicleTypeService : IVehicleTypeService
             {
                 return BaseResponse<object>.Fail(
                     "IN_USE_SESSIONS",
-                    $"Cannot delete vehicle type '{vehicleType.Name}' because it is currently in use in active parking sessions."
+                    $"Cannot delete vehicle type '{vehicleType.TypeName}' because it is currently in use in active parking sessions."
                 );
             }
 
@@ -187,14 +187,15 @@ public class VehicleTypeService : IVehicleTypeService
             {
                 return BaseResponse<object>.Fail(
                     "IN_USE_BOOKINGS",
-                    $"Cannot delete vehicle type '{vehicleType.Name}' because it is currently in use in active bookings."
+                    $"Cannot delete vehicle type '{vehicleType.TypeName}' because it is currently in use in active bookings."
                 );
             }
 
-            await _repository.DeleteAsync(id);
+            vehicleType.VehicleTypeStatus = VehicleType.StatusInactive;
+            await _repository.UpdateAsync(vehicleType);
             return BaseResponse<object>.Ok(
                 null,
-                $"Deleted vehicle type '{vehicleType.Name}' successfully."
+                $"Archived vehicle type '{vehicleType.TypeName}' successfully."
             );
         }
         catch (Exception ex)
@@ -211,7 +212,7 @@ public class VehicleTypeService : IVehicleTypeService
         return new VehicleTypeDto
         {
             Id = vehicleType.Id,
-            Name = vehicleType.Name,
+            Name = vehicleType.TypeName,
             Description = vehicleType.Description,
             VehicleTypeStatus = vehicleType.VehicleTypeStatus
         };

@@ -19,7 +19,7 @@ public class VehicleTypeRepository : IVehicleTypeRepository
 
     public async Task<IEnumerable<VehicleType>> GetAllAsync()
     {
-        return await _context.VehicleTypes.OrderBy(vt => vt.Name).ToListAsync();
+        return await _context.VehicleTypes.OrderBy(vt => vt.TypeName).ToListAsync();
     }
 
     public async Task<VehicleType?> GetByIdAsync(int id)
@@ -30,7 +30,7 @@ public class VehicleTypeRepository : IVehicleTypeRepository
     public async Task<bool> NameExistsAsync(string name, int? excludeId = null)
     {
         var normalizedName = name.Trim().ToUpper();
-        var query = _context.VehicleTypes.Where(vt => vt.Name.ToUpper() == normalizedName);
+        var query = _context.VehicleTypes.Where(vt => vt.TypeName.ToUpper() == normalizedName);
         
         if (excludeId.HasValue)
         {
@@ -73,15 +73,14 @@ public class VehicleTypeRepository : IVehicleTypeRepository
         return await _context.VehicleTypes
             .Where(vt => vt.Id == vehicleTypeId)
             .SelectMany(vt => _context.Vehicles.Where(v => v.VehicleTypeId == vt.Id))
-            .SelectMany(v => _context.ParkingSessions.Where(ps => ps.VehicleId == v.Id && !ps.IsCompleted))
+            .SelectMany(v => _context.ParkingSessions.Where(ps =>
+                ps.VehicleId == v.Id && ps.SessionStatus.ToUpper() == "ACTIVE"))
             .AnyAsync();
     }
 
     public async Task<bool> IsUsedInBookingsAsync(int vehicleTypeId)
     {
-        // This is a placeholder for future implementation
-        // Adjust based on actual Booking entity structure when available
-        return false;
+        return await _context.Bookings.AnyAsync(b => b.VehicleTypeId == vehicleTypeId);
     }
 }
 

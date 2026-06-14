@@ -12,21 +12,18 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
     public void Configure(EntityTypeBuilder<ParkingSession> builder)
     {
         // Table name
-        builder.ToTable("parking_sessions");
+        builder.ToTable("ParkingSessions");
 
         // Primary key
         builder.HasKey(ps => ps.Id);
 
         // Foreign key and relationship
         builder.HasOne(ps => ps.Vehicle)
-            .WithMany()
+            .WithMany(v => v.ParkingSessions)
             .HasForeignKey(ps => ps.VehicleId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Properties
-        builder.Property(ps => ps.IsCompleted)
-            .IsRequired()
-            .HasDefaultValue(false);
+        builder.Ignore(ps => ps.IsCompleted);
 
         builder.Property(ps => ps.CreatedAt)
             .IsRequired()
@@ -34,9 +31,6 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
 
         // Indexes
         builder.HasIndex(ps => ps.VehicleId)
-            .HasDatabaseName("ix_parking_sessions_vehicle_id");
-
-        builder.HasIndex(ps => ps.IsCompleted)
-            .HasDatabaseName("ix_parking_sessions_is_completed");
+            .HasDatabaseName("IX_ParkingSessions_VehicleId");
     }
 }

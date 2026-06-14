@@ -25,10 +25,6 @@ public class AppDbContext : DbContext
     // Ví dụ: public DbSet<Zone> Zones { get; set; }
     // =======================================================
     
-    public DbSet<PBMS.Domain.Entities.VehicleType> VehicleTypes { get; set; }
-    public DbSet<PBMS.Domain.Entities.Vehicle> Vehicles { get; set; }
-    public DbSet<PBMS.Domain.Entities.ParkingSession> ParkingSessions { get; set; }
-
     /// <summary>
     /// Tập hợp dữ liệu bảng Tài khoản (Accounts).
     /// </summary>

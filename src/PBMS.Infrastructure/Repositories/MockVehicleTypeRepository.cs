@@ -14,14 +14,14 @@ public class MockVehicleTypeRepository : IVehicleTypeRepository
         new VehicleType
         {
             Id = 1,
-            Name = VehicleType.MotorcycleTypeName,
+            TypeName = VehicleType.MotorcycleTypeName,
             Description = "Managed by zone capacity. Slot is not required for booking or monthly card.",
             VehicleTypeStatus = VehicleType.StatusActive
         },
         new VehicleType
         {
             Id = 2,
-            Name = VehicleType.CarTypeName,
+            TypeName = VehicleType.CarTypeName,
             Description = "Managed by slot for booking and monthly card.",
             VehicleTypeStatus = VehicleType.StatusActive
         }
@@ -31,7 +31,7 @@ public class MockVehicleTypeRepository : IVehicleTypeRepository
     {
         lock (SyncRoot)
         {
-            return Task.FromResult(VehicleTypes.OrderBy(vt => vt.Name).Select(Clone).AsEnumerable());
+            return Task.FromResult(VehicleTypes.OrderBy(vt => vt.TypeName).Select(Clone).AsEnumerable());
         }
     }
 
@@ -50,7 +50,7 @@ public class MockVehicleTypeRepository : IVehicleTypeRepository
         {
             var normalizedName = name.Trim();
             var exists = VehicleTypes.Any(vt =>
-                vt.Name.Equals(normalizedName, StringComparison.OrdinalIgnoreCase)
+                vt.TypeName.Equals(normalizedName, StringComparison.OrdinalIgnoreCase)
                 && (!excludeId.HasValue || vt.Id != excludeId.Value));
 
             return Task.FromResult(exists);
@@ -111,7 +111,7 @@ public class MockVehicleTypeRepository : IVehicleTypeRepository
         return new VehicleType
         {
             Id = vehicleType.Id,
-            Name = vehicleType.Name,
+            TypeName = vehicleType.TypeName,
             Description = vehicleType.Description,
             VehicleTypeStatus = vehicleType.VehicleTypeStatus
         };

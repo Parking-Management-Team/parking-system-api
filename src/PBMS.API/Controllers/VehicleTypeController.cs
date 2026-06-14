@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using PBMS.Application.Common;
 using PBMS.Application.Vehicle.DTOs;
 using PBMS.Application.Vehicle.Interfaces;
 
@@ -10,7 +9,7 @@ namespace PBMS.API.Controllers;
 /// Provides endpoints for CRUD operations on vehicle types.
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/vehicle-types")]
 public class VehicleTypeController : ControllerBase
 {
     private readonly IVehicleTypeService _vehicleTypeService;
@@ -39,18 +38,13 @@ public class VehicleTypeController : ControllerBase
     /// </summary>
     /// <param name="id">The vehicle type ID.</param>
     /// <returns>Vehicle type details.</returns>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         _logger.LogInformation("Getting vehicle type with ID {VehicleTypeId}", id);
         var result = await _vehicleTypeService.GetByIdAsync(id);
-        
-        if (!result.Success)
-        {
-            return NotFound(result);
-        }
 
-        return Ok(result);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
     /// <summary>
@@ -71,7 +65,7 @@ public class VehicleTypeController : ControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return ToErrorResult(result.ErrorCode, result);
         }
 
         return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result);
@@ -83,7 +77,7 @@ public class VehicleTypeController : ControllerBase
     /// <param name="id">The vehicle type ID to update.</param>
     /// <param name="updateDto">Updated data for the vehicle type.</param>
     /// <returns>The updated vehicle type.</returns>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateVehicleTypeDto updateDto)
     {
         if (!ModelState.IsValid)
@@ -94,16 +88,7 @@ public class VehicleTypeController : ControllerBase
         _logger.LogInformation("Updating vehicle type with ID {VehicleTypeId}", id);
         var result = await _vehicleTypeService.UpdateAsync(id, updateDto);
 
-        if (!result.Success)
-        {
-            if (result.ErrorCode == "NOT_FOUND")
-            {
-                return NotFound(result);
-            }
-            return BadRequest(result);
-        }
-
-        return Ok(result);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
     /// <summary>
@@ -111,22 +96,25 @@ public class VehicleTypeController : ControllerBase
     /// </summary>
     /// <param name="id">The vehicle type ID to delete.</param>
     /// <returns>Success message or error if vehicle type is in use.</returns>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         _logger.LogInformation("Deleting vehicle type with ID {VehicleTypeId}", id);
         var result = await _vehicleTypeService.DeleteAsync(id);
 
-        if (!result.Success)
-        {
-            if (result.ErrorCode == "NOT_FOUND")
-            {
-                return NotFound(result);
-            }
-            return BadRequest(result);
-        }
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
 
-        return Ok(result);
+    private IActionResult ToErrorResult(string? errorCode, object result)
+    {
+        return errorCode switch
+        {
+            "NOT_FOUND" => NotFound(result),
+            "NAME_EXISTS" => Conflict(result),
+            "IN_USE_SESSIONS" or "IN_USE_BOOKINGS" => Conflict(result),
+            "INTERNAL_ERROR" => StatusCode(StatusCodes.Status500InternalServerError, result),
+            _ => BadRequest(result)
+        };
     }
 }
 
