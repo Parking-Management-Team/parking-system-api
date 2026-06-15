@@ -43,6 +43,14 @@ public class ZoneRepository : BaseRepository<Zone>, IZoneRepository
     }
 
     /// <summary>
+    /// Kiểm tra mã zone đã tồn tại trong floor cụ thể bất đồng bộ.
+    /// </summary>
+    public async Task<bool> ZoneCodeExistsInFloorAsync(string code, int floorId)
+    {
+        return await AnyAsync(z => z.FloorId == floorId && z.Code.ToLower() == code.ToLower());
+    }
+
+    /// <summary>
     /// Lấy zone kèm floor và parking slots bất đồng bộ.
     /// </summary>
     public async Task<Zone?> GetZoneWithDetailsAsync(int id)

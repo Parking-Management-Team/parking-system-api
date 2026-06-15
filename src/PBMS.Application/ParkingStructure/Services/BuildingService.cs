@@ -44,7 +44,7 @@ public class BuildingService : IBuildingService
             Name = request.Name,
             Address = request.Address,
             TotalFloor = request.TotalFloor,
-            Status = BuildingStatus.Available
+            Status = BuildingStatus.Active
         };
 
         // 3. Tự động tạo các Floor tương ứng
@@ -55,7 +55,7 @@ public class BuildingService : IBuildingService
             {
                 FloorNumber = i,
                 Name = $"Tầng {i}",
-                Status = FloorStatus.Available
+                Status = FloorStatus.Active
             });
         }
 

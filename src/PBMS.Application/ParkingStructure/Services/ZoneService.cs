@@ -5,6 +5,7 @@ using PBMS.Application.Contracts;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
 
 namespace PBMS.Application.ParkingStructure.Services;
 
@@ -17,23 +18,30 @@ public class ZoneService : IZoneService
     private readonly IZoneRepository _zoneRepository;
     private readonly IRepository<Floor> _floorRepository;
     private readonly IRepository<VehicleType> _vehicleTypeRepository;
+    private readonly IParkingSlotRepository _slotRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
     public ZoneService(
         IZoneRepository zoneRepository,
         IRepository<Floor> floorRepository,
         IRepository<VehicleType> vehicleTypeRepository,
+        IParkingSlotRepository slotRepository,
+        IUnitOfWork unitOfWork,
         IMapper mapper)
     {
         _zoneRepository = zoneRepository;
         _floorRepository = floorRepository;
         _vehicleTypeRepository = vehicleTypeRepository;
+        _slotRepository = slotRepository;
+        _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
     /// <summary>
     /// Tạo zone mới kèm xác thực.
     /// Kiểm tra tồn tại của floor và loại xe.
+    /// Tự động tạo Slot nếu là loại xe ô tô.
     /// </summary>
     public async Task<ZoneDto> CreateZoneAsync(ZoneCreateRequest request)
     {
@@ -44,11 +52,11 @@ public class ZoneService : IZoneService
             throw new NotFoundException("Floor", request.FloorId);
         }
 
-        // Kiểm tra tên zone đã tồn tại trong floor chưa
-        var nameExists = await _zoneRepository.ZoneNameExistsInFloorAsync(request.Name, request.FloorId);
-        if (nameExists)
+        // Kiểm tra mã zone đã tồn tại trong floor chưa (SRS §8.3.3.7)
+        var codeExists = await _zoneRepository.ZoneCodeExistsInFloorAsync(request.Code, request.FloorId);
+        if (codeExists)
         {
-            throw new ValidationException($"A zone with name '{request.Name}' already exists in this floor.");
+            throw new ValidationException($"A zone with code '{request.Code}' already exists in this floor.");
         }
 
         // Kiểm tra loại xe tồn tại
@@ -58,21 +66,56 @@ public class ZoneService : IZoneService
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
         }
 
-        // Tạo entity zone mới
-        var zone = new Zone
+        // Bắt đầu transaction để đảm bảo tạo Zone và Slots đồng thời
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            FloorId = request.FloorId,
-            Name = request.Name,
-            Capacity = request.Capacity,
-            VehicleTypeId = request.VehicleTypeId,
-            Status = Domain.Enums.ZoneStatus.Available
-        };
+            // Tạo entity zone mới
+            var zone = new Zone
+            {
+                FloorId = request.FloorId,
+                Code = request.Code,
+                Name = request.Name,
+                Capacity = request.Capacity,
+                VehicleTypeId = request.VehicleTypeId,
+                AccessType = request.AccessType,
+                Status = ZoneStatus.Available
+            };
 
-        // Thêm vào repository
-        await _zoneRepository.AddAsync(zone);
+            // Thêm vào repository
+            await _zoneRepository.AddAsync(zone);
+            await _unitOfWork.SaveChangesAsync();
 
-        // Map sang DTO
-        return _mapper.Map<ZoneDto>(zone);
+            // Nếu là loại xe ô tô, tự động tạo các Slot tương ứng với Capacity
+            // Dựa trên SRS §6.1, §6.4 và yêu cầu người dùng
+            if (vehicleType.Name.Contains("Ô tô") || vehicleType.Name.ToLower().Contains("car"))
+            {
+                for (int i = 1; i <= request.Capacity; i++)
+                {
+                    var slotCode = $"{request.Code}-{i:D2}"; // ZA-01, ZA-02...
+                    var slot = new ParkingSlot
+                    {
+                        ZoneId = zone.Id,
+                        VehicleTypeId = request.VehicleTypeId,
+                        Code = slotCode,
+                        Name = $"Vị trí {slotCode}",
+                        Status = SlotStatus.Available
+                    };
+                    await _slotRepository.AddAsync(slot);
+                }
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            await _unitOfWork.CommitAsync();
+
+            // Map sang DTO
+            return _mapper.Map<ZoneDto>(zone);
+        }
+        catch (Exception)
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
     }
 
     /// <summary>
@@ -159,22 +202,25 @@ public class ZoneService : IZoneService
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
         }
 
-        // Kiểm tra tên mới có trùng trong cùng floor không
-        if (zone.Name != request.Name)
+        // Kiểm tra mã mới có trùng trong cùng floor không
+        if (zone.Code != request.Code)
         {
-            var nameExists = await _zoneRepository.ZoneNameExistsInFloorAsync(request.Name, zone.FloorId);
-            if (nameExists)
+            var codeExists = await _zoneRepository.ZoneCodeExistsInFloorAsync(request.Code, zone.FloorId);
+            if (codeExists)
             {
-                throw new ValidationException($"A zone with name '{request.Name}' already exists in this floor.");
+                throw new ValidationException($"A zone with code '{request.Code}' already exists in this floor.");
             }
         }
 
         // Cập nhật thuộc tính zone
+        zone.Code = request.Code;
         zone.Name = request.Name;
         zone.Capacity = request.Capacity;
         zone.VehicleTypeId = request.VehicleTypeId;
+        zone.AccessType = request.AccessType;
 
         _zoneRepository.Update(zone);
+        await _unitOfWork.SaveChangesAsync();
 
         return _mapper.Map<ZoneDto>(zone);
     }
@@ -197,5 +243,6 @@ public class ZoneService : IZoneService
         }
 
         await _zoneRepository.RemoveAsync(zone);
+        await _unitOfWork.SaveChangesAsync();
     }
 }

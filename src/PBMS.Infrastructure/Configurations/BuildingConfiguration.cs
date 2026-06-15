@@ -54,7 +54,7 @@ public class BuildingConfiguration : IEntityTypeConfiguration<Building>
             .HasColumnName("building_status")
             .HasMaxLength(20)
             .HasConversion<string>()
-            .HasDefaultValue(BuildingStatus.Available)
+            .HasDefaultValue(BuildingStatus.Active)
             .IsRequired();
 
         // 8. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)

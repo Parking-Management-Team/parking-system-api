@@ -49,7 +49,7 @@ public class FloorConfiguration : IEntityTypeConfiguration<Floor>
             .HasColumnName("floor_status")
             .HasMaxLength(20)
             .HasConversion<string>()
-            .HasDefaultValue(FloorStatus.Available)
+            .HasDefaultValue(FloorStatus.Active)
             .IsRequired();
 
         // 7. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)

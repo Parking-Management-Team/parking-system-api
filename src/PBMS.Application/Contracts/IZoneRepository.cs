@@ -31,6 +31,14 @@ public interface IZoneRepository : IRepository<Zone>
     Task<bool> ZoneNameExistsInFloorAsync(string name, int floorId);
 
     /// <summary>
+    /// Kiểm tra mã zone đã tồn tại trong floor cụ thể hay chưa bất đồng bộ.
+    /// </summary>
+    /// <param name="code">Mã zone.</param>
+    /// <param name="floorId">ID floor.</param>
+    /// <returns>True nếu mã đã tồn tại trong floor, ngược lại false.</returns>
+    Task<bool> ZoneCodeExistsInFloorAsync(string code, int floorId);
+
+    /// <summary>
     /// Lấy zone kèm dữ liệu liên quan floor và parking slots bất đồng bộ.
     /// </summary>
     /// <param name="id">ID zone.</param>

@@ -14,14 +14,14 @@ namespace PBMS.UnitTests.ParkingStructure;
 public class FloorServiceTests
 {
     private readonly IFloorRepository _floorRepositoryMock;
-    private readonly IRepository<Building> _buildingRepositoryMock;
+    private readonly IBuildingRepository _buildingRepositoryMock;
     private readonly IMapper _mapperMock;
     private readonly FloorService _floorService;
 
     public FloorServiceTests()
     {
         _floorRepositoryMock = Substitute.For<IFloorRepository>();
-        _buildingRepositoryMock = Substitute.For<IRepository<Building>>();
+        _buildingRepositoryMock = Substitute.For<IBuildingRepository>();
         _mapperMock = Substitute.For<IMapper>();
 
         _floorService = new FloorService(
@@ -106,7 +106,7 @@ public class FloorServiceTests
     {
         // Arrange
         int floorId = 1;
-        var request = new FloorUpdateRequest { FloorNumber = 2, Name = "New Name", Status = FloorStatus.Available };
+        var request = new FloorUpdateRequest { FloorNumber = 2, Name = "New Name", Status = FloorStatus.Active };
         var existingFloor = new Floor { Id = floorId, FloorNumber = 1, BuildingId = 1 };
         var updatedDto = new FloorDto { Id = floorId, FloorNumber = 2, Name = "New Name" };
 

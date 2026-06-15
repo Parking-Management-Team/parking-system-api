@@ -49,7 +49,7 @@ public class FloorService : IFloorService
             BuildingId = request.BuildingId,
             FloorNumber = request.FloorNumber,
             Name = request.Name,
-            Status = Domain.Enums.FloorStatus.Available
+            Status = Domain.Enums.FloorStatus.Active
         };
 
         await _floorRepository.AddAsync(floor);

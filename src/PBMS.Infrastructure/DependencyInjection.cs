@@ -28,6 +28,9 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITokenService, TokenService>();
 
+        // Unit of Work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
 

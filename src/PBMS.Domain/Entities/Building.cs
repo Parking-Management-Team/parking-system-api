@@ -32,9 +32,9 @@ public class Building : BaseEntity
     public int TotalFloor { get; set; }
 
     /// <summary>
-    /// Trạng thái hoạt động của tòa nhà (Ví dụ: Available, OutOfService).
+    /// Trạng thái hoạt động của tòa nhà (Ví dụ: Active, OutOfService).
     /// </summary>
-    public BuildingStatus Status { get; set; } = BuildingStatus.Available;
+    public BuildingStatus Status { get; set; } = BuildingStatus.Active;
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
