@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PBMS.API;
@@ -10,6 +11,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+}
+
 // =========================================================================
 // 1. CẤU HÌNH DỊCH VỤ (SERVICES CONTAINER)
 // =========================================================================
@@ -17,13 +24,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Đăng ký các Controller vào DI Container để ASP.NET Core nhận diện các API endpoints
 builder.Services.AddControllers();
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(
+            Path.Combine(builder.Environment.ContentRootPath, ".aspnet-data-protection-keys")));
+}
+
 // Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
 // Đăng ký các dịch vụ của tầng Application và Infrastructure
-builder.Services.AddApplicationServices();
+var useInMemoryParkingSession = builder.Configuration.GetValue<bool>("ParkingSession:UseInMemoryStore");
+var useHttpsRedirection = builder.Configuration.GetValue("Api:UseHttpsRedirection", !builder.Environment.IsDevelopment());
+builder.Services.AddApplicationServices(useInMemoryParkingSession);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Cấu hình CORS (Cross-Origin Resource Sharing)
@@ -68,7 +84,7 @@ builder.Services.AddAuthentication(options =>
 var app = builder.Build();
 
 // Tự động chạy Migration khi ứng dụng khởi động ở môi trường Development
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
 {
     using (var scope = app.Services.CreateScope())
     {
@@ -91,6 +107,10 @@ if (app.Environment.IsDevelopment())
         }
     }
 }
+else if (app.Environment.IsDevelopment())
+{
+    Console.WriteLine("--> Skipping database migration because ParkingSession:UseInMemoryStore is enabled.");
+}
 
 // =========================================================================
 // 2. CẤU HÌNH PIPELINE XỬ LÝ REQUEST (MIDDLEWARES)
@@ -104,7 +124,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (useHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
 
 // Kích hoạt Swagger UI làm giao diện test API trực quan
 app.UseSwagger();

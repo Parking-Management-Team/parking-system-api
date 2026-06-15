@@ -5,6 +5,8 @@ using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Auth.Services;
 using PBMS.Application.Card.Interfaces;
 using PBMS.Application.Card.Services;
+using PBMS.Application.ParkingSession.Interfaces;
+using PBMS.Application.ParkingSession.Services;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Pricing.Interfaces;
@@ -22,7 +24,7 @@ public static class DependencyInjection
     /// </summary>
     /// <param name="services">Tập hợp dịch vụ.</param>
     /// <returns>Tập hợp dịch vụ đã được cập nhật.</returns>
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, bool useInMemoryParkingSession = false)
     {
         // Auth module
         services.AddScoped<IAuthService, AuthService>();
@@ -46,6 +48,15 @@ public static class DependencyInjection
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();
         services.AddScoped<IFeeCalculationService, FeeCalculationService>();
         services.AddScoped<IAccountService, AccountService>();
+        if (useInMemoryParkingSession)
+        {
+            services.AddSingleton<IParkingSessionService, InMemoryParkingSessionService>();
+        }
+        else
+        {
+            services.AddScoped<IParkingSessionService, ParkingSessionService>();
+        }
+
         return services;
     }
 }

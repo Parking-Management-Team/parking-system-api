@@ -170,7 +170,7 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         // Kiểm tra ParkingSessions
-        if (slot.ParkingSessions.Any(ps => ps.SessionStatus == "Active"))
+        if (slot.ParkingSessions.Any(ps => string.Equals(ps.SessionStatus, "ACTIVE", StringComparison.OrdinalIgnoreCase)))
         {
             throw new ValidationException($"Cannot delete slot '{slot.Code}' because it has an active parking session.");
         }
