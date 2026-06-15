@@ -6,6 +6,11 @@ namespace PBMS.Domain.Entities;
 /// </summary>
 public class VehicleType : BaseEntity
 {
+    public const string StatusActive = "ACTIVE";
+    public const string StatusInactive = "INACTIVE";
+    public const string MotorcycleTypeName = "Motorcycle";
+    public const string CarTypeName = "Car";
+
     /// <summary>
     /// Tên loại phương tiện (Ví dụ: "Motorcycle", "Car").
     /// Ràng buộc: UNIQUE, NOT NULL, varchar(50).
@@ -20,7 +25,7 @@ public class VehicleType : BaseEntity
     /// <summary>
     /// Trạng thái hoạt động của loại phương tiện (Ví dụ: "Active", "Inactive").
     /// </summary>
-    public string VehicleTypeStatus { get; set; } = "Active";
+    public string VehicleTypeStatus { get; set; } = StatusActive;
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES

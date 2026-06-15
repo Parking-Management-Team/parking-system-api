@@ -6,6 +6,12 @@ namespace PBMS.Domain.Entities;
 /// </summary>
 public class Vehicle : BaseEntity
 {
+    public const string StatusActive = "ACTIVE";
+    public const string StatusInactive = "INACTIVE";
+    public const string StatusPending = "PENDING";
+    public const string StatusSuspended = "SUSPENDED";
+    public const string StatusArchived = "ARCHIVED";
+
     /// <summary>
     /// Khóa ngoại liên kết tới tài khoản sở hữu (Account).
     /// Có thể Null trong trường hợp khách vãng lai hoặc nhập biển số thô trước.
@@ -24,6 +30,9 @@ public class Vehicle : BaseEntity
     public string LicensePlate { get; set; } = null!;
 
     /// <summary>
+    /// Biển số đã chuẩn hóa để kiểm tra trùng toàn hệ thống.
+    /// </summary>
+    /// <summary>
     /// Ngày phương tiện được đăng ký vào hệ thống bãi đỗ xe.
     /// </summary>
     public DateTime? RegisteredDay { get; set; }
@@ -31,7 +40,7 @@ public class Vehicle : BaseEntity
     /// <summary>
     /// Trạng thái của xe trên hệ thống (Ví dụ: "Active", "Inactive", "Pending", "Suspended").
     /// </summary>
-    public string VehicleStatus { get; set; } = "Active";
+    public string VehicleStatus { get; set; } = StatusActive;
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
