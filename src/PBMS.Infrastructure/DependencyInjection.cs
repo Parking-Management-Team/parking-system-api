@@ -52,6 +52,9 @@ public static class DependencyInjection
         services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
 
+        // Pricing — Repository
+        services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+
         return services;
     }
 }
