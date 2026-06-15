@@ -7,6 +7,7 @@ using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Application.Pricing.Services;
+using PBMS.Application.Accounts;
 
 namespace PBMS.Application;
 /// <summary>
@@ -40,6 +41,7 @@ public static class DependencyInjection
         // Pricing module
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();
         services.AddScoped<IFeeCalculationService, FeeCalculationService>();
+        services.AddScoped<IAccountService, AccountService>();
         return services;
     }
 }
