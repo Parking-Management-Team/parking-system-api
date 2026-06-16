@@ -39,6 +39,9 @@ namespace PBMS.Application.Accounts
         /// <param name="dto">DTO chứa mật khẩu cũ và mới.</param>
         Task<bool> ChangePasswordAsync(int id, ChangePasswordDto dto);
 
-
+        /// <summary>
+        /// Deactivate tài khoản tự nguyện (Soft Delete / Deactivate).
+        /// </summary>
+        Task<bool> DeactivateAccountAsync(int id);
     }
 }

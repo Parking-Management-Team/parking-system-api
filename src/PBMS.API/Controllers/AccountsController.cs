@@ -111,6 +111,31 @@ namespace PBMS.API.Controllers
 
             return Ok(BaseResponse<string>.Ok(id.ToString(), "Account blocked successfully."));
         }
+
+        /// <summary>
+        /// Tự deactivate tài khoản của chính mình (Soft Delete / Deactivate).
+        /// Route: POST /api/accounts/{id}/deactivate
+        /// </summary>
+        [HttpPost("{id}/deactivate")]
+        public async Task<IActionResult> DeactivateAccount(int id)
+        {
+            // Lấy ID của người thực hiện request từ Claims JWT Token
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+
+            // Người dùng chỉ được phép tự deactivate tài khoản của chính mình
+            if (currentUserId != id.ToString())
+            {
+                return Forbid();
+            }
+
+            var success = await _accountService.DeactivateAccountAsync(id);
+            if (!success)
+            {
+                return NotFound(BaseResponse<object>.Fail("Account not found."));
+            }
+
+            return Ok(BaseResponse<string>.Ok(id.ToString(), "Account deactivated successfully."));
+        }
         ///<summary>
         /// Đổi mật hẩu cho tài khoản đang đăng nhập 
         /// Route : Post /api/accounts/change-password
