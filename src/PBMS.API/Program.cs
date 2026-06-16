@@ -94,6 +94,10 @@ if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
             var context = services.GetRequiredService<AppDbContext>();
             context.Database.Migrate();
             Console.WriteLine("--> Database migration completed successfully.");
+
+            // Seed dữ liệu mẫu
+            await DbInitializer.SeedAsync(context);
+            Console.WriteLine("--> Database seeding completed successfully.");
         }
         catch (Exception ex)
         {

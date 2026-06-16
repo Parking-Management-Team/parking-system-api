@@ -29,6 +29,9 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITokenService, TokenService>();
 
+        // Unit of Work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
 
@@ -51,6 +54,9 @@ public static class DependencyInjection
         services.AddScoped<IBuildingRepository, BuildingRepository>();
         services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
+
+        // Pricing — Repository
+        services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 
         // Pricing — Repository
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();

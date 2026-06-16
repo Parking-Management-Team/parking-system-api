@@ -36,6 +36,12 @@ public class Zone : BaseEntity
     public int Capacity { get; set; }
 
     /// <summary>
+    /// Loại quyền truy cập của khu vực (General hoặc Monthly).
+    /// Tham chiếu SRS: §8.3.3.7 — zone_access_type
+    /// </summary>
+    public ZoneAccessType AccessType { get; set; } = ZoneAccessType.General;
+
+    /// <summary>
     /// Trạng thái hoạt động của khu vực.
     /// </summary>
     public ZoneStatus Status { get; set; } = ZoneStatus.Available;
