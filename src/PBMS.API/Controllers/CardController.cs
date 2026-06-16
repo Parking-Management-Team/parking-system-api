@@ -17,6 +17,7 @@ namespace PBMS.API.Controllers;
 ///   GET    /api/cards/by-code/{cardCode}  → Tra cứu thẻ theo mã (Scenario 3)
 ///   PUT    /api/cards/{id}                → Cập nhật thông tin thẻ
 ///   DELETE /api/cards/{id}                → Xóa thẻ (Scenario 2 — từ chối nếu đang bận)
+///   GET   /api/cards                      → Lấy danh sách thẻ (áp dụng bộ lọc)
 /// </summary>
 [ApiController]
 [Route("api/cards")]
@@ -57,6 +58,24 @@ public class CardController : ControllerBase
             routeValues: new { id = card.Id },     // Giá trị route parameter
             value: BaseResponse<CardDto>.Ok(card, "Tạo thẻ gửi xe thành công.")
         );
+    }
+
+        // -----------------------------------------------------------------------
+    // GET /api/cards/ — Lấy danh sách thẻ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ thẻ gửi xe.
+    ///
+    /// Route  : GET /api/cards
+    /// Returns: 200 OK + Danh sách CardDto (danh sách rỗng nếu chưa có thẻ nào)
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<BaseResponse<List<CardDto>>>> GetAllCards()
+    {
+        var card = await _cardService.GetAllCardsAsync();
+
+        return Ok(BaseResponse<List<CardDto>>.Ok(card));
     }
 
     // -----------------------------------------------------------------------
