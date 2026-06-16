@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Contracts;
+using PBMS.Application.Vehicle.Interfaces;
 using PBMS.Infrastructure.Data;
 using PBMS.Infrastructure.ExternalServices;
 using PBMS.Infrastructure.Repositories;
@@ -28,6 +29,9 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITokenService, TokenService>();
 
+        // Unit of Work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
 
@@ -48,6 +52,14 @@ public static class DependencyInjection
 
         // Đăng ký repository Building
         services.AddScoped<IBuildingRepository, BuildingRepository>();
+        services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
+        services.AddScoped<IVehicleRepository, VehicleRepository>();
+
+        // Pricing — Repository
+        services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+
+        // Pricing — Repository
+        services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 
         return services;
     }

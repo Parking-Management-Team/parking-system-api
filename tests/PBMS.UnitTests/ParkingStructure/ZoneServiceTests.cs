@@ -17,6 +17,8 @@ public class ZoneServiceTests
     private readonly IZoneRepository _zoneRepositoryMock;
     private readonly IRepository<Floor> _floorRepositoryMock;
     private readonly IRepository<VehicleType> _vehicleTypeRepositoryMock;
+    private readonly IParkingSlotRepository _slotRepositoryMock;
+    private readonly IUnitOfWork _unitOfWorkMock;
     private readonly IMapper _mapperMock;
     private readonly ZoneService _zoneService;
 
@@ -25,12 +27,16 @@ public class ZoneServiceTests
         _zoneRepositoryMock = Substitute.For<IZoneRepository>();
         _floorRepositoryMock = Substitute.For<IRepository<Floor>>();
         _vehicleTypeRepositoryMock = Substitute.For<IRepository<VehicleType>>();
+        _slotRepositoryMock = Substitute.For<IParkingSlotRepository>();
+        _unitOfWorkMock = Substitute.For<IUnitOfWork>();
         _mapperMock = Substitute.For<IMapper>();
-
+        
         _zoneService = new ZoneService(
             _zoneRepositoryMock,
             _floorRepositoryMock,
             _vehicleTypeRepositoryMock,
+            _slotRepositoryMock,
+            _unitOfWorkMock,
             _mapperMock);
     }
 
@@ -41,18 +47,19 @@ public class ZoneServiceTests
         var request = new ZoneCreateRequest
         {
             FloorId = 1,
+            Code = "ZA",
             Name = "Zone A",
             VehicleTypeId = 1,
-            Capacity = 50
+            Capacity = 50,
+            AccessType = ZoneAccessType.General
         };
 
         var floor = new Floor { Id = 1 };
-        var vehicleType = new VehicleType { Id = 1 };
-        var zone = new Zone { Id = 1, Name = "Zone A", FloorId = 1 };
-        var zoneDto = new ZoneDto { Id = 1, Name = "Zone A", FloorId = 1 };
+        var vehicleType = new VehicleType { Id = 1, TypeName = "Motorbike" };
+        var zoneDto = new ZoneDto { Id = 1, Code = "ZA", Name = "Zone A", FloorId = 1 };
 
         _floorRepositoryMock.GetByIdAsync(request.FloorId).Returns(floor);
-        _zoneRepositoryMock.ZoneNameExistsInFloorAsync(request.Name, request.FloorId).Returns(false);
+        _zoneRepositoryMock.ZoneCodeExistsInFloorAsync(request.Code, request.FloorId).Returns(false);
         _vehicleTypeRepositoryMock.GetByIdAsync(request.VehicleTypeId).Returns(vehicleType);
         _mapperMock.Map<ZoneDto>(Arg.Any<Zone>()).Returns(zoneDto);
 
@@ -63,6 +70,39 @@ public class ZoneServiceTests
         Assert.NotNull(result);
         Assert.Equal(request.Name, result.Name);
         await _zoneRepositoryMock.Received(1).AddAsync(Arg.Any<Zone>());
+        await _unitOfWorkMock.Received(1).CommitAsync();
+    }
+
+    [Fact]
+    public async Task CreateZoneAsync_ShouldAutoGenerateSlots_WhenVehicleTypeIsCar()
+    {
+        // Arrange
+        var request = new ZoneCreateRequest
+        {
+            FloorId = 1,
+            Code = "ZC",
+            Name = "Car Zone",
+            VehicleTypeId = 2,
+            Capacity = 5,
+            AccessType = ZoneAccessType.General
+        };
+
+        var floor = new Floor { Id = 1 };
+        var vehicleType = new VehicleType { Id = 2, TypeName = "Ô tô" };
+        var zoneDto = new ZoneDto { Id = 1, Code = "ZC", Name = "Car Zone", FloorId = 1 };
+
+        _floorRepositoryMock.GetByIdAsync(request.FloorId).Returns(floor);
+        _zoneRepositoryMock.ZoneCodeExistsInFloorAsync(request.Code, request.FloorId).Returns(false);
+        _vehicleTypeRepositoryMock.GetByIdAsync(request.VehicleTypeId).Returns(vehicleType);
+        _mapperMock.Map<ZoneDto>(Arg.Any<Zone>()).Returns(zoneDto);
+
+        // Act
+        var result = await _zoneService.CreateZoneAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        await _slotRepositoryMock.Received(request.Capacity).AddAsync(Arg.Any<ParkingSlot>());
+        await _unitOfWorkMock.Received(1).CommitAsync();
     }
 
     [Fact]
@@ -77,13 +117,13 @@ public class ZoneServiceTests
     }
 
     [Fact]
-    public async Task CreateZoneAsync_ShouldThrowValidationException_WhenNameAlreadyExists()
+    public async Task CreateZoneAsync_ShouldThrowValidationException_WhenCodeAlreadyExists()
     {
         // Arrange
-        var request = new ZoneCreateRequest { FloorId = 1, Name = "Existing Zone" };
+        var request = new ZoneCreateRequest { FloorId = 1, Code = "ZA", Name = "Zone A" };
         var floor = new Floor { Id = 1 };
         _floorRepositoryMock.GetByIdAsync(request.FloorId).Returns(floor);
-        _zoneRepositoryMock.ZoneNameExistsInFloorAsync(request.Name, request.FloorId).Returns(true);
+        _zoneRepositoryMock.ZoneCodeExistsInFloorAsync(request.Code, request.FloorId).Returns(true);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ValidationException>(() => _zoneService.CreateZoneAsync(request));
@@ -125,14 +165,14 @@ public class ZoneServiceTests
     {
         // Arrange
         int zoneId = 1;
-        var request = new ZoneUpdateRequest { Name = "New Name", VehicleTypeId = 2, Capacity = 100 };
-        var existingZone = new Zone { Id = zoneId, Name = "Old Name", FloorId = 1 };
+        var request = new ZoneUpdateRequest { Code = "Z-NEW", Name = "New Name", VehicleTypeId = 2, Capacity = 100, AccessType = ZoneAccessType.General };
+        var existingZone = new Zone { Id = zoneId, Code = "Z-OLD", Name = "Old Name", FloorId = 1 };
         var vehicleType = new VehicleType { Id = 2 };
-        var updatedDto = new ZoneDto { Id = zoneId, Name = "New Name" };
+        var updatedDto = new ZoneDto { Id = zoneId, Code = "Z-NEW", Name = "New Name" };
 
         _zoneRepositoryMock.GetByIdAsync(zoneId).Returns(existingZone);
         _vehicleTypeRepositoryMock.GetByIdAsync(request.VehicleTypeId).Returns(vehicleType);
-        _zoneRepositoryMock.ZoneNameExistsInFloorAsync(request.Name, existingZone.FloorId).Returns(false);
+        _zoneRepositoryMock.ZoneCodeExistsInFloorAsync(request.Code, existingZone.FloorId).Returns(false);
         _mapperMock.Map<ZoneDto>(existingZone).Returns(updatedDto);
 
         // Act

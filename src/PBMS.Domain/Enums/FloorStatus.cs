@@ -6,22 +6,22 @@ namespace PBMS.Domain.Enums;
 public enum FloorStatus
 {
     /// <summary>
-    /// Tầng đang hoạt động bình thường và có thể tiếp nhận xe.
+    /// Tầng chưa được đưa vào sử dụng.
     /// </summary>
-    Available,
+    Inactive,
 
     /// <summary>
-    /// Tầng đã đầy xe (tất cả các zone/slot bên trong đều bận).
+    /// Tầng được sử dụng và cho phép xe sử dụng các vị trí đỗ.
     /// </summary>
-    Occupied,
+    Active,
 
     /// <summary>
-    /// Tầng đang được giữ chỗ cho một mục đích đặc biệt hoặc sự kiện.
+    /// Tầng được bảo trì; không tiếp nhận xe mới. Cho phép xe đang gửi ra khỏi bãi.
     /// </summary>
-    Reserved,
+    Maintenance,
 
     /// <summary>
-    /// Tầng đang bảo trì hoặc tạm đóng cửa, không cho phép gửi xe.
+    /// Tầng đang gặp sự cố hoặc không thể phục vụ.
     /// </summary>
     OutOfService
 }

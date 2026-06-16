@@ -111,5 +111,36 @@ namespace PBMS.API.Controllers
 
             return Ok(BaseResponse<string>.Ok(id.ToString(), "Account blocked successfully."));
         }
+        ///<summary>
+        /// Đổi mật hẩu cho tài khoản đang đăng nhập 
+        /// Route : Post /api/accounts/change-password
+        /// </summary>
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            // 1. Lấy ID của tài khoản đang đăng nhập từ Claims trong JWT Token
+            var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+            if (string.IsNullOrEmpty(currentUserIdStr) || !int.TryParse(currentUserIdStr, out int currentUserId))
+            {
+                return Unauthorized(BaseResponse<object>.Fail("Invalid user token. Please login again"));
+            }
+            try
+            {
+                //2. Goị tầng service để thực hiện đổi mật khẩu 
+                var success = await _accountService.ChangePasswordAsync(currentUserId, dto);
+                if (!success)
+                {
+                    return NotFound(BaseResponse<object>.Fail("Account not found."));
+
+                }
+                return Ok(BaseResponse<string>.Ok(currentUserId.ToString(), "Password changed succesfully"));
+            }
+            catch (System.UnauthorizedAccessException ex)
+            {
+                //Trả về lỗi 400 kèm thông báo mật khẩu cũ không đúng 
+                return BadRequest(BaseResponse<object>.Fail(ex.Message));
+            }
+        }
+
     }
 }

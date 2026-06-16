@@ -53,4 +53,9 @@ public class ParkingSlot : BaseEntity
     /// Danh sách các lượt gửi xe (ParkingSession) đã hoặc đang sử dụng slot này.
     /// </summary>
     public virtual ICollection<ParkingSession> ParkingSessions { get; set; } = new List<ParkingSession>();
+
+    /// <summary>
+    /// Danh sách các đăng ký vé tháng (MonthlySubscription) được gán vị trí đỗ xe này.
+    /// </summary>
+    public virtual ICollection<MonthlySubscription> MonthlySubscriptions { get; set; } = new List<MonthlySubscription>();
 }

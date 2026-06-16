@@ -14,15 +14,17 @@ namespace PBMS.UnitTests.ParkingStructure;
 public class BuildingServiceTests
 {
     private readonly IBuildingRepository _buildingRepositoryMock;
+    private readonly IRepository<Floor> _floorRepositoryMock;
     private readonly IMapper _mapperMock;
     private readonly BuildingService _buildingService;
 
     public BuildingServiceTests()
     {
         _buildingRepositoryMock = Substitute.For<IBuildingRepository>();
+        _floorRepositoryMock = Substitute.For<IRepository<Floor>>();
         _mapperMock = Substitute.For<IMapper>();
 
-        _buildingService = new BuildingService(_buildingRepositoryMock, _mapperMock);
+        _buildingService = new BuildingService(_buildingRepositoryMock, _floorRepositoryMock, _mapperMock);
     }
 
     [Fact]
@@ -87,7 +89,7 @@ public class BuildingServiceTests
     {
         // Arrange
         int id = 1;
-        var request = new BuildingUpdateRequest { Code = "NEW-CODE", Name = "New Name", Status = BuildingStatus.Available };
+        var request = new BuildingUpdateRequest { Code = "NEW-CODE", Name = "New Name", Status = BuildingStatus.Active };
         var existingBuilding = new Building { Id = id, Code = "OLD-CODE" };
         var updatedDto = new BuildingDto { Id = id, Code = "NEW-CODE" };
 

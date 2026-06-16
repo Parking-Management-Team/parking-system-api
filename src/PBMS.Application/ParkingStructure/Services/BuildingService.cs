@@ -15,11 +15,16 @@ namespace PBMS.Application.ParkingStructure.Services;
 public class BuildingService : IBuildingService
 {
     private readonly IBuildingRepository _buildingRepository;
+    private readonly IRepository<Floor> _floorRepository;
     private readonly IMapper _mapper;
 
-    public BuildingService(IBuildingRepository buildingRepository, IMapper mapper)
+    public BuildingService(
+        IBuildingRepository buildingRepository, 
+        IRepository<Floor> floorRepository,
+        IMapper mapper)
     {
         _buildingRepository = buildingRepository;
+        _floorRepository = floorRepository;
         _mapper = mapper;
     }
 
@@ -32,17 +37,31 @@ public class BuildingService : IBuildingService
             throw new ValidationException($"Building code '{request.Code}' already exists.");
         }
 
-        // 2. Tạo entity
+        // 2. Tạo entity Building
         var building = new Building
         {
             Code = request.Code.Trim().ToUpper(),
             Name = request.Name,
             Address = request.Address,
             TotalFloor = request.TotalFloor,
-            Status = BuildingStatus.Available
+            Status = BuildingStatus.Active
         };
 
+        // 3. Tự động tạo các Floor tương ứng
+        // Ví dụ: TotalFloor = 3 -> Tạo Tầng 1, Tầng 2, Tầng 3
+        for (int i = 1; i <= request.TotalFloor; i++)
+        {
+            building.Floors.Add(new Floor
+            {
+                FloorNumber = i,
+                Name = $"Tầng {i}",
+                Status = FloorStatus.Active
+            });
+        }
+
         await _buildingRepository.AddAsync(building);
+        await _buildingRepository.SaveChangesAsync();
+
         return _mapper.Map<BuildingDto>(building);
     }
 
@@ -112,6 +131,7 @@ public class BuildingService : IBuildingService
         building.Status = request.Status;
 
         _buildingRepository.Update(building);
+        await _buildingRepository.SaveChangesAsync();
         return _mapper.Map<BuildingDto>(building);
     }
 
@@ -130,5 +150,6 @@ public class BuildingService : IBuildingService
         }
 
         await _buildingRepository.RemoveAsync(building);
+        await _buildingRepository.SaveChangesAsync();
     }
 }

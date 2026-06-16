@@ -75,7 +75,7 @@ public class ParkingSlotConfiguration : IEntityTypeConfiguration<ParkingSlot>
 
         // Quan hệ N-1 với VehicleType
         builder.HasOne(s => s.VehicleType)
-            .WithMany()
+            .WithMany(vt => vt.ParkingSlots)
             .HasForeignKey(s => s.VehicleTypeId)
             .OnDelete(DeleteBehavior.Restrict);
     }

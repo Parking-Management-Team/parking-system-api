@@ -36,6 +36,11 @@ public interface ICardService
     Task<CardDto> GetCardByCodeAsync(string cardCode);
 
     /// <summary>
+    /// Lấy danh sách toàn bộ thẻ gửi xe.
+    /// </summary>
+    Task<List<CardDto>> GetAllCardsAsync();
+
+    /// <summary>
     /// Lấy thông tin thẻ theo ID.
     /// Dùng cho: Các luồng nội bộ cần tra cứu thẻ theo ID (check-in, check-out).
     ///
