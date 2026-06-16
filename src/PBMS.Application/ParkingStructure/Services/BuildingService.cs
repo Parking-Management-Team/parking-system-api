@@ -26,16 +26,9 @@ public class BuildingService : IBuildingService
     public async Task<BuildingDto> CreateBuildingAsync(BuildingCreateRequest request)
     {
         // 1. Kiểm tra Building Code duy nhất
-        var codeExists = await _buildingRepository.BuildingCodeExistsAsync(request.Code);
-        if (codeExists)
-        {
-            throw new ValidationException($"Building code '{request.Code}' already exists.");
-        }
-
         // 2. Tạo entity
         var building = new Building
         {
-            Code = request.Code.Trim().ToUpper(),
             Name = request.Name,
             Address = request.Address,
             TotalFloor = request.TotalFloor,
@@ -95,17 +88,6 @@ public class BuildingService : IBuildingService
         }
 
         // Kiểm tra Building Code mới nếu thay đổi
-        var newCode = request.Code.Trim().ToUpper();
-        if (building.Code != newCode)
-        {
-            var codeExists = await _buildingRepository.BuildingCodeExistsAsync(newCode);
-            if (codeExists)
-            {
-                throw new ValidationException($"Building code '{newCode}' already exists.");
-            }
-        }
-
-        building.Code = newCode;
         building.Name = request.Name;
         building.Address = request.Address;
         building.TotalFloor = request.TotalFloor;
@@ -126,7 +108,7 @@ public class BuildingService : IBuildingService
         // Logic bảo vệ: Không cho xóa nếu tòa nhà vẫn còn tầng (Floor)
         if (building.Floors.Any())
         {
-            throw new ValidationException($"Cannot delete building '{building.Code}' because it contains floors.");
+            throw new ValidationException($"Cannot delete building '{building.Name}' because it contains floors.");
         }
 
         await _buildingRepository.RemoveAsync(building);

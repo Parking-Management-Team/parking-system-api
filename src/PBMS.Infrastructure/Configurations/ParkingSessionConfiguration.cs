@@ -12,9 +12,9 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
             "CK_parking_session_source_exclusive",
             "booking_id IS NULL OR monthly_subscription_id IS NULL"));
 
-        builder.HasKey(ps => ps.Id);
+        builder.HasKey(ps => ps.SessionId);
 
-        builder.Property(ps => ps.Id).HasColumnName("session_id");
+        builder.Property(ps => ps.SessionId).HasColumnName("session_id");
         builder.Property(ps => ps.VehicleId).HasColumnName("vehicle_id").IsRequired();
         builder.Property(ps => ps.BuildingId).HasColumnName("building_id").IsRequired();
         builder.Property(ps => ps.CardId).HasColumnName("card_id").IsRequired();
@@ -33,9 +33,6 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
             .HasMaxLength(20)
             .HasDefaultValue("ACTIVE")
             .IsRequired();
-        builder.Property(ps => ps.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP").IsRequired();
-        builder.Property(ps => ps.RowVersion).HasColumnName("xmin").IsRowVersion();
-
         builder.HasOne(ps => ps.Vehicle)
             .WithMany(v => v.ParkingSessions)
             .HasForeignKey(ps => ps.VehicleId)

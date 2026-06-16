@@ -10,8 +10,6 @@ public interface IBuildingRepository : IRepository<Building>
     /// <summary>
     /// Kiểm tra xem mã tòa nhà đã tồn tại chưa.
     /// </summary>
-    Task<bool> BuildingCodeExistsAsync(string code);
-
     /// <summary>
     /// Lấy chi tiết tòa nhà kèm theo danh sách các tầng.
     /// </summary>

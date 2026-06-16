@@ -13,7 +13,6 @@ public class Building : BaseEntity
     /// Mã tòa nhà (Ví dụ: "BLD-01", "EAST-WING").
     /// Ràng buộc: UNIQUE, NOT NULL, varchar(20).
     /// </summary>
-    public string Code { get; set; } = null!;
 
     /// <summary>
     /// Tên tòa nhà (Ví dụ: "Tòa nhà A", "Bãi xe Miền Đông").
@@ -58,5 +57,4 @@ public class Building : BaseEntity
     /// <summary>
     /// Danh sách các thống kê doanh thu (RevenueStatistic) liên quan đến tòa nhà này.
     /// </summary>
-    public virtual ICollection<RevenueStatistic> RevenueStatistics { get; set; } = new List<RevenueStatistic>();
 }

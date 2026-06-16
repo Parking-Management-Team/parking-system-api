@@ -8,10 +8,6 @@ namespace PBMS.Application.ParkingStructure.DTOs;
 /// </summary>
 public class BuildingUpdateRequest
 {
-    [Required(ErrorMessage = "Building code is required.")]
-    [MaxLength(20, ErrorMessage = "Building code cannot exceed 20 characters.")]
-    public string Code { get; set; } = null!;
-
     [Required(ErrorMessage = "Building name is required.")]
     [MaxLength(50, ErrorMessage = "Building name cannot exceed 50 characters.")]
     public string Name { get; set; } = null!;

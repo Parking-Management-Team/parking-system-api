@@ -21,7 +21,7 @@ public class CardDto
     public string CardCode { get; set; } = null!;
 
     /// <summary>Mã RFID mô phỏng nếu có. Null nếu thẻ không dùng RFID.</summary>
-    public string? RfidCode { get; set; }
+    public string? NfcUid { get; set; }
 
     /// <summary>Loại thẻ. Ví dụ: "PARKING_CARD"</summary>
     public string CardType { get; set; } = null!;
@@ -34,4 +34,6 @@ public class CardDto
 
     /// <summary>Thời điểm thẻ được tạo vào hệ thống.</summary>
     public DateTime CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 }

@@ -5,8 +5,10 @@ namespace PBMS.Domain.Entities;
 /// Kế thừa từ BaseEntity (Id, CreatedAt, RowVersion).
 /// Tham chiếu SRS: §8.3.3.12 — Physical Model: parking_session
 /// </summary>
-public class ParkingSession : BaseEntity
+public class ParkingSession
 {
+    public int SessionId { get; set; }
+
     /// <summary>
     /// Khóa ngoại liên kết tới phương tiện gửi xe (Vehicle).
     /// </summary>

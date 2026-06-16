@@ -31,7 +31,7 @@ public class CreateCardRequest
     /// Tối đa 50 ký tự (theo SRS §8.3.3 varchar(50))
     /// </summary>
     [MaxLength(50, ErrorMessage = "Mã RFID không được vượt quá 50 ký tự.")]
-    public string? RfidCode { get; set; }
+    public string? NfcUid { get; set; }
 
     /// <summary>
     /// Loại thẻ — phân biệt nhóm thẻ trong hệ thống.

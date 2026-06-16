@@ -2,7 +2,7 @@ namespace PBMS.Application.ParkingSession.DTOs;
 
 public class ParkingSessionDto
 {
-    public int Id { get; set; }
+    public int SessionId { get; set; }
     public int VehicleId { get; set; }
     public int BuildingId { get; set; }
     public int CardId { get; set; }

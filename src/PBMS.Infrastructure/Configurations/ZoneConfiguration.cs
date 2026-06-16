@@ -28,9 +28,18 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasColumnName("floor_id")
             .IsRequired();
 
+        builder.Property(z => z.Code)
+            .HasColumnName("zone_code")
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.HasIndex(z => new { z.FloorId, z.Code })
+            .IsUnique()
+            .HasDatabaseName("IX_zone_floor_id_zone_code");
+
         // 4. Tên khu vực (Name) - bắt buộc, tối đa 50 ký tự
         builder.Property(z => z.Name)
-            .HasColumnName("name")
+            .HasColumnName("zone_name")
             .HasMaxLength(50)
             .IsRequired();
 
@@ -45,9 +54,15 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasDefaultValue(0)
             .IsRequired();
 
+        builder.Property(z => z.ZoneAccessType)
+            .HasColumnName("zone_access_type")
+            .HasMaxLength(20)
+            .HasDefaultValue("GENERAL")
+            .IsRequired();
+
         // 7. Trạng thái khu vực (Status) - lưu dưới dạng string
         builder.Property(z => z.Status)
-            .HasColumnName("status")
+            .HasColumnName("zone_status")
             .HasMaxLength(20)
             .HasConversion<string>()
             .HasDefaultValue(ZoneStatus.Available)

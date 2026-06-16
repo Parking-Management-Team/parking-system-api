@@ -41,6 +41,7 @@ public class ZoneServiceTests
         var request = new ZoneCreateRequest
         {
             FloorId = 1,
+            Code = "ZA",
             Name = "Zone A",
             VehicleTypeId = 1,
             Capacity = 50
@@ -125,7 +126,7 @@ public class ZoneServiceTests
     {
         // Arrange
         int zoneId = 1;
-        var request = new ZoneUpdateRequest { Name = "New Name", VehicleTypeId = 2, Capacity = 100 };
+        var request = new ZoneUpdateRequest { Code = "ZB", Name = "New Name", VehicleTypeId = 2, Capacity = 100 };
         var existingZone = new Zone { Id = zoneId, Name = "Old Name", FloorId = 1 };
         var vehicleType = new VehicleType { Id = 2 };
         var updatedDto = new ZoneDto { Id = zoneId, Name = "New Name" };

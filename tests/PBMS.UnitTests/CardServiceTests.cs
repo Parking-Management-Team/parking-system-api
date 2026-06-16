@@ -33,7 +33,7 @@ namespace PBMS.UnitTests
             { 
                 CardCode = "card-123", 
                 CardType = "PARKING_CARD",
-                RfidCode = "rfid-123"
+                NfcUid = "nfc-123"
             };
 
             // Thiết lập Mock: Trả về false khi kiểm tra xem CARD-123 đã tồn tại chưa
@@ -45,7 +45,7 @@ namespace PBMS.UnitTests
             // Assert
             Assert.NotNull(result);
             Assert.Equal("CARD-123", result.CardCode); // Code phải được Trim và UpperCase
-            Assert.Equal("rfid-123", result.RfidCode);
+            Assert.Equal("nfc-123", result.NfcUid);
             Assert.Equal("PARKING_CARD", result.CardType);
             Assert.Equal("Available", result.CardStatus); // Trạng thái mặc định
 

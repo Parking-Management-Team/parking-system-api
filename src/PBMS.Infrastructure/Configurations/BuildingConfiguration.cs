@@ -24,15 +24,6 @@ public class BuildingConfiguration : IEntityTypeConfiguration<Building>
             .ValueGeneratedOnAdd();
 
         // 3. Mã tòa nhà (Code) - bắt buộc, tối đa 20 ký tự, UNIQUE
-        builder.Property(b => b.Code)
-            .HasColumnName("building_code")
-            .HasMaxLength(20)
-            .IsRequired();
-
-        builder.HasIndex(b => b.Code)
-            .IsUnique()
-            .HasDatabaseName("IX_building_building_code");
-
         // 4. Tên tòa nhà (Name) - bắt buộc, tối đa 50 ký tự
         builder.Property(b => b.Name)
             .HasColumnName("building_name")

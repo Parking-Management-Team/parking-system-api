@@ -10,22 +10,22 @@ public class RevenueStatistic : BaseEntity
     /// <summary>
     /// Khóa ngoại liên kết tới tòa nhà/bãi xe được thống kê (Building).
     /// </summary>
-    public int BuildingId { get; set; }
+    public DateOnly StatDate { get; set; }
 
     /// <summary>
     /// Ngày bắt đầu chu kỳ thống kê.
     /// </summary>
-    public DateOnly StartDate { get; set; }
+    public int? VehicleTypeId { get; set; }
 
     /// <summary>
     /// Ngày kết thúc chu kỳ thống kê.
     /// </summary>
-    public DateOnly EndDate { get; set; }
+    public string? PaymentMethod { get; set; }
 
     /// <summary>
     /// Loại chu kỳ thống kê (Ví dụ: "DAILY", "MONTHLY", "YEARLY").
     /// </summary>
-    public string PeriodType { get; set; } = null!;
+    public int TotalPaymentsCount { get; set; }
 
     /// <summary>
     /// Tổng doanh thu thực nhận trong chu kỳ này.
@@ -35,17 +35,11 @@ public class RevenueStatistic : BaseEntity
     /// <summary>
     /// Tổng số lượt đặt chỗ (Booking) đã hoàn thành trong chu kỳ này.
     /// </summary>
-    public int TotalBookings { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// Tổng số lượt gửi xe (ParkingSession) đã hoàn thành trong chu kỳ này.
     /// </summary>
-    public int TotalSessions { get; set; }
-
-    /// <summary>
-    /// Tổng số lượt đăng ký/gia hạn vé tháng (MonthlySubscription) thành công trong chu kỳ này.
-    /// </summary>
-    public int TotalSubscriptions { get; set; }
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
@@ -54,7 +48,7 @@ public class RevenueStatistic : BaseEntity
     /// <summary>
     /// Thông tin tòa nhà/bãi xe được thống kê.
     /// </summary>
-    public virtual Building Building { get; set; } = null!;
+    public virtual VehicleType? VehicleType { get; set; }
 
     /// <summary>
     /// Danh sách liên kết Nhiều-Nhiều thông qua bảng trung gian với các giao dịch thanh toán (Payment).

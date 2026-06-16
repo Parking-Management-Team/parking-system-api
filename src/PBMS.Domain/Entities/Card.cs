@@ -47,7 +47,7 @@ public class Card : BaseEntity
     /// Ràng buộc: UNIQUE khi có giá trị (nullable unique).
     /// Độ dài tối đa: 50 ký tự (theo SRS varchar(50)).
     /// </summary>
-    public string? RfidCode { get; set; }
+    public string? NfcUid { get; set; }
 
     // -----------------------------------------------------------------------
     // PHÂN LOẠI VÀ TRẠNG THÁI
@@ -75,6 +75,8 @@ public class Card : BaseEntity
     /// Ví dụ: "Available", "Active", "Lost", "Blocked"
     /// </summary>
     public string CardStatus { get; set; } = Enums.CardStatus.Available.ToString();
+
+    public DateTime? UpdatedAt { get; set; }
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES (Quan hệ với các bảng khác)

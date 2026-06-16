@@ -17,11 +17,6 @@ public class BuildingRepository : BaseRepository<Building>, IBuildingRepository
         _dbContext = dbContext;
     }
 
-    public async Task<bool> BuildingCodeExistsAsync(string code)
-    {
-        return await AnyAsync(b => b.Code.ToLower() == code.ToLower());
-    }
-
     public async Task<Building?> GetBuildingWithDetailsAsync(int id)
     {
         return await _dbContext.Set<Building>()

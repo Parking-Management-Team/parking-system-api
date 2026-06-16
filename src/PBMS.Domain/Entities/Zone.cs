@@ -35,6 +35,8 @@ public class Zone : BaseEntity
     /// </summary>
     public int Capacity { get; set; }
 
+    public string ZoneAccessType { get; set; } = "GENERAL";
+
     /// <summary>
     /// Trạng thái hoạt động của khu vực.
     /// </summary>

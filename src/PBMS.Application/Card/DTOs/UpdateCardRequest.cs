@@ -20,7 +20,7 @@ public class UpdateCardRequest
     /// Tối đa 50 ký tự.
     /// </summary>
     [MaxLength(50, ErrorMessage = "Mã RFID không được vượt quá 50 ký tự.")]
-    public string? RfidCode { get; set; }
+    public string? NfcUid { get; set; }
 
     /// <summary>
     /// Loại thẻ mới. Tối đa 20 ký tự.

@@ -71,7 +71,7 @@ public class CardService : ICardService
         var card = new Domain.Entities.Card
         {
             CardCode = normalizedCode,
-            RfidCode = request.RfidCode?.Trim(), // Null nếu không có RFID
+            NfcUid = request.NfcUid?.Trim(),
             CardType = request.CardType.Trim(),
             CardStatus = Domain.Enums.CardStatus.Available.ToString()
             // CreatedAt được tự động set bởi BaseEntity (DateTime.UtcNow)
@@ -184,27 +184,27 @@ public class CardService : ICardService
 
         // Cập nhật từng trường nếu Client có gửi giá trị mới
         // Dùng pattern "chỉ cập nhật khi không null" để hỗ trợ partial update
-        if (request.RfidCode != null)
+        if (request.NfcUid != null)
         {
-            var trimmedRfid = request.RfidCode.Trim();
+            var trimmedNfcUid = request.NfcUid.Trim();
 
             // Kiểm tra RfidCode mới không trùng với thẻ khác
             // (bỏ qua nếu RfidCode mới trùng với RfidCode hiện tại của chính thẻ này)
-            if (trimmedRfid != card.RfidCode)
+            if (trimmedNfcUid != card.NfcUid)
             {
-                var rfidExists = await _cardRepository.AnyAsync(
-                    c => c.RfidCode == trimmedRfid && c.Id != id
+                var nfcUidExists = await _cardRepository.AnyAsync(
+                    c => c.NfcUid == trimmedNfcUid && c.Id != id
                 );
-                if (rfidExists)
+                if (nfcUidExists)
                 {
                     throw new DomainException(
-                        errorCode: "RFID_CODE_EXISTS",
-                        message: $"Mã RFID '{trimmedRfid}' đã được gán cho thẻ khác."
+                        errorCode: "NFC_UID_EXISTS",
+                        message: $"NFC UID '{trimmedNfcUid}' đã được gán cho thẻ khác."
                     );
                 }
             }
 
-            card.RfidCode = trimmedRfid;
+            card.NfcUid = trimmedNfcUid;
         }
 
         if (request.CardType != null)
@@ -279,10 +279,11 @@ public class CardService : ICardService
         {
             Id = card.Id,
             CardCode = card.CardCode,
-            RfidCode = card.RfidCode,
+            NfcUid = card.NfcUid,
             CardType = card.CardType,
             CardStatus = card.CardStatus,
-            CreatedAt = card.CreatedAt
+            CreatedAt = card.CreatedAt,
+            UpdatedAt = card.UpdatedAt
         };
     }
 }

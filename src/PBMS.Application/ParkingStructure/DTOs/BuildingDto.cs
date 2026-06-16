@@ -8,7 +8,6 @@ namespace PBMS.Application.ParkingStructure.DTOs;
 public class BuildingDto
 {
     public int Id { get; set; }
-    public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Address { get; set; }
     public int TotalFloor { get; set; }

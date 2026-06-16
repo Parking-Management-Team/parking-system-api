@@ -62,9 +62,11 @@ public class ZoneService : IZoneService
         var zone = new Zone
         {
             FloorId = request.FloorId,
+            Code = request.Code.Trim().ToUpper(),
             Name = request.Name,
             Capacity = request.Capacity,
             VehicleTypeId = request.VehicleTypeId,
+            ZoneAccessType = request.ZoneAccessType.Trim().ToUpper(),
             Status = Domain.Enums.ZoneStatus.Available
         };
 
@@ -170,9 +172,11 @@ public class ZoneService : IZoneService
         }
 
         // Cập nhật thuộc tính zone
+        zone.Code = request.Code.Trim().ToUpper();
         zone.Name = request.Name;
         zone.Capacity = request.Capacity;
         zone.VehicleTypeId = request.VehicleTypeId;
+        zone.ZoneAccessType = request.ZoneAccessType.Trim().ToUpper();
 
         _zoneRepository.Update(zone);
 

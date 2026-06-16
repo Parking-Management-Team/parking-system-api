@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616034428_AlignParkingSessionWithSrs")]
+    partial class AlignParkingSessionWithSrs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -692,12 +695,12 @@ namespace PBMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
                 {
-                    b.Property<int>("SessionId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasColumnName("session_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SessionId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("BookingId")
                         .HasColumnType("integer")
@@ -718,6 +721,12 @@ namespace PBMS.Infrastructure.Migrations
                     b.Property<DateTime?>("CheckOutTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("check_out_time");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<int?>("InStaffId")
                         .HasColumnType("integer")
@@ -742,6 +751,12 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("out_staff_id");
 
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<string>("SessionStatus")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -762,7 +777,7 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("zone_id");
 
-                    b.HasKey("SessionId");
+                    b.HasKey("Id");
 
                     b.HasIndex("BookingId")
                         .IsUnique()

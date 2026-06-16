@@ -14,15 +14,12 @@ public enum SlotStatus
     /// <summary>
     /// Vị trí đã được đặt trước thông qua Booking.
     /// </summary>
-    Reserved,
-
-    /// <summary>
-    /// Vị trí đang có xe đỗ.
-    /// </summary>
     Occupied,
 
     /// <summary>
     /// Vị trí bị khóa do bảo trì hoặc mục đích khác.
     /// </summary>
-    Blocked
+    Blocked,
+
+    Maintenance
 }

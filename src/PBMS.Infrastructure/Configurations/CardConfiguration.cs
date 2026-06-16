@@ -43,16 +43,16 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
             .HasDatabaseName("IX_card_card_code");
 
         // 4. Mã RFID mô phỏng (RfidCode) — tuỳ chọn, tối đa 50 ký tự, UNIQUE khi có giá trị
-        builder.Property(c => c.RfidCode)
-            .HasColumnName("rfid_code")
+        builder.Property(c => c.NfcUid)
+            .HasColumnName("nfc_uid")
             .HasMaxLength(50)
             .IsRequired(false); // NULL cho phép
 
         // Unique Index cho RfidCode — chỉ áp dụng khi giá trị khác NULL (Filtered Index)
-        builder.HasIndex(c => c.RfidCode)
+        builder.HasIndex(c => c.NfcUid)
             .IsUnique()
-            .HasFilter("rfid_code IS NOT NULL") // PostgreSQL: bỏ qua các bản ghi NULL
-            .HasDatabaseName("IX_card_rfid_code");
+            .HasFilter("nfc_uid IS NOT NULL")
+            .HasDatabaseName("IX_card_nfc_uid");
 
         // 5. Loại thẻ (CardType) — bắt buộc, tối đa 20 ký tự
         // Ví dụ giá trị: "PARKING_CARD", "ACCESS_CARD"
@@ -76,6 +76,9 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
+
+        builder.Property(c => c.UpdatedAt)
+            .HasColumnName("updated_at");
 
         // 8. Cột RowVersion (kế thừa từ BaseEntity) — kiểm soát xung đột đồng thời
         // Khi 2 người cùng sửa 1 thẻ, EF Core sẽ phát hiện và ném DbUpdateConcurrencyException

@@ -44,7 +44,7 @@ public class InMemoryParkingSessionService : IParkingSessionService
 
             var session = new ParkingSessionDto
             {
-                Id = _nextId++,
+                SessionId = _nextId++,
                 VehicleId = request.VehicleId,
                 BuildingId = request.BuildingId,
                 CardId = request.CardId,
@@ -106,7 +106,7 @@ public class InMemoryParkingSessionService : IParkingSessionService
                 return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be updated."));
             }
 
-            if (request.SlotId.HasValue && HasActive(s => s.Id != id && s.SlotId == request.SlotId))
+            if (request.SlotId.HasValue && HasActive(s => s.SessionId != id && s.SlotId == request.SlotId))
             {
                 return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("SLOT_IN_ACTIVE_SESSION", "Slot already has an active parking session."));
             }
@@ -185,7 +185,7 @@ public class InMemoryParkingSessionService : IParkingSessionService
         }
     }
 
-    private ParkingSessionDto? Find(int id) => _sessions.FirstOrDefault(s => s.Id == id);
+    private ParkingSessionDto? Find(int id) => _sessions.FirstOrDefault(s => s.SessionId == id);
 
     private bool HasActive(Func<ParkingSessionDto, bool> predicate) => _sessions.Any(s => IsActive(s) && predicate(s));
 

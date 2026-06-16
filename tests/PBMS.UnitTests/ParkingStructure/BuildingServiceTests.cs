@@ -31,15 +31,13 @@ public class BuildingServiceTests
         // Arrange
         var request = new BuildingCreateRequest
         {
-            Code = "BLD-01",
             Name = "Building 1",
             Address = "123 Street",
             TotalFloor = 5
         };
 
-        var buildingDto = new BuildingDto { Id = 1, Code = "BLD-01", Name = "Building 1" };
+        var buildingDto = new BuildingDto { Id = 1, Name = "Building 1" };
 
-        _buildingRepositoryMock.BuildingCodeExistsAsync(request.Code).Returns(false);
         _mapperMock.Map<BuildingDto>(Arg.Any<Building>()).Returns(buildingDto);
 
         // Act
@@ -47,20 +45,8 @@ public class BuildingServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(request.Code, result.Code);
+        Assert.Equal(request.Name, result.Name);
         await _buildingRepositoryMock.Received(1).AddAsync(Arg.Any<Building>());
-    }
-
-    [Fact]
-    public async Task CreateBuildingAsync_ShouldThrowValidationException_WhenCodeExists()
-    {
-        // Arrange
-        var request = new BuildingCreateRequest { Code = "EXISTING", Name = "Building" };
-        _buildingRepositoryMock.BuildingCodeExistsAsync(request.Code).Returns(true);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => _buildingService.CreateBuildingAsync(request));
-        Assert.Contains("already exists", exception.Message);
     }
 
     [Fact]
@@ -68,8 +54,8 @@ public class BuildingServiceTests
     {
         // Arrange
         int id = 1;
-        var building = new Building { Id = id, Code = "BLD-01" };
-        var buildingDto = new BuildingDto { Id = id, Code = "BLD-01" };
+        var building = new Building { Id = id, Name = "Building 1" };
+        var buildingDto = new BuildingDto { Id = id, Name = "Building 1" };
 
         _buildingRepositoryMock.GetByIdAsync(id).Returns(building);
         _mapperMock.Map<BuildingDto>(building).Returns(buildingDto);
@@ -87,12 +73,11 @@ public class BuildingServiceTests
     {
         // Arrange
         int id = 1;
-        var request = new BuildingUpdateRequest { Code = "NEW-CODE", Name = "New Name", Status = BuildingStatus.Available };
-        var existingBuilding = new Building { Id = id, Code = "OLD-CODE" };
-        var updatedDto = new BuildingDto { Id = id, Code = "NEW-CODE" };
+        var request = new BuildingUpdateRequest { Name = "New Name", Status = BuildingStatus.Available };
+        var existingBuilding = new Building { Id = id, Name = "Old Name" };
+        var updatedDto = new BuildingDto { Id = id, Name = "New Name" };
 
         _buildingRepositoryMock.GetByIdAsync(id).Returns(existingBuilding);
-        _buildingRepositoryMock.BuildingCodeExistsAsync(request.Code).Returns(false);
         _mapperMock.Map<BuildingDto>(existingBuilding).Returns(updatedDto);
 
         // Act
@@ -100,7 +85,7 @@ public class BuildingServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(request.Code, result.Code);
+        Assert.Equal(request.Name, result.Name);
         _buildingRepositoryMock.Received(1).Update(existingBuilding);
     }
 
@@ -109,7 +94,7 @@ public class BuildingServiceTests
     {
         // Arrange
         int id = 1;
-        var building = new Building { Id = id, Code = "BLD-01", Floors = new List<Floor>() };
+        var building = new Building { Id = id, Name = "Building 1", Floors = new List<Floor>() };
         _buildingRepositoryMock.GetBuildingWithDetailsAsync(id).Returns(building);
 
         // Act
@@ -127,7 +112,7 @@ public class BuildingServiceTests
         var building = new Building 
         { 
             Id = id, 
-            Code = "BLD-01", 
+            Name = "Building 1", 
             Floors = new List<Floor> { new Floor { Id = 1 } } 
         };
         _buildingRepositoryMock.GetBuildingWithDetailsAsync(id).Returns(building);

@@ -14,7 +14,7 @@ namespace PBMS.Infrastructure.Configurations
             // 1. Ánh xạ bảng vật lý và cấu hình ràng buộc kiểm tra CHECK
             builder.ToTable("payment", t => t.HasCheckConstraint(
                 "CK_Payment_Source",
-                "session_id IS NOT NULL OR booking_id IS NOT NULL OR monthly_subscription_id IS NOT NULL"
+                "(CASE WHEN session_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN booking_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN monthly_subscription_id IS NOT NULL THEN 1 ELSE 0 END) = 1"
             ));
 
             // 2. Khóa chính

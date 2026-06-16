@@ -25,7 +25,7 @@ public class ParkingSessionsController : ControllerBase
 
         var result = await _service.CreateAsync(request);
         return result.Success
-            ? CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result)
+            ? CreatedAtAction(nameof(GetById), new { id = result.Data?.SessionId }, result)
             : ToErrorResult(result.ErrorCode, result);
     }
 

@@ -92,7 +92,7 @@ public class ParkingSessionService : IParkingSessionService
         }
 
         if (request.SlotId.HasValue &&
-            await _sessionRepository.AnyAsync(s => s.Id != id && s.SlotId == request.SlotId && s.SessionStatus.ToUpper() == "ACTIVE"))
+            await _sessionRepository.AnyAsync(s => s.SessionId != id && s.SlotId == request.SlotId && s.SessionStatus.ToUpper() == "ACTIVE"))
         {
             return BaseResponse<ParkingSessionDto>.Fail("SLOT_IN_ACTIVE_SESSION", "Slot already has an active parking session.");
         }
@@ -177,7 +177,7 @@ public class ParkingSessionService : IParkingSessionService
 
     private static ParkingSessionDto Map(PBMS.Domain.Entities.ParkingSession session) => new()
     {
-        Id = session.Id,
+        SessionId = session.SessionId,
         VehicleId = session.VehicleId,
         BuildingId = session.BuildingId,
         CardId = session.CardId,
