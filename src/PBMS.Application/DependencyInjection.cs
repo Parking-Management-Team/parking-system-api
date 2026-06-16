@@ -12,6 +12,8 @@ using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Application.Pricing.Services;
 using PBMS.Application.Accounts;
+using PBMS.Application.MonthlyCard.Interfaces;
+using PBMS.Application.MonthlyCard.Services;
 
 namespace PBMS.Application;
 /// <summary>
@@ -34,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<ICardService, CardService>();
         services.AddScoped<IVehicleTypeService, VehicleTypeService>();
         services.AddScoped<IVehicleService, VehicleService>();
+        services.AddScoped<IMonthlySubscriptionService, MonthlySubscriptionService>();
 
         // TODO: Đăng ký các dịch vụ ứng dụng, handler, validator, mapper, v.v.
         // Ví dụ:

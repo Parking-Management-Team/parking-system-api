@@ -34,6 +34,7 @@ public static class DependencyInjection
 
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
+        services.AddScoped<IMonthlySubscriptionRepository, MonthlySubscriptionRepository>();
 
         //Google OauthServiceDI
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
