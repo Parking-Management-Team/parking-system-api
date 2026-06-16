@@ -1,36 +1,26 @@
-﻿{
+{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "http": {
+    "Supabase": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "launchBrowser": false,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5029",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ParkingSession__UseInMemoryStore": "true",
-        "Api__UseHttpsRedirection": "false"
+        "ConnectionStrings__DefaultConnection": "Host=aws-1-ap-southeast-2.pooler.supabase.com;Database=postgres;Username=postgres.umkabswquswaaheqvmxj;Password=ky5-nhom4-PBMS;SSL Mode=Require;Trust Server Certificate=true"
       }
     },
-    "parking-session-test": {
+    "Local": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "launchBrowser": false,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5029",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ParkingSession__UseInMemoryStore": "true",
-        "Api__UseHttpsRedirection": "false"
-      }
-    },
-    "https": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": false,
-      "applicationUrl": "https://localhost:7253;http://localhost:5029",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ParkingSession__UseInMemoryStore": "true"
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Database=pbms_local;Username=postgres;Password=YOUR_PASSWORD"
       }
     }
   }
