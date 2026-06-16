@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260611163816_AddVehicleNormalizedLicensePlate")]
+    partial class AddVehicleNormalizedLicensePlate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -335,7 +338,7 @@ namespace PBMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Active")
+                        .HasDefaultValue("Available")
                         .HasColumnName("building_status");
 
                     b.Property<int>("TotalFloor")
@@ -450,7 +453,7 @@ namespace PBMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Active")
+                        .HasDefaultValue("Available")
                         .HasColumnName("floor_status");
 
                     b.HasKey("Id");
@@ -625,9 +628,11 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDefaultValue("PENDING")
                         .HasColumnName("monthly_subscription_status");
 
-                    b.Property<DateTime?>("ActivatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("activated_at");
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer")
@@ -698,47 +703,17 @@ namespace PBMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime?>("ExpiredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expired_at");
-
-                    b.Property<int?>("BookingId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("BuildingId")
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CardId")
                         .HasColumnType("integer");
-
-                    b.Property<int>("CardId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CheckInTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("CheckOutTime")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("InStaffId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("LicensePlateIn")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("LicensePlateOut")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("MonthlySubscriptionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("OutStaffId")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<int?>("ParkingSlotId")
                         .HasColumnType("integer");
@@ -753,36 +728,19 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("SlotId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("VehicleId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ZoneId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BookingId");
-
-                    b.HasIndex("BuildingId");
-
                     b.HasIndex("CardId");
-
-                    b.HasIndex("InStaffId");
-
-                    b.HasIndex("MonthlySubscriptionId");
-
-                    b.HasIndex("OutStaffId");
 
                     b.HasIndex("ParkingSlotId");
 
-                    b.HasIndex("VehicleId");
+                    b.HasIndex("VehicleId")
+                        .HasDatabaseName("IX_ParkingSessions_VehicleId");
 
-                    b.HasIndex("ZoneId");
-
-                    b.ToTable("ParkingSessions");
+                    b.ToTable("ParkingSessions", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>
@@ -1257,11 +1215,7 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("vehicle_id");
 
-                    b.Property<string>("LicensePlate")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("license_plate");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("AccountId")
                         .HasColumnType("integer")
@@ -1370,14 +1324,6 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AccessType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("General")
-                        .HasColumnName("zone_access_type");
-
                     b.Property<int>("Capacity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1386,9 +1332,7 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("zone_code");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1426,16 +1370,11 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FloorId");
+
                     b.HasIndex("VehicleTypeId");
 
-                    b.HasIndex("FloorId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("IX_zone_floor_id_zone_code");
-
-                    b.ToTable("zone", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_zone_capacity", "capacity >= 0");
-                        });
+                    b.ToTable("zone", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Account", b =>
@@ -1602,65 +1541,23 @@ namespace PBMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
                 {
-                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
-                        .WithMany()
-                        .HasForeignKey("BookingId");
-
-                    b.HasOne("PBMS.Domain.Entities.Building", "Building")
-                        .WithMany()
-                        .HasForeignKey("BuildingId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("PBMS.Domain.Entities.Card", "Card")
                         .WithMany("ParkingSessions")
-                        .HasForeignKey("CardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("CardId");
 
-                    b.HasOne("PBMS.Domain.Entities.Account", "InStaff")
-                        .WithMany()
-                        .HasForeignKey("InStaffId");
-
-                    b.HasOne("PBMS.Domain.Entities.MonthlySubscription", "MonthlySubscription")
-                        .WithMany()
-                        .HasForeignKey("MonthlySubscriptionId");
-
-                    b.HasOne("PBMS.Domain.Entities.Account", "OutStaff")
-                        .WithMany()
-                        .HasForeignKey("OutStaffId");
-
-                    b.HasOne("PBMS.Domain.Entities.ParkingSlot", "ParkingSlot")
+                    b.HasOne("PBMS.Domain.Entities.ParkingSlot", null)
                         .WithMany("ParkingSessions")
                         .HasForeignKey("ParkingSlotId");
 
                     b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
                         .WithMany("ParkingSessions")
                         .HasForeignKey("VehicleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("PBMS.Domain.Entities.Zone", "Zone")
-                        .WithMany()
-                        .HasForeignKey("ZoneId");
-
-                    b.Navigation("Booking");
-
-                    b.Navigation("Building");
 
                     b.Navigation("Card");
 
-                    b.Navigation("InStaff");
-
-                    b.Navigation("MonthlySubscription");
-
-                    b.Navigation("OutStaff");
-
-                    b.Navigation("ParkingSlot");
-
                     b.Navigation("Vehicle");
-
-                    b.Navigation("Zone");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>

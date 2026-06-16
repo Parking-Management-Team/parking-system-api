@@ -24,7 +24,7 @@ public class AppDbContext : DbContext
     // phụ trách vào bên dưới dòng này.
     // Ví dụ: public DbSet<Zone> Zones { get; set; }
     // =======================================================
-
+    
     /// <summary>
     /// Tập hợp dữ liệu bảng Tài khoản (Accounts).
     /// </summary>

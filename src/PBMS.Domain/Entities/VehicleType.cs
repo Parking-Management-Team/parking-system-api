@@ -6,8 +6,13 @@ namespace PBMS.Domain.Entities;
 /// </summary>
 public class VehicleType : BaseEntity
 {
+    public const string StatusActive = "ACTIVE";
+    public const string StatusInactive = "INACTIVE";
+    public const string MotorcycleTypeName = "Motorcycle";
+    public const string CarTypeName = "Car";
+
     /// <summary>
-    /// Tên loại phương tiện (Ví dụ: "Motorcycle", "Car").       
+    /// Tên loại phương tiện (Ví dụ: "Motorcycle", "Car").
     /// Ràng buộc: UNIQUE, NOT NULL, varchar(50).
     /// </summary>
     public string TypeName { get; set; } = null!;
@@ -20,7 +25,7 @@ public class VehicleType : BaseEntity
     /// <summary>
     /// Trạng thái hoạt động của loại phương tiện (Ví dụ: "Active", "Inactive").
     /// </summary>
-    public string VehicleTypeStatus { get; set; } = "Active";    
+    public string VehicleTypeStatus { get; set; } = StatusActive;
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
@@ -32,7 +37,7 @@ public class VehicleType : BaseEntity
     public virtual ICollection<ParkingSlot> ParkingSlots { get; set; } = new List<ParkingSlot>();
 
     /// <summary>
-    /// Danh sách các xe (Vehicle) thuộc loại phương tiện này.   
+    /// Danh sách các xe (Vehicle) thuộc loại phương tiện này.
     /// </summary>
     public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 
