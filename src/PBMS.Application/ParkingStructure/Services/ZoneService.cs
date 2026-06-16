@@ -88,7 +88,7 @@ public class ZoneService : IZoneService
 
             // Nếu là loại xe ô tô, tự động tạo các Slot tương ứng với Capacity
             // Dựa trên SRS §6.1, §6.4 và yêu cầu người dùng
-            if (vehicleType.Name.Contains("Ô tô") || vehicleType.Name.ToLower().Contains("car"))
+            if (vehicleType.TypeName.Contains("Ô tô") || vehicleType.TypeName.ToLower().Contains("car"))
             {
                 for (int i = 1; i <= request.Capacity; i++)
                 {

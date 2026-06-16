@@ -52,6 +52,9 @@ public static class DependencyInjection
         // Đăng ký repository Building
         services.AddScoped<IBuildingRepository, BuildingRepository>();
 
+        // Pricing — Repository
+        services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+
         return services;
     }
 }

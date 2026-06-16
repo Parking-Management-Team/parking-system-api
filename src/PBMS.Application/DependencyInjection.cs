@@ -5,6 +5,9 @@ using PBMS.Application.Card.Interfaces;
 using PBMS.Application.Card.Services;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
+using PBMS.Application.Pricing.Interfaces;
+using PBMS.Application.Pricing.Services;
+using PBMS.Application.Accounts;
 
 namespace PBMS.Application;
 /// <summary>
@@ -34,6 +37,11 @@ public static class DependencyInjection
         services.AddScoped<IFloorService, FloorService>();
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
         services.AddScoped<IBuildingService, BuildingService>();
+
+        // Pricing module
+        services.AddScoped<IPricingPolicyService, PricingPolicyService>();
+        services.AddScoped<IFeeCalculationService, FeeCalculationService>();
+        services.AddScoped<IAccountService, AccountService>();
         return services;
     }
 }

@@ -2,8 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
 using PBMS.Infrastructure.Data;
-using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PBMS.Infrastructure.Repositories
@@ -31,10 +30,30 @@ namespace PBMS.Infrastructure.Repositories
 
             var normalizedEmail = email.Trim().ToLower();
 
-            // Truy vấn trực tiếp từ Database Supabase và nạp kèm thông tin Role
+            // Truy vấn trực tiếp từ Database và nạp kèm thông tin Role
             return await _dbSet
                 .Include(a => a.Role)
                 .FirstOrDefaultAsync(a => a.Email != null && a.Email.ToLower() == normalizedEmail);
+        }
+
+        /// <summary>
+        /// Lấy toàn bộ danh sách tài khoản kèm theo thông tin vai trò (Role).
+        /// </summary>
+        public async Task<IEnumerable<Account>> GetAllWithRolesAsync()
+        {
+            return await _dbSet
+                .Include(a => a.Role)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Tìm kiếm tài khoản theo ID kèm theo thông tin vai trò (Role).
+        /// </summary>
+        public async Task<Account?> GetByIdWithRoleAsync(int id)
+        {
+            return await _dbSet
+                .Include(a => a.Role)
+                .FirstOrDefaultAsync(a => a.Id == id);
         }
     }
 }
