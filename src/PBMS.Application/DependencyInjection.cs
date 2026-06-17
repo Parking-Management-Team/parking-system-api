@@ -12,6 +12,10 @@ using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Application.Pricing.Services;
 using PBMS.Application.Accounts;
+using PBMS.Application.Blacklist.Interfaces;
+using PBMS.Application.Blacklist.Services;
+using PBMS.Application.Incident.Interfaces;
+using PBMS.Application.Incident.Services;
 
 namespace PBMS.Application;
 /// <summary>
@@ -43,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IFloorService, FloorService>();
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
         services.AddScoped<IBuildingService, BuildingService>();
+        services.AddScoped<IBlacklistService, BlacklistService>();
+        services.AddScoped<IIncidentService, IncidentService>();
+        services.AddScoped<IIncidentTypeService, IncidentTypeService>();
 
         // Pricing module
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();

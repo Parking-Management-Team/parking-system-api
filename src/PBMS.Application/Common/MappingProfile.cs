@@ -1,4 +1,6 @@
 using AutoMapper;
+using PBMS.Application.Blacklist.DTOs;
+using PBMS.Application.Incident.DTOs;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Domain.Entities;
 
@@ -30,5 +32,15 @@ public class MappingProfile : Profile
         CreateMap<Building, BuildingDto>();
         CreateMap<BuildingCreateRequest, Building>();
         CreateMap<BuildingUpdateRequest, Building>();
+
+        CreateMap<PBMS.Domain.Entities.Blacklist, BlacklistDto>()
+            .ForMember(dest => dest.LicensePlate, opt => opt.MapFrom(src => src.Vehicle != null ? src.Vehicle.LicensePlate : null))
+            .ForMember(dest => dest.CardCode, opt => opt.MapFrom(src => src.Card != null ? src.Card.CardCode : null));
+
+        // Incident mappings
+        CreateMap<PBMS.Domain.Entities.Incident, IncidentDto>()
+            .ForMember(dest => dest.IncidentName, opt => opt.MapFrom(src => src.IncidentType.IncidentName))
+            .ForMember(dest => dest.LicensePlate, opt => opt.MapFrom(src => src.Session.LicensePlateIn));
+        CreateMap<IncidentType, IncidentTypeDto>();
     }
 }

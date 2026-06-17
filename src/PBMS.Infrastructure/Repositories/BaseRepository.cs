@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Contracts;
+using PBMS.Domain.Entities;
 using PBMS.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
@@ -9,23 +12,27 @@ using System.Threading.Tasks;
 
 namespace PBMS.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Triển khai generic lớp BaseRepository làm nền tảng cho toàn bộ Repository sau này.
-    /// Giúp loại bỏ việc viết lặp lại các lệnh thêm, xóa, sửa, tìm kiếm cơ bản bằng EF Core.
-    /// </summary>
-    /// <typeparam name="TEntity">Thực thể tương ứng trong C# (ví dụ: Account, Role, ...)</typeparam>
     public class BaseRepository<TEntity> : IRepository<TEntity> where TEntity : class
     {
-        // AppDbContext quản lý kết nối và phiên làm việc với database
         protected readonly AppDbContext _context;
-        // DbSet đại diện cho tập hợp (bảng) thực thể cụ thể trong database
         protected readonly DbSet<TEntity> _dbSet;
+        private readonly IServiceProvider _serviceProvider;
 
-        // Constructor nhận vào AppDbContext thông qua cơ chế Dependency Injection
-        public BaseRepository(AppDbContext context)
+        public BaseRepository(AppDbContext context, IServiceProvider serviceProvider = null!)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
-            _dbSet = _context.Set<TEntity>(); // Trỏ DbSet đến bảng tương ứng của TEntity
+            _dbSet = _context.Set<TEntity>();
+            _serviceProvider = serviceProvider;
+        }
+
+        private int? GetCurrentUserId()
+        {
+            if (_serviceProvider != null)
+            {
+                var currentUserService = _serviceProvider.GetService<ICurrentUserService>();
+                return currentUserService?.UserId;
+            }
+            return null;
         }
 
         // 1. Tìm bản ghi theo ID khóa chính (Asynchronous)
@@ -76,17 +83,40 @@ namespace PBMS.Infrastructure.Repositories
             _dbSet.UpdateRange(entities);
         }
 
-        // 9. Xóa một bản ghi khỏi DB
+        // 9. Xóa một bản ghi khỏi DB (Hoặc Xóa mềm)
         public virtual async Task RemoveAsync(TEntity entity)
         {
-            _dbSet.Remove(entity);
+            if (entity is PBMS.Domain.Entities.ISoftDeletable softDeletable)
+            {
+                softDeletable.IsDeleted = true;
+                softDeletable.DeletedAt = DateTime.UtcNow;
+                softDeletable.DeletedBy = GetCurrentUserId();
+                _context.Entry(entity).State = EntityState.Modified;
+            }
+            else
+            {
+                _dbSet.Remove(entity);
+            }
             await Task.CompletedTask;
         }
 
-        // 10. Xóa một danh sách bản ghi khỏi DB
+        // 10. Xóa một danh sách bản ghi khỏi DB (Hoặc Xóa mềm)
         public virtual async Task RemoveRangeAsync(IEnumerable<TEntity> entities)
         {
-            _dbSet.RemoveRange(entities);
+            foreach (var entity in entities)
+            {
+                if (entity is PBMS.Domain.Entities.ISoftDeletable softDeletable)
+                {
+                    softDeletable.IsDeleted = true;
+                    softDeletable.DeletedAt = DateTime.UtcNow;
+                    softDeletable.DeletedBy = GetCurrentUserId();
+                    _context.Entry(entity).State = EntityState.Modified;
+                }
+                else
+                {
+                    _dbSet.Remove(entity);
+                }
+            }
             await Task.CompletedTask;
         }
 

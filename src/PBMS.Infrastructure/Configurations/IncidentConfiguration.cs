@@ -41,11 +41,12 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("penalty_fee")
                 .HasPrecision(18, 2);
 
-            // 7. Trạng thái sự cố (IncidentStatus) - tối đa 20 ký tự, mặc định "Reported"
-            builder.Property(i => i.IncidentStatus)
+            // 7. Trạng thái sự cố (Status) - lưu dưới dạng string, tối đa 20 ký tự, mặc định "Open"
+            builder.Property(i => i.Status)
                 .HasColumnName("incident_status")
                 .HasMaxLength(20)
-                .HasDefaultValue("Reported")
+                .HasConversion<string>()
+                .HasDefaultValue(PBMS.Domain.Enums.IncidentStatus.Open)
                 .IsRequired();
 
             // 8. Thời điểm xử lý xong sự cố (ResolvedAt)
@@ -61,6 +62,18 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("created_at")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
+
+            // 11. Soft Delete columns
+            builder.Property(i => i.IsDeleted)
+                .HasColumnName("is_deleted")
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            builder.Property(i => i.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            builder.Property(i => i.DeletedBy)
+                .HasColumnName("deleted_by");
 
             // =======================================================================
             // Cấu hình các mối quan hệ (Relationships)

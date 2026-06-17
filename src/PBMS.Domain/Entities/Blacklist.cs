@@ -5,7 +5,7 @@ namespace PBMS.Domain.Entities;
 /// Kế thừa từ BaseEntity (Id, CreatedAt, RowVersion).
 /// Tham chiếu SRS: §8.3.3.15 — Physical Model: blacklist
 /// </summary>
-public class Blacklist : BaseEntity
+public class Blacklist : BaseEntity, ISoftDeletable
 {
     /// <summary>
     /// Khóa ngoại liên kết tới xe bị chặn (Vehicle).
@@ -29,6 +29,13 @@ public class Blacklist : BaseEntity
     /// Lý do đưa xe, thẻ hoặc sự cố này vào danh sách chặn.
     /// </summary>
     public string Reason { get; set; } = null!;
+
+    // -----------------------------------------------------------------------
+    // SOFT DELETE PROPERTIES
+    // -----------------------------------------------------------------------
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public int? DeletedBy { get; set; }
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
