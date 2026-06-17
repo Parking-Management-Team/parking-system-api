@@ -60,8 +60,8 @@ public static class DependencyInjection
         // Pricing — Repository
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 
-        // PayOS Gateway
-        services.AddScoped<IPayOSGateway, PayOSGateway>();
+        // VNPay Gateway
+        services.AddScoped<IVNPayGateway, VNPayGateway>();
 
 
 

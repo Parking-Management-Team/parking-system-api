@@ -15,7 +15,7 @@ public interface IPaymentService
     Task<BaseResponse<PaymentResponseDto>> CreatePaymentAsync(CreatePaymentRequest request);
 
     /// <summary>
-    /// Xử lý dữ liệu Webhook từ cổng thanh toán PayOS gọi về.
+    /// Xử lý dữ liệu phản hồi (IPN) tự động từ cổng thanh toán VNPay gọi về.
     /// </summary>
-    Task<BaseResponse<string>> ProcessWebhookAsync(PayOSWebhookRequest webhookRequest);
+    Task<BaseResponse<string>> ProcessVNPayIPNAsync(System.Collections.Generic.SortedDictionary<string, string> vnpayData);
 }

@@ -22,7 +22,7 @@ public class PaymentService : IPaymentService
     private readonly IRepository<Booking> _bookingRepository;
     private readonly IRepository<MonthlySubscription> _subscriptionRepository;
     private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
-    private readonly IPayOSGateway _payOSGateway;
+    private readonly IVNPayGateway _vnpayGateway;
     private readonly IParkingSessionService _sessionService;
     private readonly IFeeCalculationService _feeCalculationService;
     private readonly IConfiguration _configuration;
@@ -33,7 +33,7 @@ public class PaymentService : IPaymentService
         IRepository<Booking> bookingRepository,
         IRepository<MonthlySubscription> subscriptionRepository,
         IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
-        IPayOSGateway payOSGateway,
+        IVNPayGateway vnpayGateway,
         IParkingSessionService sessionService,
         IFeeCalculationService feeCalculationService,
         IConfiguration configuration)
@@ -43,7 +43,7 @@ public class PaymentService : IPaymentService
         _bookingRepository = bookingRepository;
         _subscriptionRepository = subscriptionRepository;
         _vehicleRepository = vehicleRepository;
-        _payOSGateway = payOSGateway;
+        _vnpayGateway = vnpayGateway;
         _sessionService = sessionService;
         _feeCalculationService = feeCalculationService;
         _configuration = configuration;
@@ -154,9 +154,9 @@ public class PaymentService : IPaymentService
         }
         else if (method == "ONLINE_BANKING")
         {
-            // --- Luồng Thanh toán Online qua Ngân hàng (Không làm tròn tiền) ---
-            // Sinh mã orderCode ngẫu nhiên duy nhất cho PayOS (số nguyên 64-bit)
-            long orderCode = new Random().NextInt64(100000000000000, 999999999999999);
+            // --- Luồng Thanh toán Online qua VNPay ---
+            // Sinh mã orderCode số nguyên 64-bit ngẫu nhiên duy nhất
+            long orderCode = new Random().NextInt64(10000000, 99999999);
 
             var payment = new PBMS.Domain.Entities.Payment
             {
@@ -174,14 +174,15 @@ public class PaymentService : IPaymentService
 
             try
             {
-                // Gọi tới PayOS Gateway để tạo link chuyển khoản ngân hàng
-                var (checkoutUrl, qrCode) = await _payOSGateway.CreatePaymentLinkAsync(orderCode, originalAmount, description);
+                // Gọi tới VNPay Gateway để tạo URL thanh toán
+                // Giả lập địa chỉ IP khách hàng là 127.0.0.1 nếu chạy test local
+                string paymentUrl = _vnpayGateway.CreatePaymentUrl(orderCode, originalAmount, description, "127.0.0.1");
 
                 var responseDto = MapToDto(payment);
-                responseDto.PaymentUrl = checkoutUrl;
-                responseDto.QrCodeUrl = qrCode;
+                responseDto.PaymentUrl = paymentUrl;
+                responseDto.QrCodeUrl = ""; // VNPay đã tích hợp sẵn QR trong trang thanh toán
 
-                return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Tạo liên kết thanh toán chuyển khoản ngân hàng thành công.");
+                return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Tạo liên kết thanh toán VNPay thành công.");
             }
             catch (Exception ex)
             {
@@ -190,7 +191,7 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
-                return BaseResponse<PaymentResponseDto>.Fail("GATEWAY_ERROR", "Lỗi từ cổng thanh toán PayOS: " + ex.Message);
+                return BaseResponse<PaymentResponseDto>.Fail("GATEWAY_ERROR", "Lỗi từ cổng thanh toán VNPay: " + ex.Message);
             }
         }
 
@@ -198,37 +199,43 @@ public class PaymentService : IPaymentService
     }
 
     /// <summary>
-    /// Xử lý Webhook PayOS phản hồi chuyển khoản thành công.
+    /// Xử lý IPN callback từ VNPay phản hồi chuyển khoản.
     /// </summary>
-    public async Task<BaseResponse<string>> ProcessWebhookAsync(PayOSWebhookRequest webhookRequest)
+    public async Task<BaseResponse<string>> ProcessVNPayIPNAsync(System.Collections.Generic.SortedDictionary<string, string> vnpayData)
     {
-        var data = webhookRequest.Data;
-
-        // 1. Sắp xếp các tham số của data theo bảng chữ cái để tạo chuỗi xác thực chữ ký Webhook
-        // Theo chuẩn PayOS: amount=value&description=value&orderCode=value&reference=value&status=value
-        var dataString = $"amount={(int)data.Amount}&description={data.Description}&orderCode={data.OrderCode}&reference={data.Reference}&status={data.Status}";
-
-        // 2. Xác thực tính toàn vẹn của chữ ký số từ PayOS
-        bool isSignatureValid = _payOSGateway.VerifyWebhookSignature(dataString, webhookRequest.Signature);
-        if (!isSignatureValid)
+        if (!vnpayData.TryGetValue("vnp_SecureHash", out string? secureHash) || string.IsNullOrEmpty(secureHash))
         {
-            return BaseResponse<string>.Fail("INVALID_SIGNATURE", "Xác thực chữ ký số Webhook thất bại. Dữ liệu bị giả mạo.");
+            return BaseResponse<string>.Fail("MISSING_SIGNATURE", "Không tìm thấy chữ ký bảo mật vnp_SecureHash.");
         }
 
-        // 3. Nếu trạng thái giao dịch từ cổng là PAID
-        if (data.Status.ToUpper() == "PAID" || webhookRequest.Code == "00")
+        // 1. Xác thực tính toàn vẹn của chữ ký số từ VNPay
+        bool isSignatureValid = _vnpayGateway.VerifySignature(vnpayData, secureHash);
+        if (!isSignatureValid)
         {
-            // Tìm giao dịch thanh toán trong hệ thống qua orderCode
-            var payment = (await _paymentRepository.FindAsync(p => p.OrderCode == data.OrderCode)).FirstOrDefault();
+            return BaseResponse<string>.Fail("INVALID_SIGNATURE", "Xác thực chữ ký số VNPay IPN thất bại.");
+        }
 
-            if (payment == null)
-            {
-                return BaseResponse<string>.Fail("PAYMENT_NOT_FOUND", $"Không tìm thấy giao dịch tương ứng với mã đơn hàng {data.OrderCode} trong hệ thống.");
-            }
+        // 2. Đọc mã đơn hàng vnp_TxnRef
+        if (!vnpayData.TryGetValue("vnp_TxnRef", out string? txnRef) || !long.TryParse(txnRef, out long orderCode))
+        {
+            return BaseResponse<string>.Fail("INVALID_TXN_REF", "Mã giao dịch vnp_TxnRef không hợp lệ.");
+        }
 
-            if (payment.PaymentStatus == "PENDING")
+        // Tìm giao dịch thanh toán trong hệ thống qua orderCode
+        var payment = (await _paymentRepository.FindAsync(p => p.OrderCode == orderCode)).FirstOrDefault();
+        if (payment == null)
+        {
+            return BaseResponse<string>.Fail("PAYMENT_NOT_FOUND", $"Không tìm thấy giao dịch với mã đơn hàng {orderCode}.");
+        }
+
+        if (payment.PaymentStatus == "PENDING")
+        {
+            vnpayData.TryGetValue("vnp_ResponseCode", out string? responseCode);
+            vnpayData.TryGetValue("vnp_TransactionStatus", out string? transactionStatus);
+
+            // "00" biểu thị giao dịch thanh toán thành công trong VNPay
+            if (responseCode == "00" && transactionStatus == "00")
             {
-                // Cập nhật trạng thái giao dịch
                 payment.PaymentStatus = "PAID";
                 payment.PaymentTime = DateTime.UtcNow;
                 _paymentRepository.Update(payment);
@@ -237,11 +244,19 @@ public class PaymentService : IPaymentService
                 // Hoàn tất luồng nghiệp vụ tương ứng
                 await CompleteBusinessFlowAsync(payment);
 
-                return BaseResponse<string>.Ok("SUCCESS", "Xử lý xác nhận thanh toán Webhook thành công.");
+                return BaseResponse<string>.Ok("00", "Confirm success");
+            }
+            else
+            {
+                payment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(payment);
+                await _paymentRepository.SaveChangesAsync();
+
+                return BaseResponse<string>.Fail("PAYMENT_FAILED", $"Thanh toán thất bại từ VNPay, mã phản hồi: {responseCode}");
             }
         }
 
-        return BaseResponse<string>.Ok("IGNORED", "Giao dịch không ở trạng thái thành công hoặc đã xử lý từ trước.");
+        return BaseResponse<string>.Ok("02", "Order already confirmed");
     }
 
     /// <summary>

@@ -17,7 +17,6 @@ namespace PBMS.API.Controllers
     {
         private readonly IPaymentService _paymentService;
 
-        // Constructor thực hiện inject dịch vụ IPaymentService đã được đăng ký DI trước đó
         public PaymentsController(IPaymentService paymentService)
         {
             _paymentService = paymentService ?? throw new ArgumentNullException(nameof(paymentService));
@@ -27,8 +26,6 @@ namespace PBMS.API.Controllers
         /// API tạo một yêu cầu thanh toán mới (CASH hoặc ONLINE_BANKING).
         /// Route: POST /api/payments
         /// </summary>
-        /// <param name="request">DTO chứa phương thức thanh toán và nguồn thanh toán (Lượt đỗ/Booking/Vé tháng).</param>
-        /// <returns>Thông tin giao dịch được tạo kèm link QR nếu chọn chuyển khoản ngân hàng.</returns>
         [HttpPost]
         public async Task<ActionResult<BaseResponse<PaymentResponseDto>>> CreatePayment([FromBody] CreatePaymentRequest request)
         {
@@ -43,22 +40,41 @@ namespace PBMS.API.Controllers
         }
 
         /// <summary>
-        /// API Endpoint nhận Webhook callback tự động từ cổng PayOS khi chuyển khoản thành công.
-        /// Route: POST /api/payments/callback
+        /// API Endpoint nhận IPN callback tự động từ VNPay khi chuyển khoản thành công.
+        /// Route: GET /api/payments/callback
         /// </summary>
-        /// <param name="webhookRequest">Mẫu dữ liệu chuẩn hóa của webhook kèm chữ ký mã hóa từ PayOS.</param>
-        /// <returns>Xác nhận xử lý thành công hoặc thông báo lỗi chữ ký giả mạo.</returns>
-        [HttpPost("callback")]
-        public async Task<ActionResult<BaseResponse<string>>> PayOSCallback([FromBody] PayOSWebhookRequest webhookRequest)
+        [HttpGet("callback")]
+        public async Task<IActionResult> VNPayIPNCallback()
         {
-            var response = await _paymentService.ProcessWebhookAsync(webhookRequest);
-
-            if (!response.Success)
+            var collections = Request.Query;
+            var vnpayData = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            
+            foreach (var key in collections.Keys)
             {
-                return BadRequest(response);
+                if (!string.IsNullOrEmpty(key) && key.StartsWith("vnp_"))
+                {
+                    vnpayData.Add(key, collections[key]!);
+                }
             }
 
-            return Ok(response);
+            var response = await _paymentService.ProcessVNPayIPNAsync(vnpayData);
+
+            if (response.Success)
+            {
+                // Trả về định dạng JSON bắt buộc của VNPay để hoàn tất ghi nhận
+                return Ok(new { RspCode = "00", Message = "Confirm success" });
+            }
+
+            // Map mã lỗi theo đặc tả VNPay IPN
+            string rspCode = response.ErrorCode switch
+            {
+                "INVALID_SIGNATURE" => "97",
+                "PAYMENT_NOT_FOUND" => "01",
+                "ORDER_ALREADY_CONFIRMED" => "02",
+                _ => "99"
+            };
+
+            return Ok(new { RspCode = rspCode, Message = response.Message ?? "Error occurred" });
         }
     }
 }
