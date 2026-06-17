@@ -3,6 +3,8 @@ using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Auth.Services;
 using PBMS.Application.Card.Interfaces;
 using PBMS.Application.Card.Services;
+using PBMS.Application.ParkingSession.Interfaces;
+using PBMS.Application.ParkingSession.Services;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Accounts;
@@ -34,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IZoneService, ZoneService>();
         services.AddScoped<IFloorService, FloorService>();
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
+        services.AddScoped<IParkingSessionService, ParkingSessionService>();
         services.AddScoped<IBuildingService, BuildingService>();
         services.AddScoped<IAccountService, AccountService>();
         return services;

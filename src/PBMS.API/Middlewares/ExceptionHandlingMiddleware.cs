@@ -52,6 +52,9 @@ namespace PBMS.API.Middlewares
         /// <returns>A task representing the asynchronous operation.</returns>
         private static Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
+            Console.WriteLine("--> Unhandled exception:");
+            Console.WriteLine(exception);
+
             context.Response.ContentType = "application/json";
 
             // Initialize response properties
