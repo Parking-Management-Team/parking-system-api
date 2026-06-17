@@ -47,31 +47,25 @@ public class VNPayGateway : IVNPayGateway
             { "vnp_TxnRef", orderCode.ToString() }
         };
 
-        var signDataBuilder = new StringBuilder();
         var queryBuilder = new StringBuilder();
 
         foreach (var kvp in vnpayParams)
         {
             if (!string.IsNullOrEmpty(kvp.Value))
             {
-                // Chuỗi hash dùng dữ liệu thô (raw key-value), không qua UrlEncode
-                signDataBuilder.Append(kvp.Key).Append('=').Append(kvp.Value).Append('&');
-
-                // Chuỗi query redirect bắt buộc UrlEncode (chuyển khoảng trắng thành %20)
-                string keyEncoded = WebUtility.UrlEncode(kvp.Key).Replace("+", "%20");
-                string valueEncoded = WebUtility.UrlEncode(kvp.Value).Replace("+", "%20");
+                string keyEncoded = WebUtility.UrlEncode(kvp.Key);
+                string valueEncoded = WebUtility.UrlEncode(kvp.Value);
                 queryBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
             }
         }
 
         // Loại bỏ ký tự '&' ở cuối
-        if (signDataBuilder.Length > 0)
+        if (queryBuilder.Length > 0)
         {
-            signDataBuilder.Length--;
             queryBuilder.Length--;
         }
 
-        string signData = signDataBuilder.ToString();
+        string signData = queryBuilder.ToString();
         string secureHash = CalculateHmacSha512(_hashSecret, signData);
 
         return $"{_baseUrl}?{queryBuilder}&vnp_SecureHash={secureHash}";
@@ -87,8 +81,9 @@ public class VNPayGateway : IVNPayGateway
         {
             if (!string.IsNullOrEmpty(kvp.Value) && !kvp.Key.Equals("vnp_SecureHash") && !kvp.Key.Equals("vnp_SecureHashType"))
             {
-                // Chuỗi hash xác thực dùng dữ liệu thô (raw key-value), không qua UrlEncode
-                signDataBuilder.Append(kvp.Key).Append('=').Append(kvp.Value).Append('&');
+                string keyEncoded = WebUtility.UrlEncode(kvp.Key);
+                string valueEncoded = WebUtility.UrlEncode(kvp.Value);
+                signDataBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
             }
         }
 
