@@ -37,7 +37,7 @@ public class VNPayGateway : IVNPayGateway
             { "vnp_Command", "pay" },
             { "vnp_TmnCode", _tmnCode },
             { "vnp_Amount", ((long)(amount * 100)).ToString() }, // Đơn vị tiền tệ VNPay nhân 100
-            { "vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss") },
+            { "vnp_CreateDate", DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmss") },
             { "vnp_CurrCode", "VND" },
             { "vnp_IpAddr", string.IsNullOrEmpty(ipAddress) ? "127.0.0.1" : ipAddress },
             { "vnp_Locale", "vn" },
@@ -54,9 +54,9 @@ public class VNPayGateway : IVNPayGateway
          {
             if (!string.IsNullOrEmpty(kvp.Value))
             {
-                // Mã hóa URL theo tiêu chuẩn của VNPay (khoảng trắng chuyển đổi thành + hoặc %20)
-                string keyEncoded = WebUtility.UrlEncode(kvp.Key);
-                string valueEncoded = WebUtility.UrlEncode(kvp.Value);
+                // Mã hóa URL theo tiêu chuẩn của VNPay (khoảng trắng chuyển đổi thành %20)
+                string keyEncoded = WebUtility.UrlEncode(kvp.Key).Replace("+", "%20");
+                string valueEncoded = WebUtility.UrlEncode(kvp.Value).Replace("+", "%20");
 
                 signDataBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
                 queryBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
@@ -86,8 +86,8 @@ public class VNPayGateway : IVNPayGateway
         {
             if (!string.IsNullOrEmpty(kvp.Value) && !kvp.Key.Equals("vnp_SecureHash") && !kvp.Key.Equals("vnp_SecureHashType"))
             {
-                string keyEncoded = WebUtility.UrlEncode(kvp.Key);
-                string valueEncoded = WebUtility.UrlEncode(kvp.Value);
+                string keyEncoded = WebUtility.UrlEncode(kvp.Key).Replace("+", "%20");
+                string valueEncoded = WebUtility.UrlEncode(kvp.Value).Replace("+", "%20");
                 signDataBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
             }
         }

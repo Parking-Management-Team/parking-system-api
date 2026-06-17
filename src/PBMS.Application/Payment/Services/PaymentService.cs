@@ -252,7 +252,7 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
-                return BaseResponse<string>.Fail("PAYMENT_FAILED", $"Thanh toán thất bại từ VNPay, mã phản hồi: {responseCode}");
+                return BaseResponse<string>.Ok("00", $"Thanh toán thất bại từ VNPay, mã phản hồi: {responseCode}");
             }
         }
 

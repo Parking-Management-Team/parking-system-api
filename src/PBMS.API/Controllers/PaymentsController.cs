@@ -62,7 +62,7 @@ namespace PBMS.API.Controllers
             if (response.Success)
             {
                 // Trả về định dạng JSON bắt buộc của VNPay để hoàn tất ghi nhận
-                return Ok(new { RspCode = "00", Message = "Confirm success" });
+                return Ok(new { RspCode = response.Data ?? "00", Message = response.Message ?? "Confirm success" });
             }
 
             // Map mã lỗi theo đặc tả VNPay IPN
