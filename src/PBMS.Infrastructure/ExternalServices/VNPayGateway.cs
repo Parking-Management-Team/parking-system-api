@@ -51,14 +51,15 @@ public class VNPayGateway : IVNPayGateway
         var queryBuilder = new StringBuilder();
 
         foreach (var kvp in vnpayParams)
-         {
+        {
             if (!string.IsNullOrEmpty(kvp.Value))
             {
-                // Mã hóa URL theo tiêu chuẩn của VNPay (khoảng trắng chuyển đổi thành %20)
+                // Chuỗi hash dùng dữ liệu thô (raw key-value), không qua UrlEncode
+                signDataBuilder.Append(kvp.Key).Append('=').Append(kvp.Value).Append('&');
+
+                // Chuỗi query redirect bắt buộc UrlEncode (chuyển khoảng trắng thành %20)
                 string keyEncoded = WebUtility.UrlEncode(kvp.Key).Replace("+", "%20");
                 string valueEncoded = WebUtility.UrlEncode(kvp.Value).Replace("+", "%20");
-
-                signDataBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
                 queryBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
             }
         }
@@ -86,9 +87,8 @@ public class VNPayGateway : IVNPayGateway
         {
             if (!string.IsNullOrEmpty(kvp.Value) && !kvp.Key.Equals("vnp_SecureHash") && !kvp.Key.Equals("vnp_SecureHashType"))
             {
-                string keyEncoded = WebUtility.UrlEncode(kvp.Key).Replace("+", "%20");
-                string valueEncoded = WebUtility.UrlEncode(kvp.Value).Replace("+", "%20");
-                signDataBuilder.Append(keyEncoded).Append('=').Append(valueEncoded).Append('&');
+                // Chuỗi hash xác thực dùng dữ liệu thô (raw key-value), không qua UrlEncode
+                signDataBuilder.Append(kvp.Key).Append('=').Append(kvp.Value).Append('&');
             }
         }
 
