@@ -15,10 +15,10 @@ public static class DbInitializer
         {
             var roles = new List<Role>
             {
-                new Role { RoleName = "Admin", Description = "Hệ thống quản trị" },
-                new Role { RoleName = "Manager", Description = "Quản lý bãi xe" },
-                new Role { RoleName = "Staff", Description = "Nhân viên bãi xe" },
-                new Role { RoleName = "Driver", Description = "Khách hàng gửi xe" }
+                new Role { RoleName = "Admin", Description = "System Administrator" },
+                new Role { RoleName = "Manager", Description = "Parking Lot Manager" },
+                new Role { RoleName = "Staff", Description = "Parking Lot Staff" },
+                new Role { RoleName = "Driver", Description = "Vehicle Driver" }
             };
             await context.AddRangeAsync(roles);
             await context.SaveChangesAsync();
@@ -29,8 +29,8 @@ public static class DbInitializer
         {
             var vTypes = new List<VehicleType>
             {
-                new VehicleType { TypeName = "Xe máy", Description = "Xe gắn máy 2 bánh", VehicleTypeStatus = "Active" },
-                new VehicleType { TypeName = "Ô tô", Description = "Xe hơi từ 4-7 chỗ", VehicleTypeStatus = "Active" }
+                new VehicleType { TypeName = "Motorcycle", Description = "2-wheel motorcycle", VehicleTypeStatus = "Active" },
+                new VehicleType { TypeName = "Car", Description = "4-7 seat passenger car", VehicleTypeStatus = "Active" }
             };
             await context.AddRangeAsync(vTypes);
             await context.SaveChangesAsync();
@@ -72,7 +72,7 @@ public static class DbInitializer
                 Username = "manager", 
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "manager@pbms.com", 
-                FullName = "Trần Văn C (Quản lý)",
+                FullName = "John Doe (Manager)",
                 RoleId = managerRole!.Id,
                 AccountStatus = "Active"
             };
@@ -93,7 +93,7 @@ public static class DbInitializer
                 Username = "staff", 
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "staff@pbms.com", 
-                FullName = "Trần Thị B (Nhân viên)",
+                FullName = "Jane Smith (Staff)",
                 RoleId = staffRole!.Id,
                 AccountStatus = "Active"
             };
@@ -114,7 +114,7 @@ public static class DbInitializer
                 Username = "driver", 
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "driver@pbms.com", 
-                FullName = "Nguyễn Văn A (Tài xế)",
+                FullName = "Bob Johnson (Driver)",
                 RoleId = driverRole!.Id,
                 AccountStatus = "Active"
             };
@@ -134,8 +134,8 @@ public static class DbInitializer
             var building = new Building 
             { 
                 Code = "BLD01", 
-                Name = "Tòa nhà A", 
-                Address = "Khu Công Nghệ Cao, Quận 9",
+                Name = "Building A", 
+                Address = "High Tech Park, District 9",
                 TotalFloor = 2,
                 Status = BuildingStatus.Active
             };
@@ -147,14 +147,14 @@ public static class DbInitializer
             await context.AddRangeAsync(floor1, floor2);
             await context.SaveChangesAsync();
 
-            var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Xe máy");
-            var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Ô tô");
+            var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
+            var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
 
             var zoneMotor = new Zone 
             { 
                 FloorId = floor1.Id, 
                 Code = "ZM01", 
-                Name = "Khu xe máy", 
+                Name = "Motorbike Zone", 
                 Capacity = 100, 
                 VehicleTypeId = motorType!.Id,
                 AccessType = ZoneAccessType.General,
@@ -164,7 +164,7 @@ public static class DbInitializer
             { 
                 FloorId = floor2.Id, 
                 Code = "ZC01", 
-                Name = "Khu ô tô", 
+                Name = "Car Zone", 
                 Capacity = 10, 
                 VehicleTypeId = carType!.Id,
                 AccessType = ZoneAccessType.General,
@@ -181,7 +181,7 @@ public static class DbInitializer
                     ZoneId = zoneCar.Id,
                     VehicleTypeId = carType.Id,
                     Code = $"ZC01-{i:D2}",
-                    Name = $"Vị trí ZC01-{i:D2}",
+                    Name = $"Slot ZC01-{i:D2}",
                     Status = SlotStatus.Available
                 });
             }
@@ -204,22 +204,22 @@ public static class DbInitializer
         // 6. Seed Pricing Policies (Xe máy & Ô tô)
         if (!await context.Set<PricingPolicy>().AnyAsync())
         {
-            var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Xe máy");
-            var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Ô tô");
+            var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
+            var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
 
             var policies = new List<PricingPolicy>
             {
                 new PricingPolicy
                 {
                     VehicleTypeId = motorType!.Id,
-                    PolicyName = "Bảng giá vãng lai xe máy",
+                    PolicyName = "Motorbike Casual Pricing",
                     EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
                     PricingPolicyStatus = "Active",
                     PricingWindows = new List<PricingWindow>
                     {
                         new PricingWindow
                         {
-                            WindowName = "Khung giờ ngày",
+                            WindowName = "Day Time Window",
                             StartTime = new TimeSpan(6, 0, 0),
                             EndTime = new TimeSpan(22, 0, 0),
                             BaseDurationMinutes = 60,
@@ -231,7 +231,7 @@ public static class DbInitializer
                         },
                         new PricingWindow
                         {
-                            WindowName = "Khung giờ đêm",
+                            WindowName = "Night Time Window",
                             StartTime = new TimeSpan(22, 0, 0),
                             EndTime = new TimeSpan(6, 0, 0),
                             BaseDurationMinutes = 60,
@@ -246,14 +246,14 @@ public static class DbInitializer
                 new PricingPolicy
                 {
                     VehicleTypeId = carType!.Id,
-                    PolicyName = "Bảng giá vãng lai ô tô",
+                    PolicyName = "Car Casual Pricing",
                     EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
                     PricingPolicyStatus = "Active",
                     PricingWindows = new List<PricingWindow>
                     {
                         new PricingWindow
                         {
-                            WindowName = "Khung giờ ngày",
+                            WindowName = "Day Time Window",
                             StartTime = new TimeSpan(6, 0, 0),
                             EndTime = new TimeSpan(22, 0, 0),
                             BaseDurationMinutes = 60,
@@ -265,7 +265,7 @@ public static class DbInitializer
                         },
                         new PricingWindow
                         {
-                            WindowName = "Khung giờ đêm",
+                            WindowName = "Night Time Window",
                             StartTime = new TimeSpan(22, 0, 0),
                             EndTime = new TimeSpan(6, 0, 0),
                             BaseDurationMinutes = 60,
@@ -288,7 +288,7 @@ public static class DbInitializer
         driverAccount = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver");
 
         // 8. Seed Vehicle for Driver
-        var carTypeForSeed = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Ô tô");
+        var carTypeForSeed = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
         Vehicle? vehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-12345");
         if (vehicle == null && driverAccount != null && carTypeForSeed != null)
         {

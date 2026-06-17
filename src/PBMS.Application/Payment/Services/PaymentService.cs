@@ -61,26 +61,26 @@ public class PaymentService : IPaymentService
 
         if (sourceCount != 1)
         {
-            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "Giao dịch thanh toán phải liên kết chính xác tới duy nhất 1 nguồn: SessionId, BookingId hoặc MonthlySubscriptionId.");
+            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId, BookingId, or MonthlySubscriptionId.");
         }
 
         decimal originalAmount = 0;
-        string description = "Thanh toan giao dich";
+        string description = "Transaction payment";
 
         // 2. Xác định số tiền gốc cần thanh toán theo từng nguồn nghiệp vụ
         if (request.SessionId.HasValue)
         {
             var session = await _sessionRepository.GetByIdAsync(request.SessionId.Value);
             if (session == null)
-                return BaseResponse<PaymentResponseDto>.Fail("SESSION_NOT_FOUND", "Không tìm thấy lượt đỗ xe tương ứng.");
+                return BaseResponse<PaymentResponseDto>.Fail("SESSION_NOT_FOUND", "Parking session not found.");
 
             if (session.SessionStatus.ToUpper() == "COMPLETED")
-                return BaseResponse<PaymentResponseDto>.Fail("SESSION_ALREADY_COMPLETED", "Lượt đỗ xe này đã hoàn tất thanh toán và đóng từ trước.");
+                return BaseResponse<PaymentResponseDto>.Fail("SESSION_ALREADY_COMPLETED", "This parking session has already been completed and paid.");
 
             // Lấy thông tin xe để biết loại xe (VehicleType) phục vụ tính giá
             var vehicle = await _vehicleRepository.GetByIdAsync(session.VehicleId);
             if (vehicle == null)
-                return BaseResponse<PaymentResponseDto>.Fail("VEHICLE_NOT_FOUND", "Không tìm thấy thông tin phương tiện gửi xe.");
+                return BaseResponse<PaymentResponseDto>.Fail("VEHICLE_NOT_FOUND", "Vehicle information not found.");
 
             // Tính toán tiền đỗ xe thực tế dựa vào thời điểm check-in & check-out
             var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
@@ -98,26 +98,26 @@ public class PaymentService : IPaymentService
             }
 
             originalAmount = finalFee;
-            description = $"Thanh toan phi do xe luot {session.Id}";
+            description = $"Parking fee payment for session {session.Id}";
 
         }
         else if (request.BookingId.HasValue)
         {
             var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
             if (booking == null)
-                return BaseResponse<PaymentResponseDto>.Fail("BOOKING_NOT_FOUND", "Không tìm thấy thông tin đặt chỗ.");
+                return BaseResponse<PaymentResponseDto>.Fail("BOOKING_NOT_FOUND", "Booking information not found.");
 
             originalAmount = booking.DepositAmount;
-            description = $"Thanh toan tien coc dat cho {booking.Id}";
+            description = $"Deposit payment for booking {booking.Id}";
         }
         else if (request.MonthlySubscriptionId.HasValue)
         {
             var subscription = await _subscriptionRepository.GetByIdAsync(request.MonthlySubscriptionId.Value);
             if (subscription == null)
-                return BaseResponse<PaymentResponseDto>.Fail("SUBSCRIPTION_NOT_FOUND", "Không tìm thấy thông tin đăng ký vé tháng.");
+                return BaseResponse<PaymentResponseDto>.Fail("SUBSCRIPTION_NOT_FOUND", "Monthly subscription information not found.");
 
             originalAmount = subscription.MonthlyPrice;
-            description = $"Thanh toan phi dang ky ve thang {subscription.Id}";
+            description = $"Monthly subscription payment for subscription {subscription.Id}";
         }
 
         // 3. Xử lý logic theo Phương thức thanh toán
@@ -150,7 +150,7 @@ public class PaymentService : IPaymentService
             // Hoàn tất nghiệp vụ logic sau khi thanh toán thành công
             await CompleteBusinessFlowAsync(payment);
 
-            return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Thanh toán tiền mặt thành công (Đã áp dụng làm tròn tiền).");
+            return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Cash payment successful (Cash rounding applied).");
         }
         else if (method == "ONLINE_BANKING")
         {
@@ -182,7 +182,7 @@ public class PaymentService : IPaymentService
                 responseDto.PaymentUrl = paymentUrl;
                 responseDto.QrCodeUrl = ""; // VNPay đã tích hợp sẵn QR trong trang thanh toán
 
-                return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Tạo liên kết thanh toán VNPay thành công.");
+                return BaseResponse<PaymentResponseDto>.Ok(responseDto, "VNPay payment link created successfully.");
             }
             catch (Exception ex)
             {
@@ -191,11 +191,11 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
-                return BaseResponse<PaymentResponseDto>.Fail("GATEWAY_ERROR", "Lỗi từ cổng thanh toán VNPay: " + ex.Message);
+                return BaseResponse<PaymentResponseDto>.Fail("GATEWAY_ERROR", "VNPay payment gateway error: " + ex.Message);
             }
         }
 
-        return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_METHOD", "Phương thức thanh toán không được hỗ trợ (chỉ chấp nhận CASH hoặc ONLINE_BANKING).");
+        return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_METHOD", "Unsupported payment method (only CASH or ONLINE_BANKING is accepted).");
     }
 
     /// <summary>
@@ -205,27 +205,27 @@ public class PaymentService : IPaymentService
     {
         if (!vnpayData.TryGetValue("vnp_SecureHash", out string? secureHash) || string.IsNullOrEmpty(secureHash))
         {
-            return BaseResponse<string>.Fail("MISSING_SIGNATURE", "Không tìm thấy chữ ký bảo mật vnp_SecureHash.");
+            return BaseResponse<string>.Fail("MISSING_SIGNATURE", "Secure hash vnp_SecureHash not found.");
         }
 
         // 1. Xác thực tính toàn vẹn của chữ ký số từ VNPay
         bool isSignatureValid = _vnpayGateway.VerifySignature(vnpayData, secureHash);
         if (!isSignatureValid)
         {
-            return BaseResponse<string>.Fail("INVALID_SIGNATURE", "Xác thực chữ ký số VNPay IPN thất bại.");
+            return BaseResponse<string>.Fail("INVALID_SIGNATURE", "VNPay IPN signature verification failed.");
         }
 
         // 2. Đọc mã đơn hàng vnp_TxnRef
         if (!vnpayData.TryGetValue("vnp_TxnRef", out string? txnRef) || !long.TryParse(txnRef, out long orderCode))
         {
-            return BaseResponse<string>.Fail("INVALID_TXN_REF", "Mã giao dịch vnp_TxnRef không hợp lệ.");
+            return BaseResponse<string>.Fail("INVALID_TXN_REF", "Transaction code vnp_TxnRef is invalid.");
         }
 
         // Tìm giao dịch thanh toán trong hệ thống qua orderCode
         var payment = (await _paymentRepository.FindAsync(p => p.OrderCode == orderCode)).FirstOrDefault();
         if (payment == null)
         {
-            return BaseResponse<string>.Fail("PAYMENT_NOT_FOUND", $"Không tìm thấy giao dịch với mã đơn hàng {orderCode}.");
+            return BaseResponse<string>.Fail("PAYMENT_NOT_FOUND", $"Transaction not found with order code {orderCode}.");
         }
 
         if (payment.PaymentStatus == "PENDING")
@@ -252,7 +252,7 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
-                return BaseResponse<string>.Ok("00", $"Thanh toán thất bại từ VNPay, mã phản hồi: {responseCode}");
+                return BaseResponse<string>.Ok("00", $"Payment failed from VNPay, response code: {responseCode}");
             }
         }
 
