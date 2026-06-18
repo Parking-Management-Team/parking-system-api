@@ -25,7 +25,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
     public async Task<bool> HasActiveSessionForVehicleAsync(int vehicleId)
     {
         return await _context.ParkingSessions
-            .AnyAsync(ps => ps.VehicleId == vehicleId && ps.SessionStatus == "Active");
+            .AnyAsync(ps => ps.VehicleId == vehicleId && ps.SessionStatus.ToUpper() == "ACTIVE");
     }
 
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
@@ -47,7 +47,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 Zone = z,
                 ActiveSessions = _context.ParkingSessions.Count(ps =>
                     ps.ZoneId == z.Id &&
-                    ps.SessionStatus == "Active")
+                    ps.SessionStatus.ToUpper() == "ACTIVE")
             })
             .Where(x => x.ActiveSessions < x.Zone.Capacity)
             .OrderBy(x => x.ActiveSessions)

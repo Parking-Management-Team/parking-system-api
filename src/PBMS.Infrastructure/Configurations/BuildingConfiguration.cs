@@ -53,7 +53,9 @@ public class BuildingConfiguration : IEntityTypeConfiguration<Building>
         builder.Property(b => b.Status)
             .HasColumnName("building_status")
             .HasMaxLength(20)
-            .HasConversion<string>()
+            .HasConversion(
+                status => status.ToString(),
+                value => Enum.Parse<BuildingStatus>(value, ignoreCase: true))
             .HasDefaultValue(BuildingStatus.Available)
             .IsRequired();
 
