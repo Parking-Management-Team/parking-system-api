@@ -56,8 +56,8 @@ public class FeeCalculationService : IFeeCalculationService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá Active nào cho loại xe ID={vehicleTypeId} " +
-                         $"tại thời điểm {checkIn:dd/MM/yyyy HH:mm:ss}."
+                message: $"No active pricing policy found for vehicle type ID={vehicleTypeId} " +
+                         $"at {checkIn:dd/MM/yyyy HH:mm:ss}."
             );
         }
 
@@ -65,7 +65,7 @@ public class FeeCalculationService : IFeeCalculationService
         {
             throw new DomainException(
                 errorCode: "PRICING_WINDOWS_REQUIRED",
-                message: $"Chính sách giá ID={policy.Id} không có khung giờ nào được cấu hình."
+                message: $"Pricing policy with ID={policy.Id} has no windows configured."
             );
         }
 

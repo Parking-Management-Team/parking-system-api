@@ -2,6 +2,7 @@ using PBMS.Application.Common;
 using PBMS.Application.Contracts;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
+using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
 
 namespace PBMS.Application.ParkingSession.Services;
@@ -9,10 +10,20 @@ namespace PBMS.Application.ParkingSession.Services;
 public class ParkingSessionService : IParkingSessionService
 {
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
+    private readonly IRepository<Booking> _bookingRepository;
+    private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
+    private readonly IFeeCalculationService _feeCalculationService;
 
-    public ParkingSessionService(IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository)
+    public ParkingSessionService(
+        IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
+        IRepository<Booking> bookingRepository,
+        IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
+        IFeeCalculationService feeCalculationService)
     {
         _sessionRepository = sessionRepository;
+        _bookingRepository = bookingRepository;
+        _vehicleRepository = vehicleRepository;
+        _feeCalculationService = feeCalculationService;
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request)
@@ -117,11 +128,46 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can start checkout.");
         }
 
-        session.CheckOutTime = ToUtc(request.CheckOutTime ?? DateTime.UtcNow);
+        var checkOutTime = ToUtc(request.CheckOutTime ?? DateTime.UtcNow);
+        session.CheckOutTime = checkOutTime;
         session.LicensePlateOut = string.IsNullOrWhiteSpace(request.LicensePlateOut)
             ? session.LicensePlateIn
             : request.LicensePlateOut.Trim().ToUpperInvariant();
         session.OutStaffId = request.OutStaffId;
+
+        // --- BẮT ĐẦU XỬ LÝ KHẤU TRỪ TIỀN CỌC ---
+        if (session.BookingId.HasValue)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            var vehicle = await _vehicleRepository.GetByIdAsync(session.VehicleId);
+
+            if (booking != null && vehicle != null)
+            {
+                // Tính toán phí đỗ xe thực tế của lượt gửi xe
+                var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, session.CheckInTime, checkOutTime);
+                decimal realFee = feeResult.TotalFee;
+                decimal deposit = booking.DepositAmount;
+
+                // Tính số tiền còn nợ sau khi lấy Phí thực tế trừ đi Tiền cọc
+                decimal amountDue = Math.Max(0, realFee - deposit);
+
+                // Nếu tiền đỗ xe nhỏ hơn hoặc bằng tiền cọc -> số tiền nợ = 0 VNĐ
+                if (amountDue == 0)
+                {
+                    // Đóng lượt đỗ và booking ngay lập tức, không cần tạo payment
+                    session.SessionStatus = "COMPLETED";
+                    booking.BookingStatus = "Completed";
+
+                    _sessionRepository.Update(session);
+                    _bookingRepository.Update(booking);
+                    await _sessionRepository.SaveChangesAsync();
+
+                    return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Succesfull. Parking fee is fully deducted by deposit. Parking session completed immediately.");
+                }
+            }
+        }
+        // --- KẾT THÚC XỬ LÝ KHẤU TRỪ ---
+
         _sessionRepository.Update(session);
         await _sessionRepository.SaveChangesAsync();
         return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Started checkout successfully.");

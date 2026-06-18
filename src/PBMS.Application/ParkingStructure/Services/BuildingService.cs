@@ -107,7 +107,7 @@ public class BuildingService : IBuildingService
 
     public async Task<BuildingDto> UpdateBuildingAsync(int id, BuildingUpdateRequest request)
     {
-        var building = await _buildingRepository.GetByIdAsync(id);
+        var building = await _buildingRepository.GetBuildingWithDetailsAsync(id);
         if (building == null)
         {
             throw new NotFoundException("Building", id);
@@ -122,6 +122,12 @@ public class BuildingService : IBuildingService
             {
                 throw new ValidationException($"Building code '{newCode}' already exists.");
             }
+        }
+
+        // Không cho phép giảm số tầng xuống dưới số lượng tầng hiện có trong DB
+        if (request.TotalFloor < building.Floors.Count)
+        {
+            throw new ValidationException($"Cannot decrease total floors below the currently registered floor count ({building.Floors.Count}).");
         }
 
         building.Code = newCode;

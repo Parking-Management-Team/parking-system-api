@@ -12,6 +12,11 @@ using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Application.Pricing.Services;
 using PBMS.Application.Accounts;
+using PBMS.Application.Payment.Interfaces;
+using PBMS.Application.Payment.Services;
+using PBMS.Application.Revenue.Interfaces;
+using PBMS.Application.Revenue.Services;
+
 
 namespace PBMS.Application;
 /// <summary>
@@ -56,7 +61,15 @@ public static class DependencyInjection
         {
             services.AddScoped<IParkingSessionService, ParkingSessionService>();
         }
+        // Payment module
+        services.AddScoped<IPaymentService, PaymentService>();
+        // Revenue module
+        services.AddScoped<IRevenueService, RevenueService>();
+
+
 
         return services;
+
+
     }
 }
