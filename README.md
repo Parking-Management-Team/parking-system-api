@@ -282,54 +282,43 @@ PBMS.Infrastructure.Data
 
 ### Yêu cầu hệ thống
 
-- **.NET 10 SDK** (phiên bản phù hợp với dự án)
-- **PostgreSQL** (chạy trực tiếp trên máy qua pgAdmin hoặc Docker container)
-- **Visual Studio 2022**, **JetBrains Rider**, hoặc **VS Code** (cần cài đặt extension C# Dev Kit)
-- **EF Core CLI tool**: Hỗ trợ chạy lệnh tạo migration. Cài đặt bằng lệnh:
+- **.NET 10 SDK**
+- **PostgreSQL** (Cài đặt bản 15+ trực tiếp trên máy)
+- **Visual Studio 2022** (Bản 17.10+), **JetBrains Rider**, hoặc **VS Code**
+- **EF Core CLI tool**: Cài đặt bằng lệnh:
   ```bash
   dotnet tool install --global dotnet-ef
-  # Hoặc nếu đã cài trước đó thì cập nhật bản mới nhất:
-  dotnet tool update --global dotnet-ef
   ```
-
-### Các bước cấu hình chạy Local (Database cá nhân)
-
-Để tránh làm rác cơ sở dữ liệu chung trên Supabase trong quá trình phát triển và kiểm thử, các thành viên **bắt buộc** phải sử dụng Database PostgreSQL cá nhân ở local:
-
-#### Bước 1: Chuẩn bị DB PostgreSQL local
-* Hãy chắc chắn bạn đã khởi động PostgreSQL trên máy và biết tài khoản/mật khẩu kết nối.
-* Bạn không cần tạo trước cơ sở dữ liệu (Database), EF Core sẽ tự động tạo cho bạn ở bước sau.
-
-#### Bước 2: Cấu hình Connection String cục bộ
-* Mở file [appsettings.Development.json](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.API/appsettings.Development.json) trong dự án `PBMS.API` (file này đã được đưa vào `.gitignore` để tránh bị đẩy đè lên Git).
-* Thêm chuỗi kết nối local của bạn như sau:
-  ```json
-  {
-    "ConnectionStrings": {
-      "DefaultConnection": "Host=localhost;Database=pbms_local;Username=postgres;Password=MAT_KHAU_CUA_BAN;SSL Mode=Prefer;Trust Server Certificate=true"
-    },
-    "Logging": {
-      "LogLevel": {
-        "Default": "Information",
-        "Microsoft.AspNetCore": "Warning"
-      }
-    }
-  }
-  ```
-  *(Thay `MAT_KHAU_CUA_BAN` bằng mật khẩu PostgreSQL máy bạn).*
-
-#### Bước 3: Đồng bộ cấu trúc bảng và chạy ứng dụng
-Dự án đã được tích hợp cơ chế tự động chạy Migration khi khởi động ở môi trường Development. Bạn chỉ cần chạy ứng dụng:
-```bash
-# Di chuyển đến thư mục API và chạy
-dotnet run --project src/PBMS.API
-```
-* **Kết quả:** EF Core sẽ tự động tạo database `pbms_local` trên máy bạn, chạy toàn bộ các file migration hiện có và hiển thị thông báo: `--> Database migration completed successfully.`
-* Swagger UI sẽ tự động mở tại địa chỉ: `http://localhost:{port}/swagger` (hoặc thông tin hiển thị trên console).
 
 ---
 
-### Quy trình dành cho lập trình viên khi sửa đổi Entity & tạo Migration mới
+### Cấu hình và Chạy ứng dụng (Local vs Supabase)
+
+Dự án hỗ trợ 2 môi trường Database chính thông qua các **Run Profiles** được cấu hình sẵn trong `launchSettings.json`.
+
+#### 1. Chạy với Database Local (Dành cho phát triển hàng ngày)
+Mỗi thành viên nên dùng DB local để tự do test và tạo migration mà không ảnh hưởng tới Team.
+
+*   **Bước 1:** Đảm bảo đã cài PostgreSQL trên máy.
+*   **Bước 2:** Tạo file `src/PBMS.API/appsettings.Development.json` (copy từ file `.example`).
+*   **Bước 3:** Cập nhật mật khẩu máy bạn vào chuỗi `DefaultConnection`.
+*   **Bước 4:** Chọn Profile **"Local"** trong IDE và nhấn F5 (hoặc chạy lệnh: `dotnet run --project src/PBMS.API --launch-profile Local`).
+
+#### 2. Chạy với Supabase (Dành cho Integration Test / Demo)
+Dùng khi bạn muốn làm việc trên dữ liệu chung của cả Team.
+
+*   **Cách làm:** Chỉ cần chọn Profile **"Supabase"** trong IDE và nhấn F5 (hoặc chạy lệnh: `dotnet run --project src/PBMS.API --launch-profile Supabase`). 
+*   *Lưu ý: Chuỗi kết nối Supabase đã được cấu hình sẵn trong profile này.*
+
+#### 3. Cơ chế Tự động hóa (Migration & Seeding)
+Dù bạn chọn Local hay Supabase, hệ thống đều tự động thực hiện:
+*   **Auto-Migration:** Tự động tạo bảng/thêm cột mới vào DB ngay khi App khởi động.
+*   **Auto-Seeding:** Tự động đổ dữ liệu mẫu (Admin, Building, Slot, Card...) nếu DB đang trống. 
+*   **Log:** Kiểm tra cửa sổ Console để thấy dòng chữ `--> Database seeding completed successfully`.
+
+---
+
+### Quy trình sửa đổi Entity & tạo Migration mới
 
 Khi bạn nhận nhiệm vụ phát triển một thực thể (Entity) mới hoặc thay đổi cấu trúc bảng, hãy tuân thủ quy trình sau để tránh gây xung đột (conflict) mã nguồn DB:
 

@@ -69,6 +69,11 @@ public class Payment : BaseEntity
     public virtual MonthlySubscription? MonthlySubscription { get; set; }
 
     /// <summary>
+    /// Mã đơn hàng được sinh ra để gửi sang cổng thanh toán PayOs( Định dạng số nguyên 64-bit)
+    /// </summary>
+    public long? OrderCode { get; set; }
+
+    /// <summary>
     /// Thông tin chính sách giá được áp dụng.
     /// </summary>
     public virtual PricingPolicy? PricingPolicy { get; set; }

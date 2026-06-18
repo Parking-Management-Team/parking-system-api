@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616145353_UpdateParkingStructure_AlignSRS_Complete")]
+    partial class UpdateParkingStructure_AlignSRS_Complete
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -907,10 +910,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("monthly_subscription_id");
 
-                    b.Property<long?>("OrderCode")
-                        .HasColumnType("bigint")
-                        .HasColumnName("order_code");
-
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -955,7 +954,7 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.ToTable("payment", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Payment_Source", "(CASE WHEN session_id IS NULL THEN 0 ELSE 1 END + CASE WHEN booking_id IS NULL THEN 0 ELSE 1 END + CASE WHEN monthly_subscription_id IS NULL THEN 0 ELSE 1 END) = 1");
+                            t.HasCheckConstraint("CK_Payment_Source", "session_id IS NOT NULL OR booking_id IS NOT NULL OR monthly_subscription_id IS NOT NULL");
                         });
                 });
 
@@ -1206,15 +1205,9 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("total_subscriptions");
 
-                    b.Property<int?>("VehicleTypeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("vehicle_type_id");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BuildingId");
-
-                    b.HasIndex("VehicleTypeId");
 
                     b.ToTable("revenue_statistic", (string)null);
                 });
@@ -1788,14 +1781,7 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
-                        .WithMany()
-                        .HasForeignKey("VehicleTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Building");
-
-                    b.Navigation("VehicleType");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatisticPayment", b =>

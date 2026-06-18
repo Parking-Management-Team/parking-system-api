@@ -89,11 +89,11 @@ public class BuildingServiceTests
     {
         // Arrange
         int id = 1;
-        var request = new BuildingUpdateRequest { Code = "NEW-CODE", Name = "New Name", Status = BuildingStatus.Active };
-        var existingBuilding = new Building { Id = id, Code = "OLD-CODE" };
+        var request = new BuildingUpdateRequest { Code = "NEW-CODE", Name = "New Name", Status = BuildingStatus.Active, TotalFloor = 2 };
+        var existingBuilding = new Building { Id = id, Code = "OLD-CODE", Floors = new List<Floor> { new Floor { Id = 1 } } };
         var updatedDto = new BuildingDto { Id = id, Code = "NEW-CODE" };
 
-        _buildingRepositoryMock.GetByIdAsync(id).Returns(existingBuilding);
+        _buildingRepositoryMock.GetBuildingWithDetailsAsync(id).Returns(existingBuilding);
         _buildingRepositoryMock.BuildingCodeExistsAsync(request.Code).Returns(false);
         _mapperMock.Map<BuildingDto>(existingBuilding).Returns(updatedDto);
 
@@ -103,6 +103,54 @@ public class BuildingServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(request.Code, result.Code);
+        _buildingRepositoryMock.Received(1).Update(existingBuilding);
+    }
+
+    [Fact]
+    public async Task UpdateBuildingAsync_ShouldThrowValidationException_WhenDecreaseTotalFloorBelowCurrentFloorCount()
+    {
+        // Arrange
+        int id = 1;
+        var request = new BuildingUpdateRequest { Code = "SAME-CODE", Name = "Building", Status = BuildingStatus.Active, TotalFloor = 1 };
+        var existingBuilding = new Building 
+        { 
+            Id = id, 
+            Code = "SAME-CODE", 
+            Floors = new List<Floor> { new Floor { Id = 1 }, new Floor { Id = 2 } } // Has 2 registered floors
+        };
+
+        _buildingRepositoryMock.GetBuildingWithDetailsAsync(id).Returns(existingBuilding);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => 
+            _buildingService.UpdateBuildingAsync(id, request));
+        Assert.Contains("Cannot decrease total floors below the currently registered floor count", exception.Message);
+        _buildingRepositoryMock.DidNotReceive().Update(Arg.Any<Building>());
+    }
+
+    [Fact]
+    public async Task UpdateBuildingAsync_ShouldUpdate_WhenTotalFloorIsGreaterOrEqualToCurrentFloorCount()
+    {
+        // Arrange
+        int id = 1;
+        var request = new BuildingUpdateRequest { Code = "NEW-CODE", Name = "New Name", Status = BuildingStatus.Active, TotalFloor = 2 };
+        var existingBuilding = new Building 
+        { 
+            Id = id, 
+            Code = "OLD-CODE", 
+            Floors = new List<Floor> { new Floor { Id = 1 }, new Floor { Id = 2 } } // Has 2 registered floors
+        };
+        var updatedDto = new BuildingDto { Id = id, Code = "NEW-CODE" };
+
+        _buildingRepositoryMock.GetBuildingWithDetailsAsync(id).Returns(existingBuilding);
+        _buildingRepositoryMock.BuildingCodeExistsAsync(request.Code).Returns(false);
+        _mapperMock.Map<BuildingDto>(existingBuilding).Returns(updatedDto);
+
+        // Act
+        var result = await _buildingService.UpdateBuildingAsync(id, request);
+
+        // Assert
+        Assert.NotNull(result);
         _buildingRepositoryMock.Received(1).Update(existingBuilding);
     }
 

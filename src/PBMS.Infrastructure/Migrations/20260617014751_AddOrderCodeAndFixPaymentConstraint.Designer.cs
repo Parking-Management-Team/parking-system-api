@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617014751_AddOrderCodeAndFixPaymentConstraint")]
+    partial class AddOrderCodeAndFixPaymentConstraint
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1206,15 +1209,9 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("total_subscriptions");
 
-                    b.Property<int?>("VehicleTypeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("vehicle_type_id");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BuildingId");
-
-                    b.HasIndex("VehicleTypeId");
 
                     b.ToTable("revenue_statistic", (string)null);
                 });
@@ -1788,14 +1785,7 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
-                        .WithMany()
-                        .HasForeignKey("VehicleTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Building");
-
-                    b.Navigation("VehicleType");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatisticPayment", b =>

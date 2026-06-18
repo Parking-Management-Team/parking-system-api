@@ -1,11 +1,12 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Your ConnectionStrings here"
+    "DefaultConnection": "Host=localhost;Database=pbms_local;Username=postgres;Password=YOUR_PASSWORD"
   },
   "Logging": {
     "LogLevel": {
       "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
     }
   },
   "Jwt": {
@@ -13,5 +14,8 @@
     "Issuer": "PBMS",
     "Audience": "PBMSUsers",
     "ExpiryInMinutes": 1440
+  },
+  "ParkingSession": {
+    "UseInMemoryStore": false
   }
 }
