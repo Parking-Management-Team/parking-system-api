@@ -88,7 +88,7 @@ public class ZoneServiceTests
         };
 
         var floor = new Floor { Id = 1 };
-        var vehicleType = new VehicleType { Id = 2, TypeName = "Ô tô" };
+        var vehicleType = new VehicleType { Id = 2, TypeName = VehicleType.CarTypeName };
         var zoneDto = new ZoneDto { Id = 1, Code = "ZC", Name = "Car Zone", FloorId = 1 };
 
         _floorRepositoryMock.GetByIdAsync(request.FloorId).Returns(floor);

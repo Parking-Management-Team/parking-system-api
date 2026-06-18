@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IZoneService, ZoneService>();
         services.AddScoped<IFloorService, FloorService>();
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
+        services.AddScoped<IParkingSessionService, ParkingSessionService>();
         services.AddScoped<IBuildingService, BuildingService>();
 
         // Pricing module

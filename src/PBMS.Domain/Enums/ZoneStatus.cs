@@ -11,9 +11,8 @@ public enum ZoneStatus
     /// Khu vực không nhận thêm xe.
     /// </summary>
     Occupied,
-
-    /// <summary>
-    /// Khu vực không hoạt động.
-    /// </summary>
-    Blocked
+    Blocked,
+    Maintenance,
+    Reserved,
+    OutOfService
 }

@@ -54,7 +54,7 @@ public class BuildingService : IBuildingService
             building.Floors.Add(new Floor
             {
                 FloorNumber = i,
-                Name = $"Tầng {i}",
+                Name = $"Floor {i}",
                 Status = FloorStatus.Active
             });
         }

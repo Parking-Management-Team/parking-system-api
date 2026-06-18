@@ -4,26 +4,140 @@ using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
+using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
+using VehicleEntity = PBMS.Domain.Entities.Vehicle;
+using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
 
 namespace PBMS.Application.ParkingSession.Services;
 
 public class ParkingSessionService : IParkingSessionService
 {
-    private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
+    private const string ActiveStatus = "ACTIVE";
+    private const string CompletedStatus = "COMPLETED";
+
+    private readonly IParkingSessionRepository _sessionRepository;
+    private readonly IRepository<VehicleEntity> _vehicleRepository;
+    private readonly IRepository<VehicleTypeEntity> _vehicleTypeRepository;
     private readonly IRepository<Booking> _bookingRepository;
-    private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
     private readonly IFeeCalculationService _feeCalculationService;
+    private readonly ICardRepository _cardRepository;
 
     public ParkingSessionService(
-        IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
+        IParkingSessionRepository sessionRepository,
+        IRepository<VehicleEntity> vehicleRepository,
+        IRepository<VehicleTypeEntity> vehicleTypeRepository,
         IRepository<Booking> bookingRepository,
-        IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
-        IFeeCalculationService feeCalculationService)
+        IFeeCalculationService feeCalculationService,
+        ICardRepository cardRepository)
     {
         _sessionRepository = sessionRepository;
-        _bookingRepository = bookingRepository;
         _vehicleRepository = vehicleRepository;
+        _vehicleTypeRepository = vehicleTypeRepository;
+        _bookingRepository = bookingRepository;
         _feeCalculationService = feeCalculationService;
+        _cardRepository = cardRepository;
+    }
+
+    public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
+    {
+        var normalizedPlate = Normalize(request.LicensePlate);
+        var normalizedCardCode = Normalize(request.CardCode);
+
+        var vehicleType = await _vehicleTypeRepository.GetByIdAsync(request.VehicleTypeId);
+        if (vehicleType == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Vehicle type with ID {request.VehicleTypeId} not found.");
+        }
+
+        var card = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
+        if (card == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Card with code '{normalizedCardCode}' not found.");
+        }
+
+        if (!string.Equals(card.CardStatus, CardStatus.Available.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("CARD_NOT_AVAILABLE", "Card is not available for check-in.");
+        }
+
+        var vehicle = await _sessionRepository.GetVehicleByLicensePlateAsync(normalizedPlate);
+        if (vehicle != null && vehicle.VehicleTypeId != request.VehicleTypeId)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("LICENSE_PLATE_TYPE_MISMATCH", "License plate already exists with a different vehicle type.");
+        }
+
+        if (vehicle != null && await _sessionRepository.HasActiveSessionForVehicleAsync(vehicle.Id))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_IN_ACTIVE_SESSION", "Vehicle already has an active parking session.");
+        }
+
+        vehicle ??= new VehicleEntity
+        {
+            LicensePlate = normalizedPlate,
+            VehicleTypeId = request.VehicleTypeId,
+            VehicleStatus = VehicleEntity.StatusActive,
+            RegisteredDay = DateTime.UtcNow.Date
+        };
+
+        if (vehicle.Id == 0)
+        {
+            await _vehicleRepository.AddAsync(vehicle);
+        }
+
+        Zone? assignedZone;
+        ParkingSlot? assignedSlot = null;
+
+        if (IsCar(vehicleType))
+        {
+            assignedSlot = await _sessionRepository.FindAvailableGeneralSlotAsync(
+                request.VehicleTypeId,
+                request.BuildingId);
+
+            if (assignedSlot == null)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("NO_AVAILABLE_SLOT", "No available GENERAL slot found for this vehicle type.");
+            }
+
+            assignedZone = assignedSlot.Zone;
+            assignedSlot.Status = SlotStatus.Occupied;
+        }
+        else
+        {
+            assignedZone = await _sessionRepository.FindAvailableZoneAsync(
+                request.VehicleTypeId,
+                request.BuildingId);
+
+            if (assignedZone == null)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("NO_AVAILABLE_ZONE", "No available zone found for this vehicle type.");
+            }
+        }
+
+        var buildingId = request.BuildingId ?? assignedZone.Floor.BuildingId;
+        var session = new ParkingSessionEntity
+        {
+            Vehicle = vehicle,
+            Card = card,
+            Zone = assignedZone,
+            ParkingSlot = assignedSlot,
+            BuildingId = buildingId,
+            CardId = card.Id,
+            ZoneId = assignedZone.Id,
+            SlotId = assignedSlot?.Id,
+            CheckInTime = DateTime.UtcNow,
+            InStaffId = request.StaffId,
+            LicensePlateIn = normalizedPlate,
+            SessionStatus = ActiveStatus
+        };
+
+        card.CardStatus = CardStatus.Active.ToString();
+
+        await _sessionRepository.AddAsync(session);
+        _cardRepository.Update(card);
+        await _sessionRepository.SaveChangesAsync();
+
+        return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Vehicle checked in successfully.");
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request)
@@ -33,23 +147,23 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<ParkingSessionDto>.Fail("INVALID_SESSION_SOURCE", "Booking and monthly subscription cannot both be set.");
         }
 
-        if (await _sessionRepository.AnyAsync(s => s.VehicleId == request.VehicleId && s.SessionStatus.ToUpper() == "ACTIVE"))
+        if (await _sessionRepository.AnyAsync(s => s.VehicleId == request.VehicleId && s.SessionStatus.ToUpper() == ActiveStatus))
         {
             return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_IN_ACTIVE_SESSION", "Vehicle already has an active parking session.");
         }
 
-        if (await _sessionRepository.AnyAsync(s => s.CardId == request.CardId && s.SessionStatus.ToUpper() == "ACTIVE"))
+        if (await _sessionRepository.AnyAsync(s => s.CardId == request.CardId && s.SessionStatus.ToUpper() == ActiveStatus))
         {
             return BaseResponse<ParkingSessionDto>.Fail("CARD_IN_ACTIVE_SESSION", "Card already has an active parking session.");
         }
 
         if (request.SlotId.HasValue &&
-            await _sessionRepository.AnyAsync(s => s.SlotId == request.SlotId && s.SessionStatus.ToUpper() == "ACTIVE"))
+            await _sessionRepository.AnyAsync(s => s.SlotId == request.SlotId && s.SessionStatus.ToUpper() == ActiveStatus))
         {
             return BaseResponse<ParkingSessionDto>.Fail("SLOT_IN_ACTIVE_SESSION", "Slot already has an active parking session.");
         }
 
-        var session = new PBMS.Domain.Entities.ParkingSession
+        var session = new ParkingSessionEntity
         {
             VehicleId = request.VehicleId,
             BuildingId = request.BuildingId,
@@ -60,8 +174,8 @@ public class ParkingSessionService : IParkingSessionService
             MonthlySubscriptionId = request.MonthlySubscriptionId,
             InStaffId = request.InStaffId,
             CheckInTime = ToUtc(request.CheckInTime ?? DateTime.UtcNow),
-            LicensePlateIn = request.LicensePlateIn.Trim().ToUpperInvariant(),
-            SessionStatus = "ACTIVE"
+            LicensePlateIn = Normalize(request.LicensePlateIn),
+            SessionStatus = ActiveStatus
         };
 
         await _sessionRepository.AddAsync(session);
@@ -77,7 +191,7 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync()
     {
-        var sessions = await _sessionRepository.FindAsync(s => s.SessionStatus.ToUpper() == "ACTIVE");
+        var sessions = await _sessionRepository.FindAsync(s => s.SessionStatus.ToUpper() == ActiveStatus);
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
     }
 
@@ -103,7 +217,7 @@ public class ParkingSessionService : IParkingSessionService
         }
 
         if (request.SlotId.HasValue &&
-            await _sessionRepository.AnyAsync(s => s.Id != id && s.SlotId == request.SlotId && s.SessionStatus.ToUpper() == "ACTIVE"))
+            await _sessionRepository.AnyAsync(s => s.Id != id && s.SlotId == request.SlotId && s.SessionStatus.ToUpper() == ActiveStatus))
         {
             return BaseResponse<ParkingSessionDto>.Fail("SLOT_IN_ACTIVE_SESSION", "Slot already has an active parking session.");
         }
@@ -132,7 +246,7 @@ public class ParkingSessionService : IParkingSessionService
         session.CheckOutTime = checkOutTime;
         session.LicensePlateOut = string.IsNullOrWhiteSpace(request.LicensePlateOut)
             ? session.LicensePlateIn
-            : request.LicensePlateOut.Trim().ToUpperInvariant();
+            : Normalize(request.LicensePlateOut);
         session.OutStaffId = request.OutStaffId;
 
         // --- BẮT ĐẦU XỬ LÝ KHẤU TRỪ TIỀN CỌC ---
@@ -188,7 +302,7 @@ public class ParkingSessionService : IParkingSessionService
 
         session.CheckOutTime ??= DateTime.UtcNow;
         session.LicensePlateOut ??= session.LicensePlateIn;
-        session.SessionStatus = "COMPLETED";
+        session.SessionStatus = CompletedStatus;
         _sessionRepository.Update(session);
         await _sessionRepository.SaveChangesAsync();
         return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Completed parking session successfully.");
@@ -215,13 +329,20 @@ public class ParkingSessionService : IParkingSessionService
         return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Rolled back checkout successfully.");
     }
 
-    private static bool IsActive(PBMS.Domain.Entities.ParkingSession session) =>
-        string.Equals(session.SessionStatus, "ACTIVE", StringComparison.OrdinalIgnoreCase);
+    private static bool IsActive(ParkingSessionEntity session) =>
+        string.Equals(session.SessionStatus, ActiveStatus, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCar(VehicleTypeEntity vehicleType) =>
+        string.Equals(vehicleType.TypeName, VehicleTypeEntity.CarTypeName, StringComparison.OrdinalIgnoreCase) ||
+        vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase) ||
+        vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
+
+    private static string Normalize(string value) => value.Trim().ToUpperInvariant();
 
     private static DateTime ToUtc(DateTime value) =>
         value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
-    private static ParkingSessionDto Map(PBMS.Domain.Entities.ParkingSession session) => new()
+    private static ParkingSessionDto Map(ParkingSessionEntity session) => new()
     {
         Id = session.Id,
         VehicleId = session.VehicleId,
@@ -237,6 +358,9 @@ public class ParkingSessionService : IParkingSessionService
         CheckOutTime = session.CheckOutTime,
         LicensePlateIn = session.LicensePlateIn,
         LicensePlateOut = session.LicensePlateOut,
-        SessionStatus = session.SessionStatus
+        SessionStatus = session.SessionStatus,
+        CardCode = session.Card?.CardCode,
+        ZoneCode = session.Zone?.Code,
+        SlotCode = session.ParkingSlot?.Code
     };
 }

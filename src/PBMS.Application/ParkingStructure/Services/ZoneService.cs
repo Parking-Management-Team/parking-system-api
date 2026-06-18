@@ -41,7 +41,7 @@ public class ZoneService : IZoneService
     /// <summary>
     /// Tạo zone mới kèm xác thực.
     /// Kiểm tra tồn tại của floor và loại xe.
-    /// Tự động tạo Slot nếu là loại xe ô tô.
+    /// Automatically creates slots for car zones.
     /// </summary>
     public async Task<ZoneDto> CreateZoneAsync(ZoneCreateRequest request)
     {
@@ -70,11 +70,10 @@ public class ZoneService : IZoneService
         await _unitOfWork.BeginTransactionAsync();
         try
         {
-            // Tạo entity zone mới
             var zone = new Zone
             {
                 FloorId = request.FloorId,
-                Code = request.Code,
+                Code = NormalizeZoneCode(request.Code, request.Name),
                 Name = request.Name,
                 Capacity = request.Capacity,
                 VehicleTypeId = request.VehicleTypeId,
@@ -82,28 +81,22 @@ public class ZoneService : IZoneService
                 Status = ZoneStatus.Available
             };
 
-            // Thêm vào repository
             await _zoneRepository.AddAsync(zone);
-            await _unitOfWork.SaveChangesAsync();
 
-            // Nếu là loại xe ô tô, tự động tạo các Slot tương ứng với Capacity
-            // Dựa trên SRS §6.1, §6.4 và yêu cầu người dùng
-            if (vehicleType.TypeName.Contains("Ô tô") || vehicleType.TypeName.ToLower().Contains("car"))
+            if (IsCarVehicleType(vehicleType))
             {
-                for (int i = 1; i <= request.Capacity; i++)
+                for (var slotNumber = 1; slotNumber <= request.Capacity; slotNumber++)
                 {
-                    var slotCode = $"{request.Code}-{i:D2}"; // ZA-01, ZA-02...
-                    var slot = new ParkingSlot
+                    var slotCode = $"{zone.Code}-{slotNumber:D2}";
+                    await _slotRepository.AddAsync(new ParkingSlot
                     {
-                        ZoneId = zone.Id,
+                        Zone = zone,
                         VehicleTypeId = request.VehicleTypeId,
                         Code = slotCode,
-                        Name = $"Vị trí {slotCode}",
+                        Name = $"Slot {slotCode}",
                         Status = SlotStatus.Available
-                    };
-                    await _slotRepository.AddAsync(slot);
+                    });
                 }
-                await _unitOfWork.SaveChangesAsync();
             }
 
             await _unitOfWork.CommitAsync();
@@ -213,7 +206,7 @@ public class ZoneService : IZoneService
         }
 
         // Cập nhật thuộc tính zone
-        zone.Code = request.Code;
+        zone.Code = NormalizeZoneCode(request.Code, zone.Code ?? request.Name);
         zone.Name = request.Name;
         zone.Capacity = request.Capacity;
         zone.VehicleTypeId = request.VehicleTypeId;
@@ -223,6 +216,19 @@ public class ZoneService : IZoneService
         await _unitOfWork.SaveChangesAsync();
 
         return _mapper.Map<ZoneDto>(zone);
+    }
+
+    private static string NormalizeZoneCode(string? code, string fallback)
+    {
+        var value = string.IsNullOrWhiteSpace(code) ? fallback : code;
+        return value.Trim().ToUpperInvariant();
+    }
+
+    private static bool IsCarVehicleType(VehicleType vehicleType)
+    {
+        return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

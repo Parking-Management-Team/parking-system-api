@@ -705,13 +705,13 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("BookingId")
-                        .HasColumnType("integer")
-                        .HasColumnName("booking_id");
-
                     b.Property<int>("BuildingId")
                         .HasColumnType("integer")
                         .HasColumnName("building_id");
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_id");
 
                     b.Property<int>("CardId")
                         .HasColumnType("integer")
@@ -760,6 +760,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<int?>("SlotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("slot_id");
+
                     b.Property<string>("SessionStatus")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -767,10 +771,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("ACTIVE")
                         .HasColumnName("session_status");
-
-                    b.Property<int?>("SlotId")
-                        .HasColumnType("integer")
-                        .HasColumnName("slot_id");
 
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer")
@@ -782,17 +782,24 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CardId")
+                        .IsUnique()
+                        .HasFilter("upper(session_status) = 'ACTIVE'")
+                        .HasDatabaseName("IX_parking_session_active_card");
+
                     b.HasIndex("BookingId")
                         .IsUnique()
-                        .HasDatabaseName("IX_parking_session_booking_id")
-                        .HasFilter("booking_id IS NOT NULL");
+                        .HasFilter("booking_id IS NOT NULL")
+                        .HasDatabaseName("IX_parking_session_booking_id");
 
                     b.HasIndex("BuildingId");
 
-                    b.HasIndex("CardId")
+                    b.HasIndex("VehicleId")
                         .IsUnique()
-                        .HasDatabaseName("IX_parking_session_active_card")
-                        .HasFilter("upper(session_status) = 'ACTIVE'");
+                        .HasFilter("upper(session_status) = 'ACTIVE'")
+                        .HasDatabaseName("IX_parking_session_active_vehicle");
+
+                    b.HasIndex("ZoneId");
 
                     b.HasIndex("InStaffId");
 
@@ -802,15 +809,8 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasIndex("SlotId")
                         .IsUnique()
-                        .HasDatabaseName("IX_parking_session_active_slot")
-                        .HasFilter("slot_id IS NOT NULL AND upper(session_status) = 'ACTIVE'");
-
-                    b.HasIndex("VehicleId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_parking_session_active_vehicle")
-                        .HasFilter("upper(session_status) = 'ACTIVE'");
-
-                    b.HasIndex("ZoneId");
+                        .HasFilter("slot_id IS NOT NULL AND upper(session_status) = 'ACTIVE'")
+                        .HasDatabaseName("IX_parking_session_active_slot");
 
                     b.ToTable("parking_session", null, t =>
                         {
@@ -1345,7 +1345,8 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasIndex("AccountId");
 
                     b.HasIndex("LicensePlate")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_vehicle_license_plate");
 
                     b.HasIndex("VehicleTypeId");
 
@@ -1395,7 +1396,8 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TypeName")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_vehicle_type_type_name");
 
                     b.ToTable("vehicle_type", (string)null);
                 });
@@ -1641,16 +1643,16 @@ namespace PBMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
                 {
-                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
-                        .WithOne()
-                        .HasForeignKey("PBMS.Domain.Entities.ParkingSession", "BookingId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("PBMS.Domain.Entities.Building", "Building")
                         .WithMany()
                         .HasForeignKey("BuildingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
+                        .WithOne()
+                        .HasForeignKey("PBMS.Domain.Entities.ParkingSession", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PBMS.Domain.Entities.Card", "Card")
                         .WithMany("ParkingSessions")
@@ -1689,10 +1691,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasForeignKey("ZoneId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Booking");
-
                     b.Navigation("Building");
 
+                    b.Navigation("Booking");
+                    
                     b.Navigation("Card");
 
                     b.Navigation("InStaff");
@@ -1993,6 +1995,16 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.Navigation("PricingPolicies");
 
+                    b.Navigation("Vehicles");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
+                {
+                    b.Navigation("ParkingSessions");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.VehicleType", b =>
+                {
                     b.Navigation("Vehicles");
                 });
 

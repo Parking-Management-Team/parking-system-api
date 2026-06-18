@@ -47,7 +47,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 1,
-                WindowName = "Khung giờ ngày",
+                WindowName = "Day Time Window",
                 StartTime = new TimeSpan(6, 0, 0),
                 EndTime = new TimeSpan(22, 0, 0),
                 BaseDurationMinutes = 60,
@@ -112,7 +112,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 1,
-                WindowName = "Khung giờ ngày",
+                WindowName = "Day Time Window",
                 StartTime = new TimeSpan(6, 0, 0),
                 EndTime = new TimeSpan(22, 0, 0),
                 BaseDurationMinutes = 60,
@@ -125,7 +125,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 2,
-                WindowName = "Khung giờ đêm",
+                WindowName = "Night Time Window",
                 StartTime = new TimeSpan(22, 0, 0),
                 EndTime = new TimeSpan(6, 0, 0), // qua đêm
                 BaseDurationMinutes = 60,
@@ -189,7 +189,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 1,
-                WindowName = "Khung giờ ngày",
+                WindowName = "Day Time Window",
                 StartTime = new TimeSpan(6, 0, 0),
                 EndTime = new TimeSpan(22, 0, 0),
                 BaseDurationMinutes = 60,
@@ -233,7 +233,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 1,
-                WindowName = "Khung giờ ngày",
+                WindowName = "Day Time Window",
                 StartTime = new TimeSpan(6, 0, 0),
                 EndTime = new TimeSpan(22, 0, 0),
                 BaseDurationMinutes = 60,
@@ -284,7 +284,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 1,
-                WindowName = "Khung giờ ngày",
+                WindowName = "Day Time Window",
                 StartTime = new TimeSpan(6, 0, 0),
                 EndTime = new TimeSpan(22, 0, 0),
                 BaseDurationMinutes = 60,
@@ -334,7 +334,7 @@ public class FeeCalculationServiceTests
             new PricingWindow
             {
                 Id = 1,
-                WindowName = "Khung giờ ngày",
+                WindowName = "Day Time Window",
                 StartTime = new TimeSpan(6, 0, 0),
                 EndTime = new TimeSpan(22, 0, 0),
                 BaseDurationMinutes = 60,

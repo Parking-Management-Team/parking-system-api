@@ -34,7 +34,7 @@ public class PricingPolicyServiceTests
     // Helper: tạo VehicleType mock
     // =========================================================================
     private static VehicleType MakeVehicleType(int id = 1) =>
-        new VehicleType { Id = id, TypeName = "Xe máy" };
+        new VehicleType { Id = id, TypeName = VehicleType.MotorcycleTypeName };
 
     // Helper: tạo PricingWindow cho test
     private static PricingWindow MakeWindow(
@@ -60,7 +60,7 @@ public class PricingPolicyServiceTests
     private static CreatePricingWindowRequest MakeFullDayWindowRequest() =>
         new CreatePricingWindowRequest
         {
-            WindowName = "Toàn ngày",
+            WindowName = "Full Day",
             StartTime = TimeSpan.Zero,
             EndTime = TimeSpan.Zero, // StartTime == EndTime → 24h
             BaseDurationMinutes = 60,
@@ -79,11 +79,11 @@ public class PricingPolicyServiceTests
             EffectiveStart = DateTime.Today,
             EffectiveEnd = null,
             PricingPolicyStatus = "Inactive",
-            VehicleType = new VehicleType { Id = vehicleTypeId, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = vehicleTypeId, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>
             {
                 // Window phủ đủ 24h (StartTime == EndTime)
-                MakeWindow(1, "Toàn ngày", TimeSpan.Zero, TimeSpan.Zero)
+                MakeWindow(1, "Full Day", TimeSpan.Zero, TimeSpan.Zero)
             }
         };
 
@@ -106,7 +106,7 @@ public class PricingPolicyServiceTests
         var request = new CreatePricingPolicyRequest
         {
             VehicleTypeId = 1,
-            PolicyName = "Bảng giá xe máy",
+            PolicyName = "Motorcycle Pricing",
             EffectiveStart = DateTime.Today,
             PricingWindows = new List<CreatePricingWindowRequest> { MakeFullDayWindowRequest() }
         };
@@ -116,7 +116,7 @@ public class PricingPolicyServiceTests
 
         // Assert: policy tạo ra phải ở trạng thái Inactive
         Assert.Equal("Inactive", result.PricingPolicyStatus);
-        Assert.Equal("Bảng giá xe máy", result.PolicyName);
+        Assert.Equal("Motorcycle Pricing", result.PolicyName);
         Assert.Equal(1, result.VehicleTypeId);
     }
 
@@ -180,7 +180,7 @@ public class PricingPolicyServiceTests
             {
                 new CreatePricingWindowRequest
                 {
-                    WindowName = "Window xấu",
+                    WindowName = "Invalid Window",
                     StartTime = TimeSpan.Zero,
                     EndTime = TimeSpan.Zero,
                     BaseDurationMinutes = 60,
@@ -216,11 +216,11 @@ public class PricingPolicyServiceTests
             PolicyName = "Test Policy",
             EffectiveStart = DateTime.Today,
             PricingPolicyStatus = "Inactive",
-            VehicleType = new VehicleType { Id = 1, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = 1, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>
             {
-                MakeWindow(1, "Khung giờ ngày", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0)),
-                MakeWindow(2, "Khung giờ đêm", new TimeSpan(22, 0, 0), new TimeSpan(6, 0, 0))
+                MakeWindow(1, "Day Time Window", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0)),
+                MakeWindow(2, "Night Time Window", new TimeSpan(22, 0, 0), new TimeSpan(6, 0, 0))
             }
         };
 
@@ -263,13 +263,13 @@ public class PricingPolicyServiceTests
         {
             Id = 1,
             VehicleTypeId = 1,
-            PolicyName = "Thiếu window",
+            PolicyName = "Missing Window",
             EffectiveStart = DateTime.Today,
             PricingPolicyStatus = "Inactive",
-            VehicleType = new VehicleType { Id = 1, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = 1, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>
             {
-                MakeWindow(1, "Khung giờ ngày", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0))
+                MakeWindow(1, "Day Time Window", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0))
                 // Thiếu window đêm: 22:00 - 06:00
             }
         };
@@ -296,7 +296,7 @@ public class PricingPolicyServiceTests
             PolicyName = "Windows overlap",
             EffectiveStart = DateTime.Today,
             PricingPolicyStatus = "Inactive",
-            VehicleType = new VehicleType { Id = 1, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = 1, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>
             {
                 MakeWindow(1, "Window A", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0)),
@@ -326,11 +326,11 @@ public class PricingPolicyServiceTests
             PolicyName = "Test Policy",
             EffectiveStart = DateTime.Today,
             PricingPolicyStatus = "Inactive",
-            VehicleType = new VehicleType { Id = 1, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = 1, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>
             {
-                MakeWindow(1, "Khung giờ ngày", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0)),
-                MakeWindow(2, "Khung giờ đêm", new TimeSpan(22, 0, 0), new TimeSpan(6, 0, 0))
+                MakeWindow(1, "Day Time Window", new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0)),
+                MakeWindow(2, "Night Time Window", new TimeSpan(22, 0, 0), new TimeSpan(6, 0, 0))
             }
         };
 
@@ -365,7 +365,7 @@ public class PricingPolicyServiceTests
 
         var request = new CreatePricingWindowRequest
         {
-            WindowName = "Window mới",
+            WindowName = "New Window",
             StartTime = TimeSpan.Zero,
             EndTime = TimeSpan.Zero,
             BaseDurationMinutes = 60,
@@ -482,10 +482,10 @@ public class PricingPolicyServiceTests
         {
             Id = 1,
             VehicleTypeId = 1,
-            PolicyName = "Tên cũ",
+            PolicyName = "Old Name",
             EffectiveStart = DateTime.Today,
             PricingPolicyStatus = "Active",
-            VehicleType = new VehicleType { Id = 1, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = 1, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>()
         };
 
@@ -494,14 +494,14 @@ public class PricingPolicyServiceTests
 
         var request = new UpdatePricingPolicyRequest
         {
-            PolicyName = "Tên mới" // Chỉ đổi tên — được phép khi ACTIVE
+            PolicyName = "New Name" // Only rename - allowed when ACTIVE
         };
 
         // Act (không ném exception)
         var result = await _service.UpdatePricingPolicyAsync(1, request);
 
         // Assert
-        Assert.Equal("Tên mới", result.PolicyName);
+        Assert.Equal("New Name", result.PolicyName);
         Assert.Equal("Active", result.PricingPolicyStatus);
     }
 
@@ -558,10 +558,10 @@ public class PricingPolicyServiceTests
             PolicyName = "24h Policy",
             EffectiveStart = DateTime.Today,
             PricingPolicyStatus = "Inactive",
-            VehicleType = new VehicleType { Id = 1, TypeName = "Xe máy" },
+            VehicleType = new VehicleType { Id = 1, TypeName = VehicleType.MotorcycleTypeName },
             PricingWindows = new List<PricingWindow>
             {
-                MakeWindow(1, "Toàn ngày", TimeSpan.Zero, TimeSpan.Zero)
+                MakeWindow(1, "Full Day", TimeSpan.Zero, TimeSpan.Zero)
             }
         };
 
