@@ -9,6 +9,8 @@ using PBMS.Application.Payment.DTOs;
 using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
+using PBMS.Application.Revenue.Interfaces;
+
 
 namespace PBMS.Application.Payment.Services;
 
@@ -25,7 +27,9 @@ public class PaymentService : IPaymentService
     private readonly IVNPayGateway _vnpayGateway;
     private readonly IParkingSessionService _sessionService;
     private readonly IFeeCalculationService _feeCalculationService;
+    private readonly IRevenueService _revenueService;
     private readonly IConfiguration _configuration;
+
 
     public PaymentService(
         IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
@@ -36,7 +40,7 @@ public class PaymentService : IPaymentService
         IVNPayGateway vnpayGateway,
         IParkingSessionService sessionService,
         IFeeCalculationService feeCalculationService,
-        IConfiguration configuration)
+        IConfiguration configuration, IRevenueService revenueService)
     {
         _paymentRepository = paymentRepository;
         _sessionRepository = sessionRepository;
@@ -47,6 +51,7 @@ public class PaymentService : IPaymentService
         _sessionService = sessionService;
         _feeCalculationService = feeCalculationService;
         _configuration = configuration;
+        _revenueService = revenueService;
     }
 
     /// <summary>
@@ -294,6 +299,7 @@ public class PaymentService : IPaymentService
                 await _subscriptionRepository.SaveChangesAsync();
             }
         }
+        await _revenueService.UpdateRevenueAfterPaymentAsync(payment.Id);
     }
 
     private static PaymentResponseDto MapToDto(PBMS.Domain.Entities.Payment payment) => new()
