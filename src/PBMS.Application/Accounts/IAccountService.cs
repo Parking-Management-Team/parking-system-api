@@ -31,5 +31,14 @@ namespace PBMS.Application.Accounts
         /// Khóa tài khoản (Soft Delete).
         /// </summary>
         Task<bool> DeleteAccountAsync(int id);
+
+        /// <summary>
+        /// Đổi mật khẩu cho người dùng.
+        /// </summary>
+        /// <param name="id">ID của tài khoản cần đổi mật khẩu.</param>
+        /// <param name="dto">DTO chứa mật khẩu cũ và mới.</param>
+        Task<bool> ChangePasswordAsync(int id, ChangePasswordDto dto);
+
+
     }
 }

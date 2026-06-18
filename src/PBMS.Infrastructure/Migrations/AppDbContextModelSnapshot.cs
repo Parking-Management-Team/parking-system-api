@@ -95,6 +95,203 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("account", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("audit_log_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AccountId")
+                        .HasColumnType("integer")
+                        .HasColumnName("account_id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("description");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int?>("TargetId")
+                        .HasColumnType("integer")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetTable")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("target_table");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("audit_log", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Blacklist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("blacklist_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CardId")
+                        .HasColumnType("integer")
+                        .HasColumnName("card_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int?>("IncidentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("incident_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reason");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int?>("VehicleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardId");
+
+                    b.HasIndex("IncidentId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("blacklist", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Blacklist_Source", "vehicle_id IS NOT NULL OR card_id IS NOT NULL OR incident_id IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Booking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer")
+                        .HasColumnName("account_id");
+
+                    b.Property<string>("BookingStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Pending")
+                        .HasColumnName("booking_status");
+
+                    b.Property<int>("BuildingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("building_id");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime>("CheckinGraceUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checkin_grace_until");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal>("DepositAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("deposit_amount");
+
+                    b.Property<DateTime>("PaymentDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payment_deadline");
+
+                    b.Property<DateTime>("PlannedCheckinTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("planned_checkin_time");
+
+                    b.Property<DateTime>("PlannedCheckoutTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("planned_checkout_time");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("VehicleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_id");
+
+                    b.Property<int>("VehicleTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_type_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("BuildingId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("VehicleTypeId");
+
+                    b.ToTable("booking", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Building", b =>
                 {
                     b.Property<int>("Id")
@@ -265,14 +462,256 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("floor", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Incident", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("incident_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("IncidentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Reported")
+                        .HasColumnName("incident_status");
+
+                    b.Property<int>("IncidentTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("incident_type_id");
+
+                    b.Property<decimal?>("PenaltyFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("penalty_fee");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("session_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IncidentTypeId");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("incident", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.IncidentType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("incident_type_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal?>("DefaultPenaltyFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("default_penalty_fee");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("IncidentCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("incident_code");
+
+                    b.Property<string>("IncidentName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("incident_name");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IncidentCode")
+                        .IsUnique();
+
+                    b.ToTable("incident_type", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.MonthlySubscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("monthly_subscription_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("activated_at");
+
+                    b.Property<int?>("AssignedCardId")
+                        .HasColumnType("integer")
+                        .HasColumnName("assigned_card_id");
+
+                    b.Property<int?>("AssignedSlotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("assigned_slot_id");
+
+                    b.Property<int>("BuildingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("building_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expired_at");
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("monthly_price");
+
+                    b.Property<string>("MonthlySubscriptionStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("PENDING")
+                        .HasColumnName("monthly_subscription_status");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("VehicleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("AssignedCardId")
+                        .IsUnique()
+                        .HasFilter("assigned_card_id IS NOT NULL");
+
+                    b.HasIndex("AssignedSlotId");
+
+                    b.HasIndex("BuildingId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("monthly_subscription", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("notification_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("message");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("notification", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("parking_session_id");
+                        .HasColumnName("session_id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BuildingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("building_id");
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_id");
 
                     b.Property<int>("CardId")
                         .HasColumnType("integer")
@@ -280,11 +719,11 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.Property<DateTime>("CheckInTime")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("checkin_time");
+                        .HasColumnName("check_in_time");
 
                     b.Property<DateTime?>("CheckOutTime")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("checkout_time");
+                        .HasColumnName("check_out_time");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -296,13 +735,24 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("in_staff_id");
 
+                    b.Property<string>("LicensePlateIn")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("license_plate_in");
+
+                    b.Property<string>("LicensePlateOut")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("license_plate_out");
+
+                    b.Property<int?>("MonthlySubscriptionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("monthly_subscription_id");
+
                     b.Property<int?>("OutStaffId")
                         .HasColumnType("integer")
                         .HasColumnName("out_staff_id");
-
-                    b.Property<int?>("ParkingSlotId")
-                        .HasColumnType("integer")
-                        .HasColumnName("slot_id");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -310,12 +760,16 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<int?>("SlotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("slot_id");
+
                     b.Property<string>("SessionStatus")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Active")
+                        .HasDefaultValue("ACTIVE")
                         .HasColumnName("session_status");
 
                     b.Property<int>("VehicleId")
@@ -329,16 +783,39 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CardId")
-                        .HasDatabaseName("IX_parking_session_card_id");
+                        .IsUnique()
+                        .HasFilter("upper(session_status) = 'ACTIVE'")
+                        .HasDatabaseName("IX_parking_session_active_card");
 
-                    b.HasIndex("ParkingSlotId");
+                    b.HasIndex("BookingId")
+                        .IsUnique()
+                        .HasFilter("booking_id IS NOT NULL")
+                        .HasDatabaseName("IX_parking_session_booking_id");
+
+                    b.HasIndex("BuildingId");
 
                     b.HasIndex("VehicleId")
-                        .HasDatabaseName("IX_parking_session_vehicle_id");
+                        .IsUnique()
+                        .HasFilter("upper(session_status) = 'ACTIVE'")
+                        .HasDatabaseName("IX_parking_session_active_vehicle");
 
                     b.HasIndex("ZoneId");
 
-                    b.ToTable("parking_session", (string)null);
+                    b.HasIndex("InStaffId");
+
+                    b.HasIndex("MonthlySubscriptionId");
+
+                    b.HasIndex("OutStaffId");
+
+                    b.HasIndex("SlotId")
+                        .IsUnique()
+                        .HasFilter("slot_id IS NOT NULL AND upper(session_status) = 'ACTIVE'")
+                        .HasDatabaseName("IX_parking_session_active_slot");
+
+                    b.ToTable("parking_session", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_parking_session_source_exclusive", "booking_id IS NULL OR monthly_subscription_id IS NULL");
+                        });
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>
@@ -402,16 +879,121 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("parking_slot", (string)null);
                 });
 
-            modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
+            modelBuilder.Entity("PBMS.Domain.Entities.Payment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int?>("MonthlySubscriptionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("monthly_subscription_id");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("payment_method");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("PENDING")
+                        .HasColumnName("payment_status");
+
+                    b.Property<DateTime?>("PaymentTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payment_time");
+
+                    b.Property<int?>("PricingPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_policy_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int?>("SessionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("session_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("MonthlySubscriptionId");
+
+                    b.HasIndex("PricingPolicyId");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("payment", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Payment_Source", "session_id IS NOT NULL OR booking_id IS NOT NULL OR monthly_subscription_id IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Permission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("permission_id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("PermissionCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("permission_code");
+
+                    b.Property<string>("PermissionName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("permission_name");
+
+                    b.Property<string>("PermissionStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Active")
+                        .HasColumnName("permission_status");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -421,19 +1003,112 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PricingPolicies");
+                    b.HasIndex("PermissionCode")
+                        .IsUnique();
+
+                    b.ToTable("permission", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_policy_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("EffectiveEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_end");
+
+                    b.Property<DateTime>("EffectiveStart")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_start");
+
+                    b.Property<string>("PolicyName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("policy_name");
+
+                    b.Property<string>("PricingPolicyStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Active")
+                        .HasColumnName("pricing_policy_status");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("VehicleTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_type_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleTypeId");
+
+                    b.ToTable("pricing_policy", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.PricingWindow", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_window_id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("BaseDurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("base_duration_minutes");
+
+                    b.Property<decimal>("BasePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("base_price");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time")
+                        .HasColumnName("end_time");
+
+                    b.Property<int>("GracePeriodMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("grace_period_minutes");
+
+                    b.Property<int>("IncrementBlockMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("increment_block_minutes");
+
+                    b.Property<decimal>("IncrementPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("increment_price");
+
+                    b.Property<int>("PricingPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_policy_id");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -441,9 +1116,114 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time")
+                        .HasColumnName("start_time");
+
+                    b.Property<decimal?>("WindowCap")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("window_cap");
+
+                    b.Property<string>("WindowName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("window_name");
+
                     b.HasKey("Id");
 
-                    b.ToTable("PricingWindows");
+                    b.HasIndex("PricingPolicyId");
+
+                    b.ToTable("pricing_window", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatistic", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("statistic_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BuildingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("building_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("PeriodType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("period_type");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("TotalBookings")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_bookings");
+
+                    b.Property<decimal>("TotalRevenue")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0.00m)
+                        .HasColumnName("total_revenue");
+
+                    b.Property<int>("TotalSessions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_sessions");
+
+                    b.Property<int>("TotalSubscriptions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_subscriptions");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuildingId");
+
+                    b.ToTable("revenue_statistic", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatisticPayment", b =>
+                {
+                    b.Property<int>("StatisticId")
+                        .HasColumnType("integer")
+                        .HasColumnName("statistic_id");
+
+                    b.Property<int>("PaymentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_id");
+
+                    b.HasKey("StatisticId", "PaymentId");
+
+                    b.HasIndex("PaymentId");
+
+                    b.ToTable("revenue_statistic_payment", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Role", b =>
@@ -486,6 +1266,23 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("role", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("permission_id");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("role_permission", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
                 {
                     b.Property<int>("Id")
@@ -494,6 +1291,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("vehicle_id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AccountId")
+                        .HasColumnType("integer")
+                        .HasColumnName("account_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -507,17 +1308,31 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("license_plate");
 
+                    b.Property<DateTime?>("RegisteredDay")
+                        .HasColumnType("date")
+                        .HasColumnName("registered_day");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<string>("VehicleStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("ACTIVE")
+                        .HasColumnName("vehicle_status");
+
                     b.Property<int>("VehicleTypeId")
                         .HasColumnType("integer")
                         .HasColumnName("vehicle_type_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
 
                     b.HasIndex("LicensePlate")
                         .IsUnique()
@@ -537,23 +1352,16 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("vehicle_type_code");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("vehicle_type_name");
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("description");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -561,11 +1369,25 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<string>("TypeName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("type_name");
+
+                    b.Property<string>("VehicleTypeStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("ACTIVE")
+                        .HasColumnName("vehicle_type_status");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("Code")
+                    b.HasIndex("TypeName")
                         .IsUnique()
-                        .HasDatabaseName("IX_vehicle_type_code");
+                        .HasDatabaseName("IX_vehicle_type_type_name");
 
                     b.ToTable("vehicle_type", (string)null);
                 });
@@ -643,6 +1465,75 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.AuditLog", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Account", "Account")
+                        .WithMany("AuditLogs")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Blacklist", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Card", "Card")
+                        .WithMany("Blacklists")
+                        .HasForeignKey("CardId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.Incident", "Incident")
+                        .WithMany("Blacklists")
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
+                        .WithMany("Blacklists")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Card");
+
+                    b.Navigation("Incident");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Booking", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Account", "Account")
+                        .WithMany("Bookings")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Building", "Building")
+                        .WithMany("Bookings")
+                        .HasForeignKey("BuildingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
+                        .WithMany("Bookings")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany("Bookings")
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Building");
+
+                    b.Navigation("Vehicle");
+
+                    b.Navigation("VehicleType");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Floor", b =>
                 {
                     b.HasOne("PBMS.Domain.Entities.Building", "Building")
@@ -654,17 +1545,114 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Building");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Incident", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.IncidentType", "IncidentType")
+                        .WithMany("Incidents")
+                        .HasForeignKey("IncidentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.ParkingSession", "Session")
+                        .WithMany("Incidents")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("IncidentType");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.MonthlySubscription", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Account", "Account")
+                        .WithMany("MonthlySubscriptions")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Card", "AssignedCard")
+                        .WithOne("MonthlySubscription")
+                        .HasForeignKey("PBMS.Domain.Entities.MonthlySubscription", "AssignedCardId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PBMS.Domain.Entities.ParkingSlot", "AssignedSlot")
+                        .WithMany("MonthlySubscriptions")
+                        .HasForeignKey("AssignedSlotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.Building", "Building")
+                        .WithMany("MonthlySubscriptions")
+                        .HasForeignKey("BuildingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
+                        .WithMany("MonthlySubscriptions")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("AssignedCard");
+
+                    b.Navigation("AssignedSlot");
+
+                    b.Navigation("Building");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Account", "Account")
+                        .WithMany("Notifications")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
                 {
+                    b.HasOne("PBMS.Domain.Entities.Building", "Building")
+                        .WithMany()
+                        .HasForeignKey("BuildingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
+                        .WithOne()
+                        .HasForeignKey("PBMS.Domain.Entities.ParkingSession", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PBMS.Domain.Entities.Card", "Card")
                         .WithMany("ParkingSessions")
                         .HasForeignKey("CardId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PBMS.Domain.Entities.Account", "InStaff")
+                        .WithMany()
+                        .HasForeignKey("InStaffId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.MonthlySubscription", "MonthlySubscription")
+                        .WithMany()
+                        .HasForeignKey("MonthlySubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.Account", "OutStaff")
+                        .WithMany()
+                        .HasForeignKey("OutStaffId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PBMS.Domain.Entities.ParkingSlot", "ParkingSlot")
                         .WithMany("ParkingSessions")
-                        .HasForeignKey("ParkingSlotId")
+                        .HasForeignKey("SlotId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
@@ -678,7 +1666,17 @@ namespace PBMS.Infrastructure.Migrations
                         .HasForeignKey("ZoneId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Building");
+
+                    b.Navigation("Booking");
+                    
                     b.Navigation("Card");
+
+                    b.Navigation("InStaff");
+
+                    b.Navigation("MonthlySubscription");
+
+                    b.Navigation("OutStaff");
 
                     b.Navigation("ParkingSlot");
 
@@ -690,7 +1688,7 @@ namespace PBMS.Infrastructure.Migrations
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>
                 {
                     b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
-                        .WithMany()
+                        .WithMany("ParkingSlots")
                         .HasForeignKey("VehicleTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -706,13 +1704,122 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Zone");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
+                        .WithMany("Payments")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.MonthlySubscription", "MonthlySubscription")
+                        .WithMany("Payments")
+                        .HasForeignKey("MonthlySubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.PricingPolicy", "PricingPolicy")
+                        .WithMany("Payments")
+                        .HasForeignKey("PricingPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.ParkingSession", "Session")
+                        .WithMany("Payments")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("MonthlySubscription");
+
+                    b.Navigation("PricingPolicy");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany("PricingPolicies")
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("VehicleType");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingWindow", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingPolicy", "PricingPolicy")
+                        .WithMany("PricingWindows")
+                        .HasForeignKey("PricingPolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PricingPolicy");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatistic", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Building", "Building")
+                        .WithMany("RevenueStatistics")
+                        .HasForeignKey("BuildingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Building");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatisticPayment", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Payment", "Payment")
+                        .WithMany("RevenueStatisticPayments")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.RevenueStatistic", "RevenueStatistic")
+                        .WithMany("RevenueStatisticPayments")
+                        .HasForeignKey("StatisticId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Payment");
+
+                    b.Navigation("RevenueStatistic");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RolePermission", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Permission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
                 {
+                    b.HasOne("PBMS.Domain.Entities.Account", "Account")
+                        .WithMany("Vehicles")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
                         .WithMany("Vehicles")
                         .HasForeignKey("VehicleTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Account");
 
                     b.Navigation("VehicleType");
                 });
@@ -736,13 +1843,41 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("VehicleType");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Account", b =>
+                {
+                    b.Navigation("AuditLogs");
+
+                    b.Navigation("Bookings");
+
+                    b.Navigation("MonthlySubscriptions");
+
+                    b.Navigation("Notifications");
+
+                    b.Navigation("Vehicles");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Booking", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Building", b =>
                 {
+                    b.Navigation("Bookings");
+
                     b.Navigation("Floors");
+
+                    b.Navigation("MonthlySubscriptions");
+
+                    b.Navigation("RevenueStatistics");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Card", b =>
                 {
+                    b.Navigation("Blacklists");
+
+                    b.Navigation("MonthlySubscription");
+
                     b.Navigation("ParkingSessions");
                 });
 
@@ -751,14 +1886,84 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Zones");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Incident", b =>
+                {
+                    b.Navigation("Blacklists");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.IncidentType", b =>
+                {
+                    b.Navigation("Incidents");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.MonthlySubscription", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
+                {
+                    b.Navigation("Incidents");
+
+                    b.Navigation("Payments");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>
                 {
+                    b.Navigation("MonthlySubscriptions");
+
                     b.Navigation("ParkingSessions");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Payment", b =>
+                {
+                    b.Navigation("RevenueStatisticPayments");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Permission", b =>
+                {
+                    b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
+                {
+                    b.Navigation("Payments");
+
+                    b.Navigation("PricingWindows");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatistic", b =>
+                {
+                    b.Navigation("RevenueStatisticPayments");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Role", b =>
                 {
                     b.Navigation("Accounts");
+
+                    b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
+                {
+                    b.Navigation("Blacklists");
+
+                    b.Navigation("Bookings");
+
+                    b.Navigation("MonthlySubscriptions");
+
+                    b.Navigation("ParkingSessions");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.VehicleType", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("ParkingSlots");
+
+                    b.Navigation("PricingPolicies");
+
+                    b.Navigation("Vehicles");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>

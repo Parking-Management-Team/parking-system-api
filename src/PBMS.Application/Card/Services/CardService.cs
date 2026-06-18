@@ -119,6 +119,27 @@ public class CardService : ICardService
     }
 
     // -----------------------------------------------------------------------
+    // LẤY DANH SÁCH TOÀN BỘ THẺ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ thẻ gửi xe trong hệ thống.
+    ///
+    /// Luồng xử lý:
+    ///   1. Truy vấn toàn bộ danh sách thẻ từ repository
+    ///   2. Map danh sách entity sang danh sách DTO
+    ///   3. Trả về kết quả
+    /// </summary>
+    public async Task<List<CardDto>> GetAllCardsAsync()
+    {
+        // Gọi repository để lấy toàn bộ thực thể thẻ
+        var cards = await _cardRepository.GetAllAsync();
+
+        // Chuyển đổi danh sách entity sang DTO và trả về
+        return cards.Select(MapToDto).ToList();
+    }
+
+    // -----------------------------------------------------------------------
     // LẤY THẺ THEO ID
     // -----------------------------------------------------------------------
 

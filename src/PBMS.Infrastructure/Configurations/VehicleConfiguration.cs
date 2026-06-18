@@ -16,6 +16,9 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
             .HasColumnName("vehicle_id")
             .ValueGeneratedOnAdd();
 
+        builder.Property(v => v.AccountId)
+            .HasColumnName("account_id");
+
         builder.Property(v => v.VehicleTypeId)
             .HasColumnName("vehicle_type_id")
             .IsRequired();
@@ -29,13 +32,29 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
             .IsUnique()
             .HasDatabaseName("IX_vehicle_license_plate");
 
+        builder.Property(v => v.RegisteredDay)
+            .HasColumnName("registered_day")
+            .HasColumnType("date");
+
+        builder.Property(v => v.VehicleStatus)
+            .HasColumnName("vehicle_status")
+            .HasMaxLength(20)
+            .HasDefaultValue(Vehicle.StatusActive)
+            .IsRequired();
+
         builder.Property(v => v.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
         builder.Property(v => v.RowVersion)
+            .HasColumnName("xmin")
             .IsRowVersion();
+
+        builder.HasOne(v => v.Account)
+            .WithMany(a => a.Vehicles)
+            .HasForeignKey(v => v.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(v => v.VehicleType)
             .WithMany(vt => vt.Vehicles)

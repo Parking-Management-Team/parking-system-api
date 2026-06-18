@@ -16,18 +16,23 @@ public class VehicleTypeConfiguration : IEntityTypeConfiguration<VehicleType>
             .HasColumnName("vehicle_type_id")
             .ValueGeneratedOnAdd();
 
-        builder.Property(vt => vt.Code)
-            .HasColumnName("vehicle_type_code")
-            .HasMaxLength(20)
+        builder.Property(vt => vt.TypeName)
+            .HasColumnName("type_name")
+            .HasMaxLength(50)
             .IsRequired();
 
-        builder.HasIndex(vt => vt.Code)
+        builder.HasIndex(vt => vt.TypeName)
             .IsUnique()
-            .HasDatabaseName("IX_vehicle_type_code");
+            .HasDatabaseName("IX_vehicle_type_type_name");
 
-        builder.Property(vt => vt.Name)
-            .HasColumnName("vehicle_type_name")
-            .HasMaxLength(50)
+        builder.Property(vt => vt.Description)
+            .HasColumnName("description")
+            .HasMaxLength(100);
+
+        builder.Property(vt => vt.VehicleTypeStatus)
+            .HasColumnName("vehicle_type_status")
+            .HasMaxLength(20)
+            .HasDefaultValue(VehicleType.StatusActive)
             .IsRequired();
 
         builder.Property(vt => vt.CreatedAt)
@@ -36,6 +41,7 @@ public class VehicleTypeConfiguration : IEntityTypeConfiguration<VehicleType>
             .IsRequired();
 
         builder.Property(vt => vt.RowVersion)
+            .HasColumnName("xmin")
             .IsRowVersion();
     }
 }
