@@ -5,6 +5,10 @@ namespace PBMS.Domain.Enums;
 /// </summary>
 public enum BuildingStatus
 {
+    Inactive,
+    Active,
+    Maintenance,
+
     /// <summary>
     /// Tòa nhà đang mở cửa và hoạt động bình thường.
     /// </summary>

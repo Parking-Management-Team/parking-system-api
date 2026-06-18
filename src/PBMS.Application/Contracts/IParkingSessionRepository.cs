@@ -1,11 +1,12 @@
 using PBMS.Domain.Entities;
 using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
+using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 
 namespace PBMS.Application.Contracts;
 
 public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
 {
-    Task<Vehicle?> GetVehicleByLicensePlateAsync(string licensePlate);
+    Task<VehicleEntity?> GetVehicleByLicensePlateAsync(string licensePlate);
 
     Task<bool> HasActiveSessionForVehicleAsync(int vehicleId);
 

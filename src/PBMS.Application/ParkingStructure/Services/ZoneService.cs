@@ -62,6 +62,7 @@ public class ZoneService : IZoneService
         var zone = new Zone
         {
             FloorId = request.FloorId,
+            Code = NormalizeZoneCode(request.Code, request.Name),
             Name = request.Name,
             Capacity = request.Capacity,
             VehicleTypeId = request.VehicleTypeId,
@@ -170,6 +171,7 @@ public class ZoneService : IZoneService
         }
 
         // Cập nhật thuộc tính zone
+        zone.Code = NormalizeZoneCode(request.Code, zone.Code ?? request.Name);
         zone.Name = request.Name;
         zone.Capacity = request.Capacity;
         zone.VehicleTypeId = request.VehicleTypeId;
@@ -177,6 +179,12 @@ public class ZoneService : IZoneService
         _zoneRepository.Update(zone);
 
         return _mapper.Map<ZoneDto>(zone);
+    }
+
+    private static string NormalizeZoneCode(string? code, string fallback)
+    {
+        var value = string.IsNullOrWhiteSpace(code) ? fallback : code;
+        return value.Trim().ToUpperInvariant();
     }
 
     /// <summary>
