@@ -70,13 +70,18 @@ public class ZoneService : IZoneService
         await _unitOfWork.BeginTransactionAsync();
         try
         {
-            FloorId = request.FloorId,
-            Code = NormalizeZoneCode(request.Code, request.Name),
-            Name = request.Name,
-            Capacity = request.Capacity,
-            VehicleTypeId = request.VehicleTypeId,
-            Status = Domain.Enums.ZoneStatus.Available
-        };
+            var zone = new Zone
+            {
+                FloorId = request.FloorId,
+                Code = NormalizeZoneCode(request.Code, request.Name),
+                Name = request.Name,
+                Capacity = request.Capacity,
+                VehicleTypeId = request.VehicleTypeId,
+                AccessType = request.AccessType,
+                Status = ZoneStatus.Available
+            };
+
+            await _zoneRepository.AddAsync(zone);
 
             await _unitOfWork.CommitAsync();
 

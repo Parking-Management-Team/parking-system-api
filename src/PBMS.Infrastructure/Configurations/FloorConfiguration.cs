@@ -51,7 +51,7 @@ public class FloorConfiguration : IEntityTypeConfiguration<Floor>
             .HasConversion(
                 status => status.ToString(),
                 value => Enum.Parse<FloorStatus>(value, ignoreCase: true))
-            .HasDefaultValue(FloorStatus.Available)
+            .HasDefaultValue(FloorStatus.Active)
             .IsRequired();
 
         // 7. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)

@@ -19,17 +19,23 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IParkingSessionRepository _sessionRepository;
     private readonly IRepository<VehicleEntity> _vehicleRepository;
     private readonly IRepository<VehicleTypeEntity> _vehicleTypeRepository;
+    private readonly IRepository<Booking> _bookingRepository;
+    private readonly IFeeCalculationService _feeCalculationService;
     private readonly ICardRepository _cardRepository;
 
     public ParkingSessionService(
         IParkingSessionRepository sessionRepository,
         IRepository<VehicleEntity> vehicleRepository,
         IRepository<VehicleTypeEntity> vehicleTypeRepository,
+        IRepository<Booking> bookingRepository,
+        IFeeCalculationService feeCalculationService,
         ICardRepository cardRepository)
     {
         _sessionRepository = sessionRepository;
         _vehicleRepository = vehicleRepository;
         _vehicleTypeRepository = vehicleTypeRepository;
+        _bookingRepository = bookingRepository;
+        _feeCalculationService = feeCalculationService;
         _cardRepository = cardRepository;
     }
 

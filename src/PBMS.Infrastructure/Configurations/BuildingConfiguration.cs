@@ -56,7 +56,7 @@ public class BuildingConfiguration : IEntityTypeConfiguration<Building>
             .HasConversion(
                 status => status.ToString(),
                 value => Enum.Parse<BuildingStatus>(value, ignoreCase: true))
-            .HasDefaultValue(BuildingStatus.Available)
+            .HasDefaultValue(BuildingStatus.Active)
             .IsRequired();
 
         // 8. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)
