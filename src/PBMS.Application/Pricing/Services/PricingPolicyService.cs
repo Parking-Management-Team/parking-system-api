@@ -58,7 +58,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "VEHICLE_TYPE_NOT_FOUND",
-                message: $"Không tìm thấy loại phương tiện với ID={request.VehicleTypeId}."
+                message: $"Vehicle type not found with ID={request.VehicleTypeId}."
             );
         }
 
@@ -67,7 +67,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "INVALID_EFFECTIVE_DATE_RANGE",
-                message: "Ngày kết thúc hiệu lực (EffectiveEnd) phải sau ngày bắt đầu (EffectiveStart)."
+                message: "Effective end date (EffectiveEnd) must be after start date (EffectiveStart)."
             );
         }
 
@@ -76,7 +76,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_WINDOWS_REQUIRED",
-                message: "Chính sách giá phải có ít nhất một khung giờ (PricingWindow)."
+                message: "Pricing policy must have at least one window (PricingWindow)."
             );
         }
 
@@ -147,7 +147,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá với ID={id}."
+                message: $"Pricing policy not found with ID={id}."
             );
         }
 
@@ -156,8 +156,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "POLICY_ALREADY_ACTIVE_OR_EXPIRED",
-                message: $"Chỉ có thể kích hoạt chính sách ở trạng thái Inactive. " +
-                         $"Trạng thái hiện tại: {policy.PricingPolicyStatus}."
+                message: $"Only inactive policies can be activated. Current status: {policy.PricingPolicyStatus}."
             );
         }
 
@@ -177,9 +176,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "POLICY_OVERLAP",
-                message: "Đã tồn tại chính sách giá Active/Inactive khác cho cùng loại xe " +
-                         "với khoảng thời gian hiệu lực chồng nhau. " +
-                         "Vui lòng điều chỉnh EffectiveStart/EffectiveEnd trước khi kích hoạt."
+                message: "Another active or inactive pricing policy already exists for the same vehicle type with overlapping effective dates. Please adjust EffectiveStart/EffectiveEnd before activating."
             );
         }
 
@@ -205,7 +202,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá với ID={id}."
+                message: $"Pricing policy not found with ID={id}."
             );
         }
 
@@ -243,7 +240,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá với ID={id}."
+                message: $"Pricing policy not found with ID={id}."
             );
         }
 
@@ -255,7 +252,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "CANNOT_MODIFY_ACTIVE_POLICY_START_DATE",
-                message: "Không được sửa ngày bắt đầu hiệu lực (EffectiveStart) khi chính sách đã ở trạng thái Active. (BR-FEE-031)"
+                message: "The effective start date (EffectiveStart) cannot be modified when the policy is active. (BR-FEE-031)"
             );
         }
 
@@ -264,7 +261,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "CANNOT_MODIFY_EXPIRED_POLICY",
-                message: "Không được sửa ngày kết thúc hiệu lực của chính sách đã Expired. (BR-FEE-032)"
+                message: "The effective end date cannot be modified for expired policies. (BR-FEE-032)"
             );
         }
 
@@ -288,7 +285,7 @@ public class PricingPolicyService : IPricingPolicyService
             {
                 throw new DomainException(
                     errorCode: "INVALID_EFFECTIVE_DATE_RANGE",
-                    message: "Ngày kết thúc hiệu lực (EffectiveEnd) phải sau ngày bắt đầu (EffectiveStart)."
+                    message: "Effective end date (EffectiveEnd) must be after start date (EffectiveStart)."
                 );
             }
             policy.EffectiveEnd = request.EffectiveEnd.Value.Date;
@@ -301,8 +298,7 @@ public class PricingPolicyService : IPricingPolicyService
             {
                 throw new DomainException(
                     errorCode: "INVALID_PRICING_POLICY_STATUS",
-                    message: $"Trạng thái '{request.PricingPolicyStatus}' không hợp lệ. " +
-                             $"Các giá trị hợp lệ: {string.Join(", ", ValidStatuses)}."
+                    message: $"Status '{request.PricingPolicyStatus}' is invalid. Valid statuses: {string.Join(", ", ValidStatuses)}."
                 );
             }
             // Không cho phép chuyển ngược về Inactive từ Active
@@ -310,8 +306,7 @@ public class PricingPolicyService : IPricingPolicyService
             {
                 throw new DomainException(
                     errorCode: "CANNOT_DEACTIVATE_ACTIVE_POLICY",
-                    message: "Không thể chuyển chính sách đang Active về Inactive. " +
-                             "Chỉ có thể chuyển sang Expired."
+                    message: "Active policies cannot be changed to Inactive. They can only be changed to Expired."
                 );
             }
             policy.PricingPolicyStatus = request.PricingPolicyStatus;
@@ -340,7 +335,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá với ID={pricingPolicyId}."
+                message: $"Pricing policy not found with ID={pricingPolicyId}."
             );
         }
 
@@ -389,7 +384,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_WINDOW_NOT_FOUND",
-                message: $"Không tìm thấy khung giờ với ID={pricingWindowId}."
+                message: $"Pricing window not found with ID={pricingWindowId}."
             );
         }
 
@@ -446,7 +441,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_WINDOW_NOT_FOUND",
-                message: $"Không tìm thấy khung giờ với ID={pricingWindowId}."
+                message: $"Pricing window not found with ID={pricingWindowId}."
             );
         }
 
@@ -461,8 +456,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "CANNOT_DELETE_LAST_PRICING_WINDOW",
-                message: "Không thể xóa khung giờ cuối cùng của chính sách giá. " +
-                         "Mỗi chính sách phải có ít nhất một khung giờ."
+                message: "Cannot delete the last window of the pricing policy. Each policy must have at least one window."
             );
         }
 
@@ -484,9 +478,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "CANNOT_MODIFY_ACTIVE_POLICY",
-                message: $"Không được sửa cấu hình giá của chính sách đang ở trạng thái Active (ID={policy.Id}). " +
-                         "Theo BR-FEE-029: Policy đã ACTIVE hoặc đã từng được dùng để chấp nhận " +
-                         "Parking Session không được sửa cấu hình giá."
+                message: $"Cannot modify pricing configuration for active policy (ID={policy.Id}). According to BR-FEE-029: Active policies cannot be modified."
             );
         }
     }
@@ -506,7 +498,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "PRICING_WINDOWS_REQUIRED",
-                message: $"[{policyName}] Chính sách giá phải có ít nhất một khung giờ."
+                message: $"[{policyName}] Pricing policy must have at least one window."
             );
         }
 
@@ -552,8 +544,7 @@ public class PricingPolicyService : IPricingPolicyService
                 // Overlap: segment bắt đầu trước khi segment trước kết thúc
                 throw new DomainException(
                     errorCode: "WINDOWS_OVERLAP",
-                    message: $"[{policyName}] Khung giờ '{seg.Name}' bị chồng chéo với khung giờ khác. " +
-                             "Các khung giờ không được overlap nhau. (BR-FEE-027)"
+                    message: $"[{policyName}] Pricing window '{seg.Name}' overlaps with another window. Windows must not overlap. (BR-FEE-027)"
                 );
             }
 
@@ -562,9 +553,7 @@ public class PricingPolicyService : IPricingPolicyService
                 // Có khoảng trống (gap) — không phủ đủ 24h
                 throw new DomainException(
                     errorCode: "WINDOWS_DO_NOT_COVER_24_HOURS",
-                    message: $"[{policyName}] Có khoảng thời gian không thuộc khung giờ nào " +
-                             $"({TimeSpan.FromMinutes(expectedStart):hh\\:mm}–{TimeSpan.FromMinutes(seg.Start):hh\\:mm}). " +
-                             "Tất cả khung giờ phải phủ đủ 24h. (BR-FEE-027)"
+                    message: $"[{policyName}] There is a time range not covered by any window ({TimeSpan.FromMinutes(expectedStart):hh\\:mm}–{TimeSpan.FromMinutes(seg.Start):hh\\:mm}). All windows must cover 24 hours. (BR-FEE-027)"
                 );
             }
 
@@ -577,8 +566,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "WINDOWS_DO_NOT_COVER_24_HOURS",
-                message: $"[{policyName}] Các khung giờ chỉ phủ {coveredMinutes} phút, " +
-                         "cần phủ đủ 1440 phút (24 giờ). (BR-FEE-027)"
+                message: $"[{policyName}] Windows only cover {coveredMinutes} minutes, must cover exactly 1440 minutes (24 hours). (BR-FEE-027)"
             );
         }
     }
@@ -604,7 +592,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "INVALID_BASE_DURATION",
-                message: $"[{windowName}] BaseDurationMinutes phải lớn hơn 0."
+                message: $"[{windowName}] BaseDurationMinutes must be greater than 0."
             );
         }
 
@@ -612,7 +600,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "INVALID_BASE_PRICE",
-                message: $"[{windowName}] BasePrice phải >= 0."
+                message: $"[{windowName}] BasePrice must be >= 0."
             );
         }
 
@@ -620,7 +608,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "INVALID_INCREMENT_BLOCK",
-                message: $"[{windowName}] IncrementBlockMinutes phải lớn hơn 0."
+                message: $"[{windowName}] IncrementBlockMinutes must be greater than 0."
             );
         }
 
@@ -628,7 +616,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "INVALID_INCREMENT_PRICE",
-                message: $"[{windowName}] IncrementPrice phải >= 0."
+                message: $"[{windowName}] IncrementPrice must be >= 0."
             );
         }
 
@@ -636,7 +624,7 @@ public class PricingPolicyService : IPricingPolicyService
         {
             throw new DomainException(
                 errorCode: "WINDOW_CAP_BELOW_BASE_PRICE",
-                message: $"[{windowName}] WindowCap ({windowCap.Value:N0}) phải >= BasePrice ({basePrice:N0})."
+                message: $"[{windowName}] WindowCap ({windowCap.Value:N0}) must be >= BasePrice ({basePrice:N0})."
             );
         }
     }

@@ -62,7 +62,7 @@ public class CardService : ICardService
             // [BR] Mã thẻ phải UNIQUE — không được tạo thẻ trùng mã
             throw new DomainException(
                 errorCode: "CARD_CODE_EXISTS",
-                message: $"Mã thẻ '{normalizedCode}' đã tồn tại trong hệ thống. Vui lòng dùng mã khác."
+                message: $"Card code '{normalizedCode}' already exists in the system. Please use another code."
             );
         }
 
@@ -111,7 +111,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có mã '{normalizedCode}' trong hệ thống."
+                message: $"Card with code '{normalizedCode}' was not found in the system."
             );
         }
 
@@ -155,7 +155,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có ID '{id}' trong hệ thống."
+                message: $"Card with ID '{id}' was not found in the system."
             );
         }
 
@@ -178,7 +178,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có ID '{id}'."
+                message: $"Card with ID '{id}' was not found."
             );
         }
 
@@ -199,7 +199,7 @@ public class CardService : ICardService
                 {
                     throw new DomainException(
                         errorCode: "RFID_CODE_EXISTS",
-                        message: $"Mã RFID '{trimmedRfid}' đã được gán cho thẻ khác."
+                        message: $"RFID code '{trimmedRfid}' has already been assigned to another card."
                     );
                 }
             }
@@ -240,7 +240,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có ID '{id}'."
+                message: $"Card with ID '{id}' was not found."
             );
         }
 
@@ -251,8 +251,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_IN_ACTIVE_SESSION",
-                message: $"Thẻ '{card.CardCode}' đang được sử dụng trong một lượt gửi xe chưa hoàn thành. " +
-                         "Vui lòng chờ lượt gửi xe kết thúc trước khi xóa thẻ."
+                message: $"Card '{card.CardCode}' is currently in use in an active parking session. Please wait for the session to end before deleting."
             );
         }
 

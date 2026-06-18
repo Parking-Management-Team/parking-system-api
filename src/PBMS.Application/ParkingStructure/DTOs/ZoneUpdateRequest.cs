@@ -22,4 +22,7 @@ public class ZoneUpdateRequest
     [Required(ErrorMessage = "VehicleTypeId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "VehicleTypeId must be greater than 0.")]
     public int VehicleTypeId { get; set; }
+
+    [Required(ErrorMessage = "AccessType is required.")]
+    public PBMS.Domain.Enums.ZoneAccessType AccessType { get; set; } = PBMS.Domain.Enums.ZoneAccessType.General;
 }

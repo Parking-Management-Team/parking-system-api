@@ -14,12 +14,12 @@ namespace PBMS.Application.ParkingStructure.Services;
 public class FloorService : IFloorService
 {
     private readonly IFloorRepository _floorRepository;
-    private readonly IRepository<Building> _buildingRepository;
+    private readonly IBuildingRepository _buildingRepository;
     private readonly IMapper _mapper;
 
     public FloorService(
         IFloorRepository floorRepository,
-        IRepository<Building> buildingRepository,
+        IBuildingRepository buildingRepository,
         IMapper mapper)
     {
         _floorRepository = floorRepository;
@@ -43,16 +43,23 @@ public class FloorService : IFloorService
             throw new ValidationException($"Floor number {request.FloorNumber} already exists in this building.");
         }
 
-        // 3. Tạo entity
+        // 3. Tạo entity Floor
         var floor = new Floor
         {
             BuildingId = request.BuildingId,
             FloorNumber = request.FloorNumber,
             Name = request.Name,
-            Status = Domain.Enums.FloorStatus.Available
+            Status = Domain.Enums.FloorStatus.Active
         };
 
         await _floorRepository.AddAsync(floor);
+
+        // 4. Đồng bộ số lượng tầng của Building
+        building.TotalFloor++;
+        _buildingRepository.Update(building);
+
+        await _floorRepository.SaveChangesAsync();
+
         return _mapper.Map<FloorDto>(floor);
     }
 
@@ -131,6 +138,7 @@ public class FloorService : IFloorService
         floor.Status = request.Status;
 
         _floorRepository.Update(floor);
+        await _floorRepository.SaveChangesAsync();
         return _mapper.Map<FloorDto>(floor);
     }
 
@@ -148,6 +156,19 @@ public class FloorService : IFloorService
             throw new ValidationException("Cannot delete floor that contains zones.");
         }
 
+        // 1. Lấy thông tin Building để đồng bộ
+        var building = await _buildingRepository.GetByIdAsync(floor.BuildingId);
+
+        // 2. Xóa Floor
         await _floorRepository.RemoveAsync(floor);
+
+        // 3. Giảm số lượng tầng của Building
+        if (building != null)
+        {
+            building.TotalFloor--;
+            _buildingRepository.Update(building);
+        }
+
+        await _floorRepository.SaveChangesAsync();
     }
 }

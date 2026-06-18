@@ -11,10 +11,10 @@ namespace PBMS.Infrastructure.Configurations
     {
         public void Configure(EntityTypeBuilder<Payment> builder)
         {
-            // 1. Ánh xạ bảng vật lý và cấu hình ràng buộc kiểm tra CHECK
+            // 1. Ánh xạ bảng vật lý và cấu hình ràng buộc kiểm tra CHECK (Đúng 1 trong 3 trường nguồn là khác NULL)
             builder.ToTable("payment", t => t.HasCheckConstraint(
                 "CK_Payment_Source",
-                "session_id IS NOT NULL OR booking_id IS NOT NULL OR monthly_subscription_id IS NOT NULL"
+                "(CASE WHEN session_id IS NULL THEN 0 ELSE 1 END + CASE WHEN booking_id IS NULL THEN 0 ELSE 1 END + CASE WHEN monthly_subscription_id IS NULL THEN 0 ELSE 1 END) = 1"
             ));
 
             // 2. Khóa chính
@@ -34,6 +34,10 @@ namespace PBMS.Infrastructure.Configurations
 
             builder.Property(p => p.MonthlySubscriptionId)
                 .HasColumnName("monthly_subscription_id");
+
+            builder.Property(p => p.OrderCode)
+                .HasColumnName("order_code")
+                .HasColumnType("bigint");
 
             builder.Property(p => p.PricingPolicyId)
                 .HasColumnName("pricing_policy_id");

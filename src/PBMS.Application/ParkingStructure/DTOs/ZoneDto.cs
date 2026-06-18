@@ -13,5 +13,6 @@ public class ZoneDto
     public string Name { get; set; } = null!;
     public int VehicleTypeId { get; set; }
     public int Capacity { get; set; }
+    public ZoneAccessType AccessType { get; set; }
     public ZoneStatus Status { get; set; }
 }

@@ -21,24 +21,29 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasColumnName("floor_id")
             .IsRequired();
 
+        // 4. Mã khu vực (Code) - bắt buộc, tối đa 20 ký tự
         builder.Property(z => z.Code)
             .HasColumnName("zone_code")
             .HasMaxLength(20)
             .IsRequired();
 
+        // Ràng buộc UNIQUE(floor_id, zone_code) theo SRS
         builder.HasIndex(z => new { z.FloorId, z.Code })
             .IsUnique()
             .HasDatabaseName("IX_zone_floor_id_zone_code");
 
+        // 5. Tên khu vực (Name) - bắt buộc, tối đa 50 ký tự
         builder.Property(z => z.Name)
             .HasColumnName("name")
             .HasMaxLength(50)
             .IsRequired();
 
+        // 6. Khóa ngoại VehicleTypeId - bắt buộc
         builder.Property(z => z.VehicleTypeId)
             .HasColumnName("vehicle_type_id")
             .IsRequired();
 
+        // 7. Sức chứa (Capacity) - mặc định là 0
         builder.Property(z => z.Capacity)
             .HasColumnName("capacity")
             .HasDefaultValue(0)
@@ -53,15 +58,19 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasDefaultValue(ZoneStatus.Available)
             .IsRequired();
 
+        // 10. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)
         builder.Property(z => z.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
+        // 11. Cấu hình RowVersion để kiểm soát xung đột đồng thời
         builder.Property(z => z.RowVersion)
             .HasColumnName("xmin")
             .IsRowVersion();
 
+        // 12. Cấu hình mối quan hệ
+        // Quan hệ N-1 với Floor
         builder.HasOne(z => z.Floor)
             .WithMany(f => f.Zones)
             .HasForeignKey(z => z.FloorId)

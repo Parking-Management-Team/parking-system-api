@@ -6,22 +6,22 @@ namespace PBMS.Domain.Enums;
 public enum BuildingStatus
 {
     /// <summary>
-    /// Tòa nhà đang mở cửa và hoạt động bình thường.
+    /// Nhà xe chưa được đưa vào sử dụng.
     /// </summary>
-    Available,
+    Inactive,
 
     /// <summary>
-    /// Tòa nhà đã đầy chỗ gửi xe.
+    /// Nhà xe hoạt động, cho phép xe ra vào.
     /// </summary>
-    Occupied,
+    Active,
 
     /// <summary>
-    /// Tòa nhà đang được giữ chỗ cho sự kiện hoặc mục đích riêng.
+    /// Bãi xe được bảo trì; không tiếp nhận xe mới. Cho phép xe đang gửi ra khỏi bãi.
     /// </summary>
-    Reserved,
+    Maintenance,
 
     /// <summary>
-    /// Tòa nhà đang bảo trì hoặc tạm đóng cửa.
+    /// Nhà xe không thể hoạt động.
     /// </summary>
     OutOfService
 }

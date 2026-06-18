@@ -47,6 +47,12 @@ public class RevenueStatistic : BaseEntity
     /// </summary>
     public int TotalSubscriptions { get; set; }
 
+    /// <summary>
+    /// Khóa ngoại liên kết tới loại phương tiện (VehicleType) nếu thống kê theo loại xe.
+    /// Để null nếu là dòng tổng doanh thu chung (overall total).
+    /// </summary>
+    public int? VehicleTypeId { get; set; }
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------
@@ -60,4 +66,10 @@ public class RevenueStatistic : BaseEntity
     /// Danh sách liên kết Nhiều-Nhiều thông qua bảng trung gian với các giao dịch thanh toán (Payment).
     /// </summary>
     public virtual ICollection<RevenueStatisticPayment> RevenueStatisticPayments { get; set; } = new List<RevenueStatisticPayment>();
+
+    /// <summary>
+    /// Thông tin loại phương tiện được thống kê.
+    /// </summary>
+    public virtual VehicleType? VehicleType { get; set; }
+
 }

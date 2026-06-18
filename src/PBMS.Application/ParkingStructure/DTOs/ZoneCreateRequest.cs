@@ -26,4 +26,7 @@ public class ZoneCreateRequest
     [Required(ErrorMessage = "Capacity is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "Capacity must be greater than 0.")]
     public int Capacity { get; set; }
+
+    [Required(ErrorMessage = "AccessType is required.")]
+    public PBMS.Domain.Enums.ZoneAccessType AccessType { get; set; } = PBMS.Domain.Enums.ZoneAccessType.General;
 }

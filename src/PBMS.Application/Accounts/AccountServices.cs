@@ -141,5 +141,21 @@ namespace PBMS.Application.Accounts
             await _accountRepository.SaveChangesAsync();
             return true;
         }
+
+        /// <summary>
+        /// Deactivate tài khoản tự nguyện (Soft Delete / Deactivate) bằng cách chuyển trạng thái hoạt động thành "Inactive".
+        /// </summary>
+        public async Task<bool> DeactivateAccountAsync(int id)
+        {
+            var account = await _accountRepository.GetByIdAsync(id);
+            if (account == null) return false;
+
+            // Đổi trạng thái sang Inactive
+            account.AccountStatus = "Inactive";
+
+            _accountRepository.Update(account);
+            await _accountRepository.SaveChangesAsync();
+            return true;
+        }
     }
 }

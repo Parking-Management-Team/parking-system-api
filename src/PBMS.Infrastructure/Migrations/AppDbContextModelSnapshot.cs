@@ -335,7 +335,7 @@ namespace PBMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Available")
+                        .HasDefaultValue("Active")
                         .HasColumnName("building_status");
 
                     b.Property<int>("TotalFloor")
@@ -450,7 +450,7 @@ namespace PBMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Available")
+                        .HasDefaultValue("Active")
                         .HasColumnName("floor_status");
 
                     b.HasKey("Id");
@@ -907,6 +907,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("monthly_subscription_id");
 
+                    b.Property<long?>("OrderCode")
+                        .HasColumnType("bigint")
+                        .HasColumnName("order_code");
+
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -951,7 +955,7 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.ToTable("payment", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Payment_Source", "session_id IS NOT NULL OR booking_id IS NOT NULL OR monthly_subscription_id IS NOT NULL");
+                            t.HasCheckConstraint("CK_Payment_Source", "(CASE WHEN session_id IS NULL THEN 0 ELSE 1 END + CASE WHEN booking_id IS NULL THEN 0 ELSE 1 END + CASE WHEN monthly_subscription_id IS NULL THEN 0 ELSE 1 END) = 1");
                         });
                 });
 
@@ -1202,9 +1206,15 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("total_subscriptions");
 
+                    b.Property<int?>("VehicleTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_type_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BuildingId");
+
+                    b.HasIndex("VehicleTypeId");
 
                     b.ToTable("revenue_statistic", (string)null);
                 });
@@ -1401,6 +1411,14 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AccessType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("General")
+                        .HasColumnName("zone_access_type");
+
                     b.Property<int>("Capacity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1409,7 +1427,9 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("zone_code");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1447,11 +1467,16 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FloorId");
-
                     b.HasIndex("VehicleTypeId");
 
-                    b.ToTable("zone", (string)null);
+                    b.HasIndex("FloorId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_zone_floor_id_zone_code");
+
+                    b.ToTable("zone", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_zone_capacity", "capacity >= 0");
+                        });
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Account", b =>
@@ -1765,7 +1790,14 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany()
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Building");
+
+                    b.Navigation("VehicleType");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatisticPayment", b =>
