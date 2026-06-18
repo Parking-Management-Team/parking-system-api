@@ -201,7 +201,7 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // 6. Seed Pricing Policies (Xe máy & Ô tô)
+        // 6. Seed Pricing Policies (Motorcycle & Car)
         if (!await context.Set<PricingPolicy>().AnyAsync())
         {
             var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");

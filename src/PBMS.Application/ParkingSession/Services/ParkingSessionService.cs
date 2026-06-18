@@ -335,7 +335,6 @@ public class ParkingSessionService : IParkingSessionService
     private static bool IsCar(VehicleTypeEntity vehicleType) =>
         string.Equals(vehicleType.TypeName, VehicleTypeEntity.CarTypeName, StringComparison.OrdinalIgnoreCase) ||
         vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase) ||
-        vehicleType.TypeName.Contains("OTO", StringComparison.OrdinalIgnoreCase) ||
         vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
 
     private static string Normalize(string value) => value.Trim().ToUpperInvariant();

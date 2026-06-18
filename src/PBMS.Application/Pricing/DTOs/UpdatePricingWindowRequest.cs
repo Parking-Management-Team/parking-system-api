@@ -27,25 +27,25 @@ public class UpdatePricingWindowRequest
     /// <summary>
     /// Thời lượng cơ bản mới (phút, null nếu không thay đổi).
     /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "BaseDurationMinutes phải lớn hơn 0.")]
+    [Range(1, int.MaxValue, ErrorMessage = "BaseDurationMinutes must be greater than 0.")]
     public int? BaseDurationMinutes { get; set; }
 
     /// <summary>
     /// Giá cơ bản mới (null nếu không thay đổi).
     /// </summary>
-    [Range(0, double.MaxValue, ErrorMessage = "BasePrice phải >= 0.")]
+    [Range(0, double.MaxValue, ErrorMessage = "BasePrice must be greater than or equal to 0.")]
     public decimal? BasePrice { get; set; }
 
     /// <summary>
     /// Kích thước block lũy tiến mới (phút, null nếu không thay đổi).
     /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "IncrementBlockMinutes phải lớn hơn 0.")]
+    [Range(1, int.MaxValue, ErrorMessage = "IncrementBlockMinutes must be greater than 0.")]
     public int? IncrementBlockMinutes { get; set; }
 
     /// <summary>
     /// Giá mỗi block lũy tiến mới (null nếu không thay đổi).
     /// </summary>
-    [Range(0, double.MaxValue, ErrorMessage = "IncrementPrice phải >= 0.")]
+    [Range(0, double.MaxValue, ErrorMessage = "IncrementPrice must be greater than or equal to 0.")]
     public decimal? IncrementPrice { get; set; }
 
     /// <summary>
@@ -61,6 +61,6 @@ public class UpdatePricingWindowRequest
     /// <summary>
     /// Thời gian ân hạn mới (phút, null nếu không thay đổi).
     /// </summary>
-    [Range(0, int.MaxValue, ErrorMessage = "GracePeriodMinutes phải >= 0.")]
+    [Range(0, int.MaxValue, ErrorMessage = "GracePeriodMinutes must be greater than or equal to 0.")]
     public int? GracePeriodMinutes { get; set; }
 }

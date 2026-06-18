@@ -41,7 +41,7 @@ public class ZoneService : IZoneService
     /// <summary>
     /// Tạo zone mới kèm xác thực.
     /// Kiểm tra tồn tại của floor và loại xe.
-    /// Tự động tạo Slot nếu là loại xe ô tô.
+    /// Automatically creates slots for car zones.
     /// </summary>
     public async Task<ZoneDto> CreateZoneAsync(ZoneCreateRequest request)
     {
@@ -82,6 +82,22 @@ public class ZoneService : IZoneService
             };
 
             await _zoneRepository.AddAsync(zone);
+
+            if (IsCarVehicleType(vehicleType))
+            {
+                for (var slotNumber = 1; slotNumber <= request.Capacity; slotNumber++)
+                {
+                    var slotCode = $"{zone.Code}-{slotNumber:D2}";
+                    await _slotRepository.AddAsync(new ParkingSlot
+                    {
+                        Zone = zone,
+                        VehicleTypeId = request.VehicleTypeId,
+                        Code = slotCode,
+                        Name = $"Slot {slotCode}",
+                        Status = SlotStatus.Available
+                    });
+                }
+            }
 
             await _unitOfWork.CommitAsync();
 
@@ -206,6 +222,13 @@ public class ZoneService : IZoneService
     {
         var value = string.IsNullOrWhiteSpace(code) ? fallback : code;
         return value.Trim().ToUpperInvariant();
+    }
+
+    private static bool IsCarVehicleType(VehicleType vehicleType)
+    {
+        return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

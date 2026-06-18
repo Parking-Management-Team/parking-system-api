@@ -56,7 +56,7 @@ public class CardController : ControllerBase
         return CreatedAtAction(
             actionName: nameof(GetCardById),       // Trỏ tới endpoint GET /api/cards/{id}
             routeValues: new { id = card.Id },     // Giá trị route parameter
-            value: BaseResponse<CardDto>.Ok(card, "Tạo thẻ gửi xe thành công.")
+            value: BaseResponse<CardDto>.Ok(card, "Parking card created successfully.")
         );
     }
 
@@ -143,7 +143,7 @@ public class CardController : ControllerBase
     {
         var card = await _cardService.UpdateCardAsync(id, request);
 
-        return Ok(BaseResponse<CardDto>.Ok(card, "Cập nhật thông tin thẻ thành công."));
+        return Ok(BaseResponse<CardDto>.Ok(card, "Card updated successfully."));
     }
 
     // -----------------------------------------------------------------------

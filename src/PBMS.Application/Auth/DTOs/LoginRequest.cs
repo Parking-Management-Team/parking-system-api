@@ -11,17 +11,17 @@ namespace PBMS.Application.Auth.DTOs
         /// Địa chỉ thư điện tử (Email) đăng nhập của tài khoản.
         /// Bắt buộc nhập và phải đúng định dạng email.
         /// </summary>
-        [Required(ErrorMessage = "Email là bắt buộc.")]
-        [EmailAddress(ErrorMessage = "Địa chỉ email không đúng định dạng.")]
-        [MaxLength(100, ErrorMessage = "Email không được vượt quá 100 ký tự.")]
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Email address is invalid.")]
+        [MaxLength(100, ErrorMessage = "Email cannot exceed 100 characters.")]
         public string Email { get; set; } = null!;
 
         /// <summary>
         /// Mật khẩu đăng nhập của tài khoản.
         /// Bắt buộc nhập.
         /// </summary>
-        [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
-        [MinLength(6, ErrorMessage = "Mật khẩu phải chứa ít nhất 6 ký tự.")]
+        [Required(ErrorMessage = "Password is required.")]
+        [MinLength(6, ErrorMessage = "Password must contain at least 6 characters.")]
         public string Password { get; set; } = null!;
     }
 }
