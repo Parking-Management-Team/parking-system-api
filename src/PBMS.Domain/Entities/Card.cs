@@ -76,6 +76,12 @@ public class Card : BaseEntity
     /// </summary>
     public string CardStatus { get; set; } = Enums.CardStatus.Available.ToString();
 
+    /// <summary>
+    /// Thời điểm báo mất thẻ. Chỉ lưu khi trạng thái là Lost.
+    /// </summary>
+    public DateTime? LostAt { get; set; }
+
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES (Quan hệ với các bảng khác)
     // -----------------------------------------------------------------------

@@ -70,6 +70,11 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
             .HasDefaultValue("Available")
             .IsRequired();
 
+        builder.Property(c => c.LostAt)
+            .HasColumnName("lost_at")
+            .IsRequired(false);
+
+
         // 7. Thời điểm tạo bản ghi (CreatedAt — kế thừa từ BaseEntity)
         // Mặc định lấy giờ hiện tại của PostgreSQL để tránh chênh lệch múi giờ
         builder.Property(c => c.CreatedAt)

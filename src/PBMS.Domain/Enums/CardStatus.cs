@@ -26,6 +26,13 @@ public enum CardStatus
     Active,
 
     /// <summary>
+    /// Thẻ đã được gán dài hạn cho một vé tháng hoạt động (Monthly Subscription).
+    /// Thẻ ở trạng thái này sẽ không chuyển sang Active khi xe vào bãi 
+    /// và không trả về Available khi xe ra bãi.
+    /// </summary>
+    Assigned,
+
+    /// <summary>
     /// Thẻ đã bị báo mất.
     /// Khi Staff chuyển thẻ sang trạng thái này, hệ thống sẽ:
     ///   1. Áp dụng phí phạt mất thẻ (lost_card_penalty) vào tổng phí của session.
@@ -40,3 +47,4 @@ public enum CardStatus
     /// </summary>
     Blocked
 }
+
