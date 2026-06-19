@@ -58,6 +58,16 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasDefaultValue(ZoneStatus.Available)
             .IsRequired();
 
+        builder.Property(z => z.AccessType)
+            .HasColumnName("zone_access_type")
+            .HasMaxLength(20)
+            .HasConversion(
+                type => type.ToString(),
+                value => Enum.Parse<ZoneAccessType>(value, ignoreCase: true))
+            .HasDefaultValue(ZoneAccessType.General)
+            .IsRequired();
+
+
         // 10. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)
         builder.Property(z => z.CreatedAt)
             .HasColumnName("created_at")

@@ -169,4 +169,15 @@ public class CardController : ControllerBase
         // 204 No Content: xóa thành công, không có data trả về
         return NoContent();
     }
+
+    /// <summary>
+    /// Cập nhật trạng thái của thẻ gửi xe (ví dụ: chuyển sang Lost và ghi nhận LostAt).
+    /// </summary>
+    [HttpPut("{id:int}/status")]
+    public async Task<ActionResult<BaseResponse<CardDto>>> UpdateCardStatus(int id, [FromBody] UpdateCardStatusRequest request)
+    {
+        var card = await _cardService.UpdateCardStatusAsync(id, request.Status);
+        return Ok(BaseResponse<CardDto>.Ok(card, "Card status updated successfully."));
+    }
 }
+

@@ -20,6 +20,9 @@ using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Payment.Services;
 using PBMS.Application.Revenue.Interfaces;
 using PBMS.Application.Revenue.Services;
+using PBMS.Application.MonthlyCard.Interfaces;
+using PBMS.Application.MonthlyCard.Services;
+
 
 
 namespace PBMS.Application;
@@ -73,10 +76,11 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         // Revenue module
         services.AddScoped<IRevenueService, RevenueService>();
-
-
+        // Monthly Subscription module
+        services.AddScoped<IMonthlySubscriptionService, MonthlySubscriptionService>();
 
         return services;
+
 
 
     }

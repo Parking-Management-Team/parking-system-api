@@ -3,6 +3,7 @@ using PBMS.Application.Card.DTOs;
 using PBMS.Application.Card.Services;
 using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
 
 namespace PBMS.UnitTests
@@ -123,5 +124,42 @@ namespace PBMS.UnitTests
             await _cardRepositoryMock.DidNotReceive().RemoveAsync(Arg.Any<Card>());
             await _cardRepositoryMock.DidNotReceive().SaveChangesAsync();
         }
+
+        [Fact]
+        public async Task UpdateCardStatusAsync_ShouldUpdateStatusAndSetLostAt_WhenStatusIsLost()
+        {
+            // Arrange
+            int cardId = 5;
+            var card = new Card { Id = cardId, CardCode = "CARD-5", CardStatus = CardStatus.Available.ToString() };
+            _cardRepositoryMock.GetByIdAsync(cardId).Returns(card);
+
+            // Act
+            var result = await _cardService.UpdateCardStatusAsync(cardId, "Lost");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("Lost", result.CardStatus);
+            Assert.NotNull(card.LostAt);
+            _cardRepositoryMock.Received(1).Update(card);
+            await _cardRepositoryMock.Received(1).SaveChangesAsync();
+        }
+
+        [Fact]
+        public async Task UpdateCardStatusAsync_ShouldClearLostAt_WhenStatusIsNoLongerLost()
+        {
+            // Arrange
+            int cardId = 5;
+            var card = new Card { Id = cardId, CardCode = "CARD-5", CardStatus = CardStatus.Lost.ToString(), LostAt = DateTime.UtcNow };
+            _cardRepositoryMock.GetByIdAsync(cardId).Returns(card);
+
+            // Act
+            var result = await _cardService.UpdateCardStatusAsync(cardId, "Available");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("Available", result.CardStatus);
+            Assert.Null(card.LostAt);
+        }
     }
 }
+

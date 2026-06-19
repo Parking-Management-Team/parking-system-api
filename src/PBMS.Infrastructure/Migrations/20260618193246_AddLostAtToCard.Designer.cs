@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618193246_AddLostAtToCard")]
+    partial class AddLostAtToCard
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -45,14 +48,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<int?>("DeletedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("deleted_by");
-
                     b.Property<string>("Email")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -62,12 +57,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("full_name");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_deleted");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -99,16 +88,12 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique()
-                        .HasDatabaseName("ix_account_email")
-                        .HasFilter("is_deleted = false AND email IS NOT NULL");
+                        .IsUnique();
 
                     b.HasIndex("RoleId");
 
                     b.HasIndex("Username")
-                        .IsUnique()
-                        .HasDatabaseName("ix_account_username")
-                        .HasFilter("is_deleted = false");
+                        .IsUnique();
 
                     b.ToTable("account", (string)null);
                 });
@@ -184,23 +169,9 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<int?>("DeletedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("deleted_by");
-
                     b.Property<int?>("IncidentId")
                         .HasColumnType("integer")
                         .HasColumnName("incident_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -513,28 +484,22 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<int?>("DeletedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("deleted_by");
-
                     b.Property<string>("Description")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("description");
 
+                    b.Property<string>("IncidentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Reported")
+                        .HasColumnName("incident_status");
+
                     b.Property<int>("IncidentTypeId")
                         .HasColumnType("integer")
                         .HasColumnName("incident_type_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_deleted");
 
                     b.Property<decimal?>("PenaltyFee")
                         .HasPrecision(18, 2)
@@ -554,14 +519,6 @@ namespace PBMS.Infrastructure.Migrations
                     b.Property<int>("SessionId")
                         .HasColumnType("integer")
                         .HasColumnName("session_id");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Open")
-                        .HasColumnName("incident_status");
 
                     b.HasKey("Id");
 
@@ -1433,13 +1390,7 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("vehicle_type_name");
-
-                    b.Property<string>("VehicleTypeCode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("vehicle_type_code");
+                        .HasColumnName("type_name");
 
                     b.Property<string>("VehicleTypeStatus")
                         .IsRequired()
@@ -1467,8 +1418,13 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AccessType")
-                        .HasColumnType("integer");
+                    b.Property<string>("AccessType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("General")
+                        .HasColumnName("zone_access_type");
 
                     b.Property<int>("Capacity")
                         .ValueGeneratedOnAdd()

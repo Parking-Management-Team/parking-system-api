@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
 using PBMS.Infrastructure.Data;
 
 namespace PBMS.Infrastructure.Repositories;
@@ -35,4 +36,18 @@ public class ParkingSlotRepository : BaseRepository<ParkingSlot>, IParkingSlotRe
             .Include(s => s.ParkingSessions)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
+
+    public async Task<ParkingSlot?> FindAvailableMonthlySlotAsync(int buildingId, int vehicleTypeId)
+    {
+        return await _dbContext.Set<ParkingSlot>()
+            .Include(s => s.Zone)
+            .Include(s => s.MonthlySubscriptions)
+            .FirstOrDefaultAsync(s => 
+                s.Zone.Floor.BuildingId == buildingId &&
+                s.Zone.AccessType == ZoneAccessType.Monthly &&
+                s.VehicleTypeId == vehicleTypeId &&
+                s.Status != SlotStatus.Blocked &&
+                !s.MonthlySubscriptions.Any(ms => ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Active || ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Pending));
+    }
 }
+
