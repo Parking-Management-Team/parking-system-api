@@ -5,25 +5,18 @@ using PBMS.Domain.Enums;
 
 namespace PBMS.Infrastructure.Configurations;
 
-/// <summary>
-/// Cấu hình bảng "zone" trong database sử dụng Fluent API của EF Core.
-/// Bảng này lưu thông tin các khu vực gửi xe trong một tầng (Floor).
-/// </summary>
 public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
 {
     public void Configure(EntityTypeBuilder<Zone> builder)
     {
-        // 1. Ánh xạ với tên bảng vật lý "zone"
         builder.ToTable("zone");
 
-        // 2. Khóa chính - Id kế thừa từ BaseEntity, ánh xạ thành cột "zone_id"
         builder.HasKey(z => z.Id);
 
         builder.Property(z => z.Id)
             .HasColumnName("zone_id")
             .ValueGeneratedOnAdd();
 
-        // 3. Khóa ngoại FloorId - bắt buộc
         builder.Property(z => z.FloorId)
             .HasColumnName("floor_id")
             .IsRequired();
@@ -56,22 +49,12 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasDefaultValue(0)
             .IsRequired();
 
-        // Ràng buộc check capacity >= 0
-        builder.ToTable(t => t.HasCheckConstraint("CK_zone_capacity", "capacity >= 0"));
-
-        // 8. Loại quyền truy cập (AccessType) - lưu dưới dạng string
-        builder.Property(z => z.AccessType)
-            .HasColumnName("zone_access_type")
-            .HasMaxLength(20)
-            .HasConversion<string>()
-            .HasDefaultValue(ZoneAccessType.General)
-            .IsRequired();
-
-        // 9. Trạng thái khu vực (Status) - lưu dưới dạng string
         builder.Property(z => z.Status)
             .HasColumnName("status")
             .HasMaxLength(20)
-            .HasConversion<string>()
+            .HasConversion(
+                status => status.ToString(),
+                value => Enum.Parse<ZoneStatus>(value, ignoreCase: true))
             .HasDefaultValue(ZoneStatus.Available)
             .IsRequired();
 
@@ -83,6 +66,7 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
 
         // 11. Cấu hình RowVersion để kiểm soát xung đột đồng thời
         builder.Property(z => z.RowVersion)
+            .HasColumnName("xmin")
             .IsRowVersion();
 
         // 12. Cấu hình mối quan hệ
@@ -92,7 +76,6 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasForeignKey(z => z.FloorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Quan hệ N-1 với VehicleType
         builder.HasOne(z => z.VehicleType)
             .WithMany()
             .HasForeignKey(z => z.VehicleTypeId)

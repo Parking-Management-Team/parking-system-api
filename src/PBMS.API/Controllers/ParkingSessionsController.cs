@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PBMS.Application.Common;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
 
@@ -13,6 +14,20 @@ public class ParkingSessionsController : ControllerBase
     public ParkingSessionsController(IParkingSessionService service)
     {
         _service = service;
+    }
+
+    [HttpPost("check-in")]
+    public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.CheckInAsync(request);
+        return result.Success
+            ? CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result)
+            : ToErrorResult(result.ErrorCode, result);
     }
 
     [HttpPost]

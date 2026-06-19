@@ -17,4 +17,7 @@ public class ParkingSessionDto
     public string LicensePlateIn { get; set; } = string.Empty;
     public string? LicensePlateOut { get; set; }
     public string SessionStatus { get; set; } = "ACTIVE";
+    public string? CardCode { get; set; }
+    public string? ZoneCode { get; set; }
+    public string? SlotCode { get; set; }
 }

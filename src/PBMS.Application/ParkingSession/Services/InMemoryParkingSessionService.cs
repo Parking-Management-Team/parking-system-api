@@ -10,6 +10,21 @@ public class InMemoryParkingSessionService : IParkingSessionService
     private readonly object _sync = new();
     private int _nextId = 1;
 
+    public Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
+    {
+        var createRequest = new CreateParkingSessionRequest
+        {
+            VehicleId = 1,
+            BuildingId = request.BuildingId ?? 1,
+            CardId = 1,
+            InStaffId = request.StaffId,
+            CheckInTime = DateTime.UtcNow,
+            LicensePlateIn = request.LicensePlate
+        };
+
+        return CreateAsync(createRequest);
+    }
+
     public Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request)
     {
         lock (_sync)

@@ -19,12 +19,12 @@ public class UpdateCardRequest
     /// Mã RFID mới muốn gán cho thẻ (có thể để null để xóa RFID cũ).
     /// Tối đa 50 ký tự.
     /// </summary>
-    [MaxLength(50, ErrorMessage = "Mã RFID không được vượt quá 50 ký tự.")]
+    [MaxLength(50, ErrorMessage = "RfidCode cannot exceed 50 characters.")]
     public string? RfidCode { get; set; }
 
     /// <summary>
     /// Loại thẻ mới. Tối đa 20 ký tự.
     /// </summary>
-    [MaxLength(20, ErrorMessage = "Loại thẻ không được vượt quá 20 ký tự.")]
+    [MaxLength(20, ErrorMessage = "CardType cannot exceed 20 characters.")]
     public string? CardType { get; set; }
 }

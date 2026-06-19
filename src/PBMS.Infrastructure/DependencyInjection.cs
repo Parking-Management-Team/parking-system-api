@@ -7,6 +7,8 @@ using PBMS.Application.Vehicle.Interfaces;
 using PBMS.Infrastructure.Data;
 using PBMS.Infrastructure.ExternalServices;
 using PBMS.Infrastructure.Repositories;
+using PBMS.Application.Payment.Interfaces;
+
 
 namespace PBMS.Infrastructure;
 
@@ -59,6 +61,7 @@ public static class DependencyInjection
 
         // Đăng ký repository ParkingSlot
         services.AddScoped<IParkingSlotRepository, ParkingSlotRepository>();
+        services.AddScoped<IParkingSessionRepository, ParkingSessionRepository>();
 
         // Đăng ký repository Building
         services.AddScoped<IBuildingRepository, BuildingRepository>();
@@ -68,8 +71,10 @@ public static class DependencyInjection
         // Pricing — Repository
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 
-        // Pricing — Repository
-        services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+        // VNPay Gateway
+        services.AddScoped<IVNPayGateway, VNPayGateway>();
+
+
 
         return services;
     }

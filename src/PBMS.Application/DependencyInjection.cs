@@ -16,6 +16,11 @@ using PBMS.Application.Blacklist.Interfaces;
 using PBMS.Application.Blacklist.Services;
 using PBMS.Application.Incident.Interfaces;
 using PBMS.Application.Incident.Services;
+using PBMS.Application.Payment.Interfaces;
+using PBMS.Application.Payment.Services;
+using PBMS.Application.Revenue.Interfaces;
+using PBMS.Application.Revenue.Services;
+
 
 namespace PBMS.Application;
 /// <summary>
@@ -46,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IZoneService, ZoneService>();
         services.AddScoped<IFloorService, FloorService>();
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
+        services.AddScoped<IParkingSessionService, ParkingSessionService>();
         services.AddScoped<IBuildingService, BuildingService>();
         services.AddScoped<IBlacklistService, BlacklistService>();
         services.AddScoped<IIncidentService, IncidentService>();
@@ -63,7 +69,15 @@ public static class DependencyInjection
         {
             services.AddScoped<IParkingSessionService, ParkingSessionService>();
         }
+        // Payment module
+        services.AddScoped<IPaymentService, PaymentService>();
+        // Revenue module
+        services.AddScoped<IRevenueService, RevenueService>();
+
+
 
         return services;
+
+
     }
 }

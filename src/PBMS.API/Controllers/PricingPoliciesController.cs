@@ -60,7 +60,7 @@ public class PricingPoliciesController : ControllerBase
         return CreatedAtAction(
             actionName: nameof(GetPricingPolicyById),
             routeValues: new { id = policy.Id },
-            value: BaseResponse<PricingPolicyDto>.Ok(policy, "Tạo chính sách giá thành công. Hệ thống đang ở trạng thái Inactive. Vui lòng kích hoạt (activate) để áp dụng.")
+            value: BaseResponse<PricingPolicyDto>.Ok(policy, "Pricing policy created successfully. It is inactive. Activate it to apply the pricing rules.")
         );
     }
 
@@ -85,7 +85,7 @@ public class PricingPoliciesController : ControllerBase
     {
         var policy = await _pricingPolicyService.ActivatePricingPolicyAsync(id);
 
-        return Ok(BaseResponse<PricingPolicyDto>.Ok(policy, "Kích hoạt chính sách giá thành công. Hệ thống đã áp dụng bảng giá mới vào bộ quy tắc tính phí."));
+        return Ok(BaseResponse<PricingPolicyDto>.Ok(policy, "Pricing policy activated successfully. The new pricing rules are now applied."));
     }
 
     // -----------------------------------------------------------------------
@@ -149,7 +149,7 @@ public class PricingPoliciesController : ControllerBase
     {
         var policy = await _pricingPolicyService.UpdatePricingPolicyAsync(id, request);
 
-        return Ok(BaseResponse<PricingPolicyDto>.Ok(policy, "Cập nhật chính sách giá thành công."));
+        return Ok(BaseResponse<PricingPolicyDto>.Ok(policy, "Pricing policy updated successfully."));
     }
 
     // -----------------------------------------------------------------------
@@ -175,7 +175,7 @@ public class PricingPoliciesController : ControllerBase
         return CreatedAtAction(
             actionName: nameof(GetPricingPolicyById),
             routeValues: new { id },
-            value: BaseResponse<PricingWindowDto>.Ok(window, "Thêm khung giờ tính giá thành công.")
+            value: BaseResponse<PricingWindowDto>.Ok(window, "Pricing window added successfully.")
         );
     }
 
@@ -200,7 +200,7 @@ public class PricingPoliciesController : ControllerBase
     {
         var window = await _pricingPolicyService.UpdatePricingWindowAsync(windowId, request);
 
-        return Ok(BaseResponse<PricingWindowDto>.Ok(window, "Cập nhật khung giờ tính giá thành công."));
+        return Ok(BaseResponse<PricingWindowDto>.Ok(window, "Pricing window updated successfully."));
     }
 
     // -----------------------------------------------------------------------

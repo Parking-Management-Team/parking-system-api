@@ -27,7 +27,12 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("building_id")
                 .IsRequired();
 
-            // 5. Ngày bắt đầu chu kỳ (StartDate) - column type: date
+            // 5. Khóa ngoại liên kết tới VehicleType
+            builder.Property(rs => rs.VehicleTypeId)
+                .HasColumnName("vehicle_type_id")
+                .IsRequired(false);
+
+            // 6. Ngày bắt đầu chu kỳ (StartDate) - column type: date
             builder.Property(rs => rs.StartDate)
                 .HasColumnName("start_date")
                 .HasColumnType("date")
@@ -89,6 +94,13 @@ namespace PBMS.Infrastructure.Configurations
                 .WithMany(b => b.RevenueStatistics)
                 .HasForeignKey(rs => rs.BuildingId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Quan hệ N-1: Nhiều dòng thống kê có thể thuộc về cùng một loại xe
+            builder.HasOne(rs => rs.VehicleType)
+                .WithMany()
+                .HasForeignKey(rs => rs.VehicleTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
     }
 }

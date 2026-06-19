@@ -35,14 +35,14 @@ public class CreatePricingWindowRequest
     /// Ví dụ: 60 phút.
     /// </summary>
     [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "BaseDurationMinutes phải lớn hơn 0.")]
+    [Range(1, int.MaxValue, ErrorMessage = "BaseDurationMinutes must be greater than 0.")]
     public int BaseDurationMinutes { get; set; }
 
     /// <summary>
     /// Giá của block cơ bản đầu tiên (>= 0).
     /// </summary>
     [Required]
-    [Range(0, double.MaxValue, ErrorMessage = "BasePrice phải >= 0.")]
+    [Range(0, double.MaxValue, ErrorMessage = "BasePrice must be greater than or equal to 0.")]
     public decimal BasePrice { get; set; }
 
     /// <summary>
@@ -50,14 +50,14 @@ public class CreatePricingWindowRequest
     /// Ví dụ: 15 phút.
     /// </summary>
     [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "IncrementBlockMinutes phải lớn hơn 0.")]
+    [Range(1, int.MaxValue, ErrorMessage = "IncrementBlockMinutes must be greater than 0.")]
     public int IncrementBlockMinutes { get; set; }
 
     /// <summary>
     /// Giá mỗi block lũy tiến phát sinh (>= 0).
     /// </summary>
     [Required]
-    [Range(0, double.MaxValue, ErrorMessage = "IncrementPrice phải >= 0.")]
+    [Range(0, double.MaxValue, ErrorMessage = "IncrementPrice must be greater than or equal to 0.")]
     public decimal IncrementPrice { get; set; }
 
     /// <summary>
@@ -70,6 +70,6 @@ public class CreatePricingWindowRequest
     /// Thời gian ân hạn không tính block mới (phút, >= 0, mặc định 0).
     /// Scenario 4: Nếu phần phát sinh <= GracePeriodMinutes thì không tính thêm tiền.
     /// </summary>
-    [Range(0, int.MaxValue, ErrorMessage = "GracePeriodMinutes phải >= 0.")]
+    [Range(0, int.MaxValue, ErrorMessage = "GracePeriodMinutes must be greater than or equal to 0.")]
     public int GracePeriodMinutes { get; set; } = 0;
 }
