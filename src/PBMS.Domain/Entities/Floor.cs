@@ -27,9 +27,9 @@ public class Floor : BaseEntity
     public string? Name { get; set; }
 
     /// <summary>
-    /// Trạng thái hoạt động của tầng (Ví dụ: Available, OutOfService).
+    /// Trạng thái hoạt động của tầng (Ví dụ: Active, OutOfService).
     /// </summary>
-    public FloorStatus Status { get; set; } = FloorStatus.Available;
+    public FloorStatus Status { get; set; } = FloorStatus.Active;
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES

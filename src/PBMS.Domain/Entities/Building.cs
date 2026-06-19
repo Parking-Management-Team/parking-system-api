@@ -32,9 +32,9 @@ public class Building : BaseEntity
     public int TotalFloor { get; set; }
 
     /// <summary>
-    /// Trạng thái hoạt động của tòa nhà (Ví dụ: Available, OutOfService).
+    /// Trạng thái hoạt động của tòa nhà (Ví dụ: Active, OutOfService).
     /// </summary>
-    public BuildingStatus Status { get; set; } = BuildingStatus.Available;
+    public BuildingStatus Status { get; set; } = BuildingStatus.Active;
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
@@ -44,4 +44,19 @@ public class Building : BaseEntity
     /// Danh sách các tầng (Floor) thuộc tòa nhà này.
     /// </summary>
     public virtual ICollection<Floor> Floors { get; set; } = new List<Floor>();
+
+    /// <summary>
+    /// Danh sách các đặt chỗ (Booking) thuộc tòa nhà này.
+    /// </summary>
+    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+    /// <summary>
+    /// Danh sách các đăng ký vé tháng (MonthlySubscription) thuộc tòa nhà này.
+    /// </summary>
+    public virtual ICollection<MonthlySubscription> MonthlySubscriptions { get; set; } = new List<MonthlySubscription>();
+
+    /// <summary>
+    /// Danh sách các thống kê doanh thu (RevenueStatistic) liên quan đến tòa nhà này.
+    /// </summary>
+    public virtual ICollection<RevenueStatistic> RevenueStatistics { get; set; } = new List<RevenueStatistic>();
 }

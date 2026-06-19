@@ -48,8 +48,10 @@ public class FloorConfiguration : IEntityTypeConfiguration<Floor>
         builder.Property(f => f.Status)
             .HasColumnName("floor_status")
             .HasMaxLength(20)
-            .HasConversion<string>()
-            .HasDefaultValue(FloorStatus.Available)
+            .HasConversion(
+                status => status.ToString(),
+                value => Enum.Parse<FloorStatus>(value, ignoreCase: true))
+            .HasDefaultValue(FloorStatus.Active)
             .IsRequired();
 
         // 7. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)

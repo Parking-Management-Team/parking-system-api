@@ -62,7 +62,7 @@ public class CardService : ICardService
             // [BR] Mã thẻ phải UNIQUE — không được tạo thẻ trùng mã
             throw new DomainException(
                 errorCode: "CARD_CODE_EXISTS",
-                message: $"Mã thẻ '{normalizedCode}' đã tồn tại trong hệ thống. Vui lòng dùng mã khác."
+                message: $"Card code '{normalizedCode}' already exists in the system. Please use another code."
             );
         }
 
@@ -111,11 +111,32 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có mã '{normalizedCode}' trong hệ thống."
+                message: $"Card with code '{normalizedCode}' was not found in the system."
             );
         }
 
         return MapToDto(card);
+    }
+
+    // -----------------------------------------------------------------------
+    // LẤY DANH SÁCH TOÀN BỘ THẺ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ thẻ gửi xe trong hệ thống.
+    ///
+    /// Luồng xử lý:
+    ///   1. Truy vấn toàn bộ danh sách thẻ từ repository
+    ///   2. Map danh sách entity sang danh sách DTO
+    ///   3. Trả về kết quả
+    /// </summary>
+    public async Task<List<CardDto>> GetAllCardsAsync()
+    {
+        // Gọi repository để lấy toàn bộ thực thể thẻ
+        var cards = await _cardRepository.GetAllAsync();
+
+        // Chuyển đổi danh sách entity sang DTO và trả về
+        return cards.Select(MapToDto).ToList();
     }
 
     // -----------------------------------------------------------------------
@@ -134,7 +155,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có ID '{id}' trong hệ thống."
+                message: $"Card with ID '{id}' was not found in the system."
             );
         }
 
@@ -157,7 +178,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có ID '{id}'."
+                message: $"Card with ID '{id}' was not found."
             );
         }
 
@@ -178,7 +199,7 @@ public class CardService : ICardService
                 {
                     throw new DomainException(
                         errorCode: "RFID_CODE_EXISTS",
-                        message: $"Mã RFID '{trimmedRfid}' đã được gán cho thẻ khác."
+                        message: $"RFID code '{trimmedRfid}' has already been assigned to another card."
                     );
                 }
             }
@@ -219,7 +240,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_NOT_FOUND",
-                message: $"Không tìm thấy thẻ có ID '{id}'."
+                message: $"Card with ID '{id}' was not found."
             );
         }
 
@@ -230,8 +251,7 @@ public class CardService : ICardService
         {
             throw new DomainException(
                 errorCode: "CARD_IN_ACTIVE_SESSION",
-                message: $"Thẻ '{card.CardCode}' đang được sử dụng trong một lượt gửi xe chưa hoàn thành. " +
-                         "Vui lòng chờ lượt gửi xe kết thúc trước khi xóa thẻ."
+                message: $"Card '{card.CardCode}' is currently in use in an active parking session. Please wait for the session to end before deleting."
             );
         }
 
@@ -239,6 +259,46 @@ public class CardService : ICardService
         await _cardRepository.RemoveAsync(card);
         await _cardRepository.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// Cập nhật trạng thái thẻ gửi xe (ví dụ: chuyển sang Lost và ghi nhận LostAt).
+    /// </summary>
+    public async Task<CardDto> UpdateCardStatusAsync(int id, string status)
+    {
+        var card = await _cardRepository.GetByIdAsync(id);
+        if (card == null)
+        {
+            throw new DomainException(
+                errorCode: "CARD_NOT_FOUND",
+                message: $"Card with ID '{id}' was not found."
+            );
+        }
+
+        if (!Enum.TryParse<Domain.Enums.CardStatus>(status, true, out var cardStatus))
+        {
+            throw new DomainException(
+                errorCode: "INVALID_CARD_STATUS",
+                message: $"Card status '{status}' is not a valid status."
+            );
+        }
+
+        card.CardStatus = cardStatus.ToString();
+
+        if (cardStatus == Domain.Enums.CardStatus.Lost)
+        {
+            card.LostAt = DateTime.UtcNow;
+        }
+        else
+        {
+            card.LostAt = null;
+        }
+
+        _cardRepository.Update(card);
+        await _cardRepository.SaveChangesAsync();
+
+        return MapToDto(card);
+    }
+
 
     // -----------------------------------------------------------------------
     // HELPER — MAP ENTITY → DTO (Dùng nội bộ trong Service)

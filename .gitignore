@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+.agent-skills
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -431,6 +432,7 @@ FodyWeavers.xsd
 # Secrets
 .env
 appsettings.Development.json
+**/.aspnet-data-protection-keys/
 
 # Local database
 *.db
@@ -439,3 +441,11 @@ appsettings.Development.json
 # Agents
 .agents/
 GEMINI.md
+
+# Documentation
+.docs/
+
+# Personal documentation and reference folders
+PBMS-86-PRICING-FLOW.md
+PBMS-SRS-main/
+van/

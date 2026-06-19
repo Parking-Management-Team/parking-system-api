@@ -53,8 +53,10 @@ public class BuildingConfiguration : IEntityTypeConfiguration<Building>
         builder.Property(b => b.Status)
             .HasColumnName("building_status")
             .HasMaxLength(20)
-            .HasConversion<string>()
-            .HasDefaultValue(BuildingStatus.Available)
+            .HasConversion(
+                status => status.ToString(),
+                value => Enum.Parse<BuildingStatus>(value, ignoreCase: true))
+            .HasDefaultValue(BuildingStatus.Active)
             .IsRequired();
 
         // 8. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)

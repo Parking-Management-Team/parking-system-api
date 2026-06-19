@@ -36,6 +36,11 @@ public interface ICardService
     Task<CardDto> GetCardByCodeAsync(string cardCode);
 
     /// <summary>
+    /// Lấy danh sách toàn bộ thẻ gửi xe.
+    /// </summary>
+    Task<List<CardDto>> GetAllCardsAsync();
+
+    /// <summary>
     /// Lấy thông tin thẻ theo ID.
     /// Dùng cho: Các luồng nội bộ cần tra cứu thẻ theo ID (check-in, check-out).
     ///
@@ -68,4 +73,10 @@ public interface ICardService
     ///   - Thẻ đang bận → DomainException "CARD_IN_ACTIVE_SESSION"
     /// </summary>
     Task DeleteCardAsync(int id);
+
+    /// <summary>
+    /// Cập nhật trạng thái thẻ gửi xe (ví dụ: chuyển sang Lost và ghi nhận LostAt).
+    /// </summary>
+    Task<CardDto> UpdateCardStatusAsync(int id, string status);
 }
+

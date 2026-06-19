@@ -117,5 +117,45 @@ namespace PBMS.Application.Accounts
             await _accountRepository.SaveChangesAsync();
             return true;
         }
+        /// <summary>
+        /// Đổi mật khẩu tài khoản bằng cách kiểm tra mật khẩu cũ và mã hóa mật khẩu mới.
+        /// </summary>
+        public async Task<bool> ChangePasswordAsync(int id, ChangePasswordDto dto)
+        {
+            //1. Tìm tài khoản trong database
+            var account = await _accountRepository.GetByIdAsync(id);
+            if (account == null) return false;
+
+            //2 Kiểm tra mật khẩu cũ có trùng khớp hay không
+            bool isOldPasswordValid = BCrypt.Net.BCrypt.Verify(dto.OldPassword, account.PasswordHash);
+            if (!isOldPasswordValid)
+            {
+                throw new UnauthorizedAccessException("Incorrect old password");
+            }
+
+            //3. Mã hoá mật khẩu mới bằng BCrypt và cập nhật lại 
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+            //4. Lưu thay đổi vào database
+            _accountRepository.Update(account);
+            await _accountRepository.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>
+        /// Deactivate tài khoản tự nguyện (Soft Delete / Deactivate) bằng cách chuyển trạng thái hoạt động thành "Inactive".
+        /// </summary>
+        public async Task<bool> DeactivateAccountAsync(int id)
+        {
+            var account = await _accountRepository.GetByIdAsync(id);
+            if (account == null) return false;
+
+            // Đổi trạng thái sang Inactive
+            account.AccountStatus = "Inactive";
+
+            _accountRepository.Update(account);
+            await _accountRepository.SaveChangesAsync();
+            return true;
+        }
     }
 }

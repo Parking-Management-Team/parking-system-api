@@ -17,6 +17,7 @@ namespace PBMS.API.Controllers;
 ///   GET    /api/cards/by-code/{cardCode}  → Tra cứu thẻ theo mã (Scenario 3)
 ///   PUT    /api/cards/{id}                → Cập nhật thông tin thẻ
 ///   DELETE /api/cards/{id}                → Xóa thẻ (Scenario 2 — từ chối nếu đang bận)
+///   GET   /api/cards                      → Lấy danh sách thẻ (áp dụng bộ lọc)
 /// </summary>
 [ApiController]
 [Route("api/cards")]
@@ -55,8 +56,26 @@ public class CardController : ControllerBase
         return CreatedAtAction(
             actionName: nameof(GetCardById),       // Trỏ tới endpoint GET /api/cards/{id}
             routeValues: new { id = card.Id },     // Giá trị route parameter
-            value: BaseResponse<CardDto>.Ok(card, "Tạo thẻ gửi xe thành công.")
+            value: BaseResponse<CardDto>.Ok(card, "Parking card created successfully.")
         );
+    }
+
+        // -----------------------------------------------------------------------
+    // GET /api/cards/ — Lấy danh sách thẻ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ thẻ gửi xe.
+    ///
+    /// Route  : GET /api/cards
+    /// Returns: 200 OK + Danh sách CardDto (danh sách rỗng nếu chưa có thẻ nào)
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<BaseResponse<List<CardDto>>>> GetAllCards()
+    {
+        var card = await _cardService.GetAllCardsAsync();
+
+        return Ok(BaseResponse<List<CardDto>>.Ok(card));
     }
 
     // -----------------------------------------------------------------------
@@ -124,7 +143,7 @@ public class CardController : ControllerBase
     {
         var card = await _cardService.UpdateCardAsync(id, request);
 
-        return Ok(BaseResponse<CardDto>.Ok(card, "Cập nhật thông tin thẻ thành công."));
+        return Ok(BaseResponse<CardDto>.Ok(card, "Card updated successfully."));
     }
 
     // -----------------------------------------------------------------------
@@ -150,4 +169,15 @@ public class CardController : ControllerBase
         // 204 No Content: xóa thành công, không có data trả về
         return NoContent();
     }
+
+    /// <summary>
+    /// Cập nhật trạng thái của thẻ gửi xe (ví dụ: chuyển sang Lost và ghi nhận LostAt).
+    /// </summary>
+    [HttpPut("{id:int}/status")]
+    public async Task<ActionResult<BaseResponse<CardDto>>> UpdateCardStatus(int id, [FromBody] UpdateCardStatusRequest request)
+    {
+        var card = await _cardService.UpdateCardStatusAsync(id, request.Status);
+        return Ok(BaseResponse<CardDto>.Ok(card, "Card status updated successfully."));
+    }
 }
+

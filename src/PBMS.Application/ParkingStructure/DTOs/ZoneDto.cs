@@ -9,8 +9,10 @@ public class ZoneDto
 {
     public int Id { get; set; }
     public int FloorId { get; set; }
+    public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public int VehicleTypeId { get; set; }
     public int Capacity { get; set; }
+    public ZoneAccessType AccessType { get; set; }
     public ZoneStatus Status { get; set; }
 }

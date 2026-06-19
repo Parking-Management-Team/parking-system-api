@@ -4,7 +4,7 @@ namespace PBMS.Domain.Entities;
 /// Thực thể tài khoản (Account) đại diện cho thông tin người dùng trong hệ thống PBMS.
 /// Kế thừa từ BaseEntity (chứa Id, CreatedDate, UpdatedDate, v.v.).
 /// </summary>
-public class Account : BaseEntity
+public class Account : BaseEntity, ISoftDeletable
 {
     /// <summary>
     /// Khóa ngoại liên kết tới bảng vai trò (Role).
@@ -42,10 +42,17 @@ public class Account : BaseEntity
     /// </summary>
     public string AccountStatus { get; set; } = "Active";
 
+    // -----------------------------------------------------------------------
+    // SOFT DELETE PROPERTIES
+    // -----------------------------------------------------------------------
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public int? DeletedBy { get; set; }
+
     /// <summary>
     /// Thuộc tính logic tự động xác định tài khoản có đang ở trạng thái hoạt động bình thường hay không.
     /// </summary>
-    public bool IsActive => AccountStatus == "Active";
+    public bool IsActive => AccountStatus == "Active" && !IsDeleted;
 
     /// <summary>
     /// Thông tin vai trò (Role) liên kết trực tiếp với tài khoản này.
@@ -53,4 +60,29 @@ public class Account : BaseEntity
     /// Khi gọi 'account.Role', EF Core sẽ tự động truy vấn DB để lấy thông tin Role liên quan nếu chưa được load sẵn.
     /// </summary>
     public virtual Role Role { get; set; } = null!;
+
+    /// <summary>
+    /// Danh sách các phương tiện (Vehicle) sở hữu bởi tài khoản này.
+    /// </summary>
+    public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+
+    /// <summary>
+    /// Danh sách các lượt đặt chỗ (Booking) của tài khoản này.
+    /// </summary>
+    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+    /// <summary>
+    /// Danh sách các đăng ký vé tháng (MonthlySubscription) của tài khoản này.
+    /// </summary>
+    public virtual ICollection<MonthlySubscription> MonthlySubscriptions { get; set; } = new List<MonthlySubscription>();
+
+    /// <summary>
+    /// Danh sách các nhật ký thao tác (AuditLog) thực hiện bởi tài khoản này.
+    /// </summary>
+    public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+
+    /// <summary>
+    /// Danh sách các thông báo (Notification) của tài khoản này.
+    /// </summary>
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

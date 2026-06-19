@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using PBMS.Application.Common;
 using PBMS.Application.Common.Exceptions;
+using PBMS.Domain.Exceptions;
 
 namespace PBMS.API.Middlewares
 {
@@ -52,6 +53,9 @@ namespace PBMS.API.Middlewares
         /// <returns>A task representing the asynchronous operation.</returns>
         private static Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
+            Console.WriteLine("--> Unhandled exception:");
+            Console.WriteLine(exception);
+
             context.Response.ContentType = "application/json";
 
             // Initialize response properties
@@ -109,6 +113,15 @@ namespace PBMS.API.Middlewares
                 response = BaseResponse<object>.Fail(
                     appEx.ErrorCode,
                     exception.Message
+                );
+            }
+            else if (exception is DomainException domainEx)
+            {
+                // Xử lý các lỗi vi phạm quy tắc nghiệp vụ (Business Rule Violations)
+                statusCode = HttpStatusCode.BadRequest;
+                response = BaseResponse<object>.Fail(
+                    domainEx.ErrorCode,
+                    domainEx.Message
                 );
             }
             else

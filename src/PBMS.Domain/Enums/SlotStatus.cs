@@ -7,22 +7,22 @@ namespace PBMS.Domain.Enums;
 public enum SlotStatus
 {
     /// <summary>
-    /// Vị trí còn trống và có thể sử dụng.
+    /// Slot trống.
     /// </summary>
     Available,
 
     /// <summary>
-    /// Vị trí đã được đặt trước thông qua Booking.
-    /// </summary>
-    Reserved,
-
-    /// <summary>
-    /// Vị trí đang có xe đỗ.
+    /// Slot có xe.
     /// </summary>
     Occupied,
 
     /// <summary>
-    /// Vị trí bị khóa do bảo trì hoặc mục đích khác.
+    /// Slot bị khóa.
     /// </summary>
-    Blocked
+    Blocked,
+
+    /// <summary>
+    /// Slot đang bảo trì.
+    /// </summary>
+    Maintenance
 }

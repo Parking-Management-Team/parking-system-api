@@ -24,11 +24,21 @@ public class AppDbContext : DbContext
     // phụ trách vào bên dưới dòng này.
     // Ví dụ: public DbSet<Zone> Zones { get; set; }
     // =======================================================
-
+    
     /// <summary>
     /// Tập hợp dữ liệu bảng Tài khoản (Accounts).
     /// </summary>
     public DbSet<Account> Accounts { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Nhật ký thao tác (AuditLogs).
+    /// </summary>
+    public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Danh sách đen (Blacklists).
+    /// </summary>
+    public DbSet<Blacklist> Blacklists { get; set; } = null!;
 
     /// <summary>
     /// Tập hợp dữ liệu bảng Vai trò (Roles).
@@ -67,9 +77,49 @@ public class AppDbContext : DbContext
     public DbSet<ParkingSession> ParkingSessions { get; set; } = null!;
 
     /// <summary>
+    /// Tập hợp dữ liệu bảng Sự cố (Incidents).
+    /// </summary>
+    public DbSet<Incident> Incidents { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Thông báo (Notifications).
+    /// </summary>
+    public DbSet<Notification> Notifications { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Danh mục loại sự cố (IncidentTypes).
+    /// </summary>
+    public DbSet<IncidentType> IncidentTypes { get; set; } = null!;
+
+    /// <summary>
     /// Tập hợp dữ liệu bảng Phương tiện (Vehicles).
     /// </summary>
     public DbSet<Vehicle> Vehicles { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Đặt chỗ trước (Bookings).
+    /// </summary>
+    public DbSet<Booking> Bookings { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Đăng ký vé tháng (MonthlySubscriptions).
+    /// </summary>
+    public DbSet<MonthlySubscription> MonthlySubscriptions { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Giao dịch thanh toán (Payments).
+    /// </summary>
+    public DbSet<Payment> Payments { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Thống kê doanh thu (RevenueStatistics).
+    /// </summary>
+    public DbSet<RevenueStatistic> RevenueStatistics { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng trung gian đối soát doanh thu - thanh toán (RevenueStatisticPayments).
+    /// </summary>
+    public DbSet<RevenueStatisticPayment> RevenueStatisticPayments { get; set; } = null!;
 
     /// <summary>
     /// Tập hợp dữ liệu bảng Loại phương tiện (VehicleTypes).
@@ -85,8 +135,17 @@ public class AppDbContext : DbContext
     /// Tập hợp dữ liệu bảng Khung giờ giá (PricingWindows).
     /// </summary>
     public DbSet<PricingWindow> PricingWindows { get; set; } = null!;
-    
 
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Quyền hạn (Permissions).
+    /// </summary>
+    public DbSet<Permission> Permissions { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng trung gian Vai trò - Quyền hạn (RolePermissions).
+    /// </summary>
+    public DbSet<RolePermission> RolePermissions { get; set; } = null!;
+    
     // =======================================================
 
     /// <summary>
@@ -100,5 +159,20 @@ public class AppDbContext : DbContext
         // Lệnh này giúp EF Core tự động quét và áp dụng các file 
         // cấu hình bảng (Fluent API) mà team dev tạo ra trong Assembly này
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Áp dụng Global Query Filter cho tất cả các thực thể kế thừa ISoftDeletable
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+                var propertyMethodInfo = typeof(Microsoft.EntityFrameworkCore.EF).GetMethod("Property")!.MakeGenericMethod(typeof(bool));
+                var isDeletedProperty = System.Linq.Expressions.Expression.Call(propertyMethodInfo, parameter, System.Linq.Expressions.Expression.Constant("IsDeleted"));
+                var compareExpression = System.Linq.Expressions.Expression.MakeBinary(System.Linq.Expressions.ExpressionType.Equal, isDeletedProperty, System.Linq.Expressions.Expression.Constant(false));
+                var lambda = System.Linq.Expressions.Expression.Lambda(compareExpression, parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+        }
     }
 }

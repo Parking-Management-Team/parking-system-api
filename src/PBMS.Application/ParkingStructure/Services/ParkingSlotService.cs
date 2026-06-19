@@ -163,14 +163,14 @@ public class ParkingSlotService : IParkingSlotService
             throw new NotFoundException("ParkingSlot", id);
         }
 
-        // Logic bảo vệ: Không cho xóa nếu đang có xe đỗ hoặc đã đặt chỗ
-        if (slot.Status == SlotStatus.Occupied || slot.Status == SlotStatus.Reserved)
+        // Logic bảo vệ: Không cho xóa nếu đang có xe đỗ
+        if (slot.Status == SlotStatus.Occupied)
         {
             throw new ValidationException($"Cannot delete slot '{slot.Code}' because its status is {slot.Status}.");
         }
 
         // Kiểm tra ParkingSessions
-        if (slot.ParkingSessions.Any(ps => ps.SessionStatus == "Active"))
+        if (slot.ParkingSessions.Any(ps => string.Equals(ps.SessionStatus, "ACTIVE", StringComparison.OrdinalIgnoreCase)))
         {
             throw new ValidationException($"Cannot delete slot '{slot.Code}' because it has an active parking session.");
         }
