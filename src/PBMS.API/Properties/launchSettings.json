@@ -20,7 +20,7 @@
       "applicationUrl": "http://localhost:5029",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ConnectionStrings__DefaultConnection": "Host=localhost;Database=pbms_local;Username=postgres;Password=YOUR_PASSWORD"
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Database=pbms_local;Username=postgres;Password=123456"
       }
     }
   }

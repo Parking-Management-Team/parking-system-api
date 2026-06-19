@@ -34,9 +34,11 @@ namespace PBMS.Infrastructure.Configurations
                 .HasMaxLength(50)
                 .IsRequired();
 
-            // Tạo chỉ mục độc nhất (Unique Index) để đảm bảo không trùng lặp Username
+            // Tạo chỉ mục độc nhất (Unique Index) để đảm bảo không trùng lặp Username (Áp dụng cho tài khoản chưa bị xóa)
             builder.HasIndex(a => a.Username)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("is_deleted = false")
+                .HasDatabaseName("ix_account_username");
 
             // 6. Mật khẩu mã hóa (PasswordHash): tối đa 100 ký tự, bắt buộc phải nhập
             builder.Property(a => a.PasswordHash)
@@ -54,9 +56,11 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("email")
                 .HasMaxLength(100);
 
-            // Tạo chỉ mục độc nhất (Unique Index) để đảm bảo không trùng lặp Email
+            // Tạo chỉ mục độc nhất (Unique Index) để đảm bảo không trùng lặp Email (Áp dụng cho tài khoản chưa bị xóa và có email)
             builder.HasIndex(a => a.Email)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("is_deleted = false AND email IS NOT NULL")
+                .HasDatabaseName("ix_account_email");
 
             // 9. Số điện thoại (Phone): tối đa 20 ký tự, cho phép null
             builder.Property(a => a.Phone)
@@ -76,6 +80,18 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("created_at")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
+
+            // Cấu hình Soft Delete
+            builder.Property(a => a.IsDeleted)
+                .HasColumnName("is_deleted")
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            builder.Property(a => a.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            builder.Property(a => a.DeletedBy)
+                .HasColumnName("deleted_by");
 
             // 12. Cấu hình RowVersion để kiểm soát xung đột đồng thời (Concurrency Control).
             // Trên PostgreSQL, khi thuộc tính là uint và dùng IsRowVersion(), Npgsql tự động ánh xạ tới cột hệ thống 'xmin'.

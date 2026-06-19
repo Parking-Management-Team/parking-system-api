@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618180802_UpdateDatabaseSchemaBlacklistIncidentandSoftDeleteAtt")]
+    partial class UpdateDatabaseSchemaBlacklistIncidentandSoftDeleteAtt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1429,13 +1432,7 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("vehicle_type_name");
-
-                    b.Property<string>("VehicleTypeCode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("vehicle_type_code");
+                        .HasColumnName("type_name");
 
                     b.Property<string>("VehicleTypeStatus")
                         .IsRequired()

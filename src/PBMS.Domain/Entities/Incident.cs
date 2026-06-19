@@ -1,3 +1,5 @@
+using PBMS.Domain.Enums;
+
 namespace PBMS.Domain.Entities;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace PBMS.Domain.Entities;
 /// Kế thừa từ BaseEntity (Id, CreatedAt, RowVersion).
 /// Tham chiếu SRS: §8.3.3.14 — Physical Model: incident
 /// </summary>
-public class Incident : BaseEntity
+public class Incident : BaseEntity, ISoftDeletable
 {
     /// <summary>
     /// Khóa ngoại liên kết tới lượt gửi xe xảy ra sự cố (ParkingSession).
@@ -28,14 +30,22 @@ public class Incident : BaseEntity
     public decimal? PenaltyFee { get; set; }
 
     /// <summary>
-    /// Trạng thái xử lý sự cố (Ví dụ: "Reported", "InProcessing", "Resolved", "Cancelled").
+    /// Trạng thái xử lý sự cố.
+    /// Tham chiếu SRS: §8.3.3.14 — incident_status
     /// </summary>
-    public string IncidentStatus { get; set; } = "Reported";
+    public IncidentStatus Status { get; set; } = IncidentStatus.Open;
 
     /// <summary>
     /// Thời điểm sự cố được xử lý xong xuôi.
     /// </summary>
     public DateTime? ResolvedAt { get; set; }
+
+    // -----------------------------------------------------------------------
+    // SOFT DELETE PROPERTIES
+    // -----------------------------------------------------------------------
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public int? DeletedBy { get; set; }
 
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES

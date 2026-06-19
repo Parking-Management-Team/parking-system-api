@@ -51,6 +51,18 @@ namespace PBMS.Infrastructure.Configurations
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
 
+            // 8. Soft Delete columns
+            builder.Property(b => b.IsDeleted)
+                .HasColumnName("is_deleted")
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            builder.Property(b => b.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            builder.Property(b => b.DeletedBy)
+                .HasColumnName("deleted_by");
+
             // =======================================================================
             // Cấu hình các mối quan hệ (Relationships)
             // =======================================================================

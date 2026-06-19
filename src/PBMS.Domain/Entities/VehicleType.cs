@@ -9,6 +9,8 @@ public class VehicleType : BaseEntity
 
     public string TypeName { get; set; } = null!;
 
+    public string VehicleTypeCode { get; set; } = null!;
+
     public string? Description { get; set; }
 
     public string VehicleTypeStatus { get; set; } = StatusActive;

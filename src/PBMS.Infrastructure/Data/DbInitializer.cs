@@ -25,14 +25,21 @@ public static class DbInitializer
         }
 
         // 2. Seed Vehicle Types
-        if (!await context.Set<VehicleType>().AnyAsync())
+        var motorcycleType = await context.Set<VehicleType>()
+            .FirstOrDefaultAsync(v => v.TypeName == "Motorcycle" || v.VehicleTypeCode == "MOTOR");
+        if (motorcycleType == null)
         {
-            var vTypes = new List<VehicleType>
-            {
-                new VehicleType { TypeName = "Motorcycle", Description = "2-wheel motorcycle", VehicleTypeStatus = "Active" },
-                new VehicleType { TypeName = "Car", Description = "4-7 seat passenger car", VehicleTypeStatus = "Active" }
-            };
-            await context.AddRangeAsync(vTypes);
+            motorcycleType = new VehicleType { TypeName = "Motorcycle", VehicleTypeCode = "MOTOR", Description = "2-wheel motorcycle", VehicleTypeStatus = "Active" };
+            await context.AddAsync(motorcycleType);
+            await context.SaveChangesAsync();
+        }
+
+        var carType = await context.Set<VehicleType>()
+            .FirstOrDefaultAsync(v => v.TypeName == "Car" || v.VehicleTypeCode == "CAR");
+        if (carType == null)
+        {
+            carType = new VehicleType { TypeName = "Car", VehicleTypeCode = "CAR", Description = "4-7 seat passenger car", VehicleTypeStatus = "Active" };
+            await context.AddAsync(carType);
             await context.SaveChangesAsync();
         }
 
@@ -147,8 +154,8 @@ public static class DbInitializer
             await context.AddRangeAsync(floor1, floor2);
             await context.SaveChangesAsync();
 
-            var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
-            var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
+            motorcycleType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
+            carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
 
             var zoneMotor = new Zone 
             { 
@@ -156,7 +163,7 @@ public static class DbInitializer
                 Code = "ZM01", 
                 Name = "Motorbike Zone", 
                 Capacity = 100, 
-                VehicleTypeId = motorType!.Id,
+                VehicleTypeId = motorcycleType!.Id,
                 AccessType = ZoneAccessType.General,
                 Status = ZoneStatus.Available
             };
@@ -204,14 +211,14 @@ public static class DbInitializer
         // 6. Seed Pricing Policies (Motorcycle & Car)
         if (!await context.Set<PricingPolicy>().AnyAsync())
         {
-            var motorType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
-            var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
+            motorcycleType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
+            carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
 
             var policies = new List<PricingPolicy>
             {
                 new PricingPolicy
                 {
-                    VehicleTypeId = motorType!.Id,
+                    VehicleTypeId = motorcycleType!.Id,
                     PolicyName = "Motorbike Casual Pricing",
                     EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
                     PricingPolicyStatus = "Active",
