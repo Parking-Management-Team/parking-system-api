@@ -22,6 +22,8 @@ using PBMS.Application.Revenue.Interfaces;
 using PBMS.Application.Revenue.Services;
 using PBMS.Application.MonthlyCard.Interfaces;
 using PBMS.Application.MonthlyCard.Services;
+using PBMS.Application.Booking.Interfaces;
+using PBMS.Application.Booking.Services;
 
 
 
@@ -78,6 +80,9 @@ public static class DependencyInjection
         services.AddScoped<IRevenueService, RevenueService>();
         // Monthly Subscription module
         services.AddScoped<IMonthlySubscriptionService, MonthlySubscriptionService>();
+
+        // Booking module
+        services.AddScoped<IBookingService, BookingService>();
 
         return services;
 
