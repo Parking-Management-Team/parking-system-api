@@ -81,6 +81,16 @@ public class FloorsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy thông tin sức chứa của tầng.
+    /// </summary>
+    [HttpGet("{id}/capacity")]
+    public async Task<IActionResult> GetFloorCapacity(int id)
+    {
+        var capacity = await _floorService.GetFloorCapacityAsync(id);
+        return Ok(BaseResponse<CapacityDto>.Ok(capacity));
+    }
+
+    /// <summary>
     /// Xóa tầng.
     /// </summary>
     [HttpDelete("{id}")]

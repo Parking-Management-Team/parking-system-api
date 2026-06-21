@@ -47,6 +47,16 @@ public class ParkingSlotService : IParkingSlotService
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
         }
 
+        if (zone.VehicleTypeId != request.VehicleTypeId)
+        {
+            throw new ValidationException("The specified VehicleTypeId does not match the Zone's VehicleTypeId.");
+        }
+
+        if (!IsCarVehicleType(vehicleType))
+        {
+            throw new ValidationException("Parking slots can only be created manually for Car zones.");
+        }
+
         // 3. Kiểm tra SlotCode duy nhất
         var codeExists = await _slotRepository.SlotCodeExistsAsync(request.Code);
         if (codeExists)
@@ -176,5 +186,12 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         await _slotRepository.RemoveAsync(slot);
+    }
+
+    private static bool IsCarVehicleType(VehicleType vehicleType)
+    {
+        return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
     }
 }

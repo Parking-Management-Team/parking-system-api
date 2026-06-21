@@ -14,4 +14,5 @@ public interface IBuildingService
     Task<PagedResult<BuildingDto>> GetBuildingsPagedAsync(int pageIndex, int pageSize);
     Task<BuildingDto> UpdateBuildingAsync(int id, BuildingUpdateRequest request);
     Task DeleteBuildingAsync(int id);
+    Task<CapacityDto> GetBuildingCapacityAsync(int id);
 }

@@ -15,4 +15,5 @@ public interface IFloorService
     Task<PagedResult<FloorDto>> GetFloorsPagedAsync(int pageIndex, int pageSize);
     Task<FloorDto> UpdateFloorAsync(int id, FloorUpdateRequest request);
     Task DeleteFloorAsync(int id);
+    Task<CapacityDto> GetFloorCapacityAsync(int id);
 }

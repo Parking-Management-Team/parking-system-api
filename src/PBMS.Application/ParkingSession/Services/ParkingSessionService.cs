@@ -344,33 +344,9 @@ public class ParkingSessionService : IParkingSessionService
 
                 if (amountDue == 0)
                 {
-                    session.SessionStatus = CompletedStatus;
-                    booking.BookingStatus = "Completed";
-
-                    // Giải phóng slot đỗ xe
-                    if (session.SlotId.HasValue)
-                    {
-                        var slot = await _parkingSlotRepository.GetByIdAsync(session.SlotId.Value);
-                        if (slot != null)
-                        {
-                            slot.Status = SlotStatus.Available;
-                            _parkingSlotRepository.Update(slot);
-                        }
-                    }
-
-                    // Giải phóng thẻ đỗ xe thường
-                    var card = await _cardRepository.GetByIdAsync(session.CardId);
-                    if (card != null && card.CardStatus == CardStatus.Active.ToString())
-                    {
-                        card.CardStatus = CardStatus.Available.ToString();
-                        _cardRepository.Update(card);
-                    }
-
-                    _sessionRepository.Update(session);
-                    _bookingRepository.Update(booking);
-                    await _sessionRepository.SaveChangesAsync();
-
-                    return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Succesfull. Parking fee is fully deducted by deposit. Parking session completed immediately.");
+                    // LƯU Ý: Không giải phóng Slot và Card ở đây nữa theo yêu cầu Task 4.
+                    // Việc giải phóng sẽ được thực hiện tại CompleteAsync.
+                    // Tương tự, không chuyển status sang Completed để Frontend có thể gọi CompleteAsync.
                 }
             }
         }
@@ -384,24 +360,8 @@ public class ParkingSessionService : IParkingSessionService
             {
                 if (checkOutTime <= subscription.ExpiredAt)
                 {
-                    // Vé tháng còn hiệu lực -> phí = 0 VNĐ, hoàn tất check-out ngay lập tức
-                    session.SessionStatus = CompletedStatus;
-
-                    // Giải phóng slot đỗ xe ô tô
-                    if (session.SlotId.HasValue)
-                    {
-                        var slot = await _parkingSlotRepository.GetByIdAsync(session.SlotId.Value);
-                        if (slot != null)
-                        {
-                            slot.Status = SlotStatus.Available;
-                            _parkingSlotRepository.Update(slot);
-                        }
-                    }
-
-                    _sessionRepository.Update(session);
-                    await _sessionRepository.SaveChangesAsync();
-
-                    return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Thẻ tháng còn hạn. Hoàn tất check-out ngay lập tức.");
+                    // Vé tháng còn hiệu lực
+                    // Không chuyển status sang Completed và không giải phóng Slot/Card ở đây.
                 }
             }
         }
@@ -409,7 +369,7 @@ public class ParkingSessionService : IParkingSessionService
 
         _sessionRepository.Update(session);
         await _sessionRepository.SaveChangesAsync();
-        return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Started checkout successfully.");
+        return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Started checkout successfully. Waiting for completion.");
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CompleteAsync(int id)
@@ -446,6 +406,17 @@ public class ParkingSessionService : IParkingSessionService
         {
             card.CardStatus = CardStatus.Available.ToString();
             _cardRepository.Update(card);
+        }
+
+        // Cập nhật trạng thái Booking nếu có
+        if (session.BookingId.HasValue)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            if (booking != null)
+            {
+                booking.BookingStatus = "Completed";
+                _bookingRepository.Update(booking);
+            }
         }
 
         _sessionRepository.Update(session);

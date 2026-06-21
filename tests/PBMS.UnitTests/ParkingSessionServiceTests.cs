@@ -98,7 +98,7 @@ public class ParkingSessionServiceTests
     }
 
     [Fact]
-    public async Task StartCheckoutAsync_ShouldCompleteImmediately_WhenMonthlySubscriptionIsValid()
+    public async Task StartCheckoutAsync_ShouldNotCompleteImmediately_WhenMonthlySubscriptionIsValid_DueToTask4Refactoring()
     {
         // Arrange
         int sessionId = 1;
@@ -130,7 +130,7 @@ public class ParkingSessionServiceTests
         Assert.NotNull(result);
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
-        Assert.Equal("COMPLETED", result.Data.SessionStatus); // Hoàn tất check-out ngay lập tức
+        Assert.Equal("ACTIVE", result.Data.SessionStatus); // Giữ ACTIVE theo yêu cầu Task 4
     }
 
     [Fact]

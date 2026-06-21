@@ -5,6 +5,7 @@ using PBMS.Application.Contracts;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
 
 namespace PBMS.Application.ParkingStructure.Services;
 
@@ -15,15 +16,21 @@ public class FloorService : IFloorService
 {
     private readonly IFloorRepository _floorRepository;
     private readonly IBuildingRepository _buildingRepository;
+    private readonly IZoneRepository _zoneRepository;
+    private readonly IParkingSlotRepository _slotRepository;
     private readonly IMapper _mapper;
 
     public FloorService(
         IFloorRepository floorRepository,
         IBuildingRepository buildingRepository,
+        IZoneRepository zoneRepository,
+        IParkingSlotRepository slotRepository,
         IMapper mapper)
     {
         _floorRepository = floorRepository;
         _buildingRepository = buildingRepository;
+        _zoneRepository = zoneRepository;
+        _slotRepository = slotRepository;
         _mapper = mapper;
     }
 
@@ -170,5 +177,31 @@ public class FloorService : IFloorService
         }
 
         await _floorRepository.SaveChangesAsync();
+    }
+
+    public async Task<CapacityDto> GetFloorCapacityAsync(int id)
+    {
+        var floor = await _floorRepository.GetByIdAsync(id);
+        if (floor == null)
+        {
+            throw new NotFoundException("Floor", id);
+        }
+
+        var zones = await _zoneRepository.FindAsync(z => z.FloorId == id);
+        var zoneIds = zones.Select(z => z.Id).ToList();
+
+        int totalSlots = zones.Sum(z => z.Capacity);
+        int occupiedSlots = 0;
+
+        if (zoneIds.Any())
+        {
+            occupiedSlots = await _slotRepository.CountAsync(s => zoneIds.Contains(s.ZoneId) && s.Status == SlotStatus.Occupied);
+        }
+
+        return new CapacityDto
+        {
+            TotalSlots = totalSlots,
+            OccupiedSlots = occupiedSlots
+        };
     }
 }
