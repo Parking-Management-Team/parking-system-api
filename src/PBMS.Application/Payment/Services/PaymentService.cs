@@ -10,6 +10,7 @@ using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Application.Revenue.Interfaces;
+using BookingEntity = PBMS.Domain.Entities.Booking;
 
 
 namespace PBMS.Application.Payment.Services;
@@ -21,7 +22,7 @@ public class PaymentService : IPaymentService
 {
     private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
-    private readonly IRepository<Booking> _bookingRepository;
+    private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
     private readonly ICardRepository _cardRepository;
@@ -35,7 +36,7 @@ public class PaymentService : IPaymentService
     public PaymentService(
         IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
-        IRepository<Booking> bookingRepository,
+        IRepository<BookingEntity> bookingRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
         IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
         ICardRepository cardRepository,

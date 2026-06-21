@@ -5,6 +5,7 @@ using PBMS.Application.ParkingSession.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
+using BookingEntity = PBMS.Domain.Entities.Booking;
 using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
@@ -19,7 +20,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IParkingSessionRepository _sessionRepository;
     private readonly IRepository<VehicleEntity> _vehicleRepository;
     private readonly IRepository<VehicleTypeEntity> _vehicleTypeRepository;
-    private readonly IRepository<Booking> _bookingRepository;
+    private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IFeeCalculationService _feeCalculationService;
     private readonly ICardRepository _cardRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
@@ -29,7 +30,7 @@ public class ParkingSessionService : IParkingSessionService
         IParkingSessionRepository sessionRepository,
         IRepository<VehicleEntity> vehicleRepository,
         IRepository<VehicleTypeEntity> vehicleTypeRepository,
-        IRepository<Booking> bookingRepository,
+        IRepository<BookingEntity> bookingRepository,
         IFeeCalculationService feeCalculationService,
         ICardRepository cardRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
@@ -135,6 +136,11 @@ public class ParkingSessionService : IParkingSessionService
         {
             if (IsCar(vehicleType))
             {
+                if (activeSubscription == null)
+                {
+                    return BaseResponse<ParkingSessionDto>.Fail("SUBSCRIPTION_NOT_FOUND", "Monthly subscription not found for this card.");
+                }
+
                 if (!activeSubscription.AssignedSlotId.HasValue)
                 {
                     return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_ASSIGNED", "Monthly subscription for car does not have an assigned slot.");

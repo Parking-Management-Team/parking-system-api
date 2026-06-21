@@ -92,6 +92,7 @@ public class ParkingSessionServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+        Assert.NotNull(result.Data);
         Assert.Equal(500, result.Data.MonthlySubscriptionId);
         Assert.Equal("Assigned", card.CardStatus); // Trạng thái thẻ tháng giữ nguyên Assigned
     }
@@ -128,6 +129,7 @@ public class ParkingSessionServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+        Assert.NotNull(result.Data);
         Assert.Equal("COMPLETED", result.Data.SessionStatus); // Hoàn tất check-out ngay lập tức
     }
 
@@ -165,6 +167,7 @@ public class ParkingSessionServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+        Assert.NotNull(result.Data);
         Assert.Equal("ACTIVE", result.Data.SessionStatus); // Giữ ACTIVE chờ thanh toán phí overtime
     }
 }
