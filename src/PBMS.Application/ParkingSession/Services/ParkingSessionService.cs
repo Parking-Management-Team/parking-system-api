@@ -136,6 +136,11 @@ public class ParkingSessionService : IParkingSessionService
         {
             if (IsCar(vehicleType))
             {
+                if (activeSubscription == null)
+                {
+                    return BaseResponse<ParkingSessionDto>.Fail("SUBSCRIPTION_NOT_FOUND", "Monthly subscription not found for this card.");
+                }
+
                 if (!activeSubscription.AssignedSlotId.HasValue)
                 {
                     return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_ASSIGNED", "Monthly subscription for car does not have an assigned slot.");

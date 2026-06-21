@@ -99,7 +99,7 @@ public class PricingPolicyServiceTests
     {
         // Arrange
         var vehicleType = MakeVehicleType();
-        _vehicleTypeRepoMock.GetByIdAsync(1).Returns((VehicleType?)vehicleType);
+        _vehicleTypeRepoMock.GetByIdAsync(1).Returns(Task.FromResult<VehicleType?>(vehicleType));
         _policyRepoMock.AddAsync(Arg.Any<PricingPolicy>()).Returns(Task.CompletedTask);
         _policyRepoMock.SaveChangesAsync().Returns(Task.FromResult(1));
 
@@ -126,7 +126,7 @@ public class PricingPolicyServiceTests
     [Fact]
     public async Task CreatePricingPolicyAsync_ShouldThrow_WhenVehicleTypeNotFound()
     {
-        _vehicleTypeRepoMock.GetByIdAsync(999).Returns((VehicleType?)null);
+        _vehicleTypeRepoMock.GetByIdAsync(999).Returns(Task.FromResult<VehicleType?>(null));
 
         var request = new CreatePricingPolicyRequest
         {
