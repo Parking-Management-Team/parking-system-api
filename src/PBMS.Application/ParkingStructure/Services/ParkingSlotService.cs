@@ -95,7 +95,11 @@ public class ParkingSlotService : IParkingSlotService
         return _mapper.Map<IEnumerable<ParkingSlotDto>>(slots);
     }
 
-    public async Task<IEnumerable<ParkingSlotDto>> GetSlotsByZoneAsync(int zoneId)
+    public async Task<IEnumerable<ParkingSlotDto>> GetSlotsByZoneAsync(
+        int zoneId, 
+        List<SlotStatus>? statuses = null, 
+        List<int>? vehicleTypeIds = null, 
+        string? search = null)
     {
         var zone = await _zoneRepository.GetByIdAsync(zoneId);
         if (zone == null)
@@ -104,6 +108,24 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         var slots = await _slotRepository.GetSlotsByZoneIdAsync(zoneId);
+
+        if (statuses != null && statuses.Any())
+        {
+            slots = slots.Where(s => statuses.Contains(s.Status));
+        }
+
+        if (vehicleTypeIds != null && vehicleTypeIds.Any())
+        {
+            slots = slots.Where(s => vehicleTypeIds.Contains(s.VehicleTypeId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            slots = slots.Where(s => 
+                (s.Code != null && s.Code.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (s.Name != null && s.Name.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+
         return _mapper.Map<IEnumerable<ParkingSlotDto>>(slots);
     }
 
