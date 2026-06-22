@@ -536,6 +536,9 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<int?>("PenaltyConfigId")
+                        .HasColumnType("integer");
+
                     b.Property<decimal?>("PenaltyFee")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -567,6 +570,8 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasIndex("IncidentTypeId");
 
+                    b.HasIndex("PenaltyConfigId");
+
                     b.HasIndex("SessionId");
 
                     b.ToTable("incident", (string)null);
@@ -586,11 +591,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<decimal?>("DefaultPenaltyFee")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("default_penalty_fee");
 
                     b.Property<string>("Description")
                         .HasMaxLength(100)
@@ -681,6 +681,9 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<int?>("SubscriptionPriceConfigId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer")
                         .HasColumnName("vehicle_id");
@@ -696,6 +699,8 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasIndex("AssignedSlotId");
 
                     b.HasIndex("BuildingId");
+
+                    b.HasIndex("SubscriptionPriceConfigId");
 
                     b.HasIndex("VehicleId");
 
@@ -1007,6 +1012,54 @@ namespace PBMS.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Payment_Source", "(CASE WHEN session_id IS NULL THEN 0 ELSE 1 END + CASE WHEN booking_id IS NULL THEN 0 ELSE 1 END + CASE WHEN monthly_subscription_id IS NULL THEN 0 ELSE 1 END) = 1");
                         });
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PenaltyConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IncidentTypeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("PenaltyFee")
+                        .HasColumnType("numeric");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IncidentTypeId");
+
+                    b.ToTable("PenaltyConfigs");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Permission", b =>
@@ -1343,6 +1396,54 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("role_permission", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.SubscriptionPriceConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("VehicleTypeId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleTypeId");
+
+                    b.ToTable("SubscriptionPriceConfigs");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
                 {
                     b.Property<int>("Id")
@@ -1467,8 +1568,13 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AccessType")
-                        .HasColumnType("integer");
+                    b.Property<string>("AccessType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("General")
+                        .HasColumnName("zone_access_type");
 
                     b.Property<int>("Capacity")
                         .ValueGeneratedOnAdd()
@@ -1626,6 +1732,10 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PBMS.Domain.Entities.PenaltyConfig", "PenaltyConfig")
+                        .WithMany("Incidents")
+                        .HasForeignKey("PenaltyConfigId");
+
                     b.HasOne("PBMS.Domain.Entities.ParkingSession", "Session")
                         .WithMany("Incidents")
                         .HasForeignKey("SessionId")
@@ -1633,6 +1743,8 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("IncidentType");
+
+                    b.Navigation("PenaltyConfig");
 
                     b.Navigation("Session");
                 });
@@ -1661,6 +1773,10 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PBMS.Domain.Entities.SubscriptionPriceConfig", "SubscriptionPriceConfig")
+                        .WithMany("MonthlySubscriptions")
+                        .HasForeignKey("SubscriptionPriceConfigId");
+
                     b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
                         .WithMany("MonthlySubscriptions")
                         .HasForeignKey("VehicleId")
@@ -1674,6 +1790,8 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("AssignedSlot");
 
                     b.Navigation("Building");
+
+                    b.Navigation("SubscriptionPriceConfig");
 
                     b.Navigation("Vehicle");
                 });
@@ -1808,6 +1926,17 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Session");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.PenaltyConfig", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.IncidentType", "IncidentType")
+                        .WithMany("PenaltyConfigs")
+                        .HasForeignKey("IncidentTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IncidentType");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
                 {
                     b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
@@ -1884,6 +2013,17 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Permission");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.SubscriptionPriceConfig", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany()
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("VehicleType");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
@@ -1974,6 +2114,8 @@ namespace PBMS.Infrastructure.Migrations
             modelBuilder.Entity("PBMS.Domain.Entities.IncidentType", b =>
                 {
                     b.Navigation("Incidents");
+
+                    b.Navigation("PenaltyConfigs");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.MonthlySubscription", b =>
@@ -2000,6 +2142,11 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("RevenueStatisticPayments");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.PenaltyConfig", b =>
+                {
+                    b.Navigation("Incidents");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Permission", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -2022,6 +2169,11 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Accounts");
 
                     b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.SubscriptionPriceConfig", b =>
+                {
+                    b.Navigation("MonthlySubscriptions");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>

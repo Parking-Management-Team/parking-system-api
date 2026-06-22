@@ -17,6 +17,8 @@ public class InMemoryParkingSessionService : IParkingSessionService
             VehicleId = 1,
             BuildingId = request.BuildingId ?? 1,
             CardId = 1,
+            BookingId = request.BookingId,
+            MonthlySubscriptionId = request.MonthlySubscriptionId,
             InStaffId = request.StaffId,
             CheckInTime = DateTime.UtcNow,
             LicensePlateIn = request.LicensePlate

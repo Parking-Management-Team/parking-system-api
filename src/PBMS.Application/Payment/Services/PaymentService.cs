@@ -10,6 +10,7 @@ using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Application.Revenue.Interfaces;
+using BookingEntity = PBMS.Domain.Entities.Booking;
 
 
 namespace PBMS.Application.Payment.Services;
@@ -21,7 +22,7 @@ public class PaymentService : IPaymentService
 {
     private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
-    private readonly IRepository<Booking> _bookingRepository;
+    private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
     private readonly ICardRepository _cardRepository;
@@ -30,19 +31,22 @@ public class PaymentService : IPaymentService
     private readonly IFeeCalculationService _feeCalculationService;
     private readonly IRevenueService _revenueService;
     private readonly IConfiguration _configuration;
+    private readonly IIncidentRepository _incidentRepository;
 
 
     public PaymentService(
         IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
-        IRepository<Booking> bookingRepository,
+        IRepository<BookingEntity> bookingRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
         IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
         ICardRepository cardRepository,
         IVNPayGateway vnpayGateway,
         IParkingSessionService sessionService,
         IFeeCalculationService feeCalculationService,
-        IConfiguration configuration, IRevenueService revenueService)
+        IConfiguration configuration,
+        IRevenueService revenueService,
+        IIncidentRepository incidentRepository)
     {
         _paymentRepository = paymentRepository;
         _sessionRepository = sessionRepository;
@@ -55,6 +59,7 @@ public class PaymentService : IPaymentService
         _feeCalculationService = feeCalculationService;
         _configuration = configuration;
         _revenueService = revenueService;
+        _incidentRepository = incidentRepository;
     }
 
 
@@ -117,8 +122,21 @@ public class PaymentService : IPaymentService
                 }
             }
 
-            originalAmount = finalFee;
+            // Truy vấn và cộng dồn tiền phạt từ các sự cố chưa giải quyết (Open)
+            decimal totalPenaltyFee = 0;
+            var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
+            if (sessionIncidents != null)
+            {
+                var openIncidents = sessionIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open);
+                totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
+            }
+
+            originalAmount = finalFee + totalPenaltyFee;
             description = $"Parking fee payment for session {session.Id}";
+            if (totalPenaltyFee > 0)
+            {
+                description += $" (Includes incident penalty fee of {totalPenaltyFee:N0} VND)";
+            }
 
         }
         else if (request.BookingId.HasValue)

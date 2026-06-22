@@ -69,9 +69,14 @@ public static class DependencyInjection
         services.AddScoped<IVehicleRepository, VehicleRepository>();
         services.AddScoped<IMonthlySubscriptionRepository, MonthlySubscriptionRepository>();
 
+        // Đăng ký repository Booking
+        services.AddScoped<IBookingRepository, BookingRepository>();
+
 
         // Pricing — Repository
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+        services.AddScoped<ISubscriptionPriceConfigRepository, SubscriptionPriceConfigRepository>();
+        services.AddScoped<IPenaltyConfigRepository, PenaltyConfigRepository>();
 
         // VNPay Gateway
         services.AddScoped<IVNPayGateway, VNPayGateway>();

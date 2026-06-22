@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,10 +11,6 @@ namespace PBMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropCheckConstraint(
-                name: "CK_zone_capacity",
-                table: "zone");
-
             migrationBuilder.AddColumn<DateTime>(
                 name: "lost_at",
                 table: "card",
@@ -28,11 +24,6 @@ namespace PBMS.Infrastructure.Migrations
             migrationBuilder.DropColumn(
                 name: "lost_at",
                 table: "card");
-
-            migrationBuilder.AddCheckConstraint(
-                name: "CK_zone_capacity",
-                table: "zone",
-                sql: "capacity >= 0");
         }
     }
 }

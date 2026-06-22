@@ -30,6 +30,12 @@ public class Incident : BaseEntity, ISoftDeletable
     public decimal? PenaltyFee { get; set; }
 
     /// <summary>
+    /// Khóa ngoại liên kết tới cấu hình giá phạt áp dụng cho sự cố này.
+    /// Có thể null nếu sự cố không bị phạt tiền.
+    /// </summary>
+    public int? PenaltyConfigId { get; set; }
+
+    /// <summary>
     /// Trạng thái xử lý sự cố.
     /// Tham chiếu SRS: §8.3.3.14 — incident_status
     /// </summary>
@@ -60,6 +66,11 @@ public class Incident : BaseEntity, ISoftDeletable
     /// Loại sự cố (IncidentType) được phân loại.
     /// </summary>
     public virtual IncidentType IncidentType { get; set; } = null!;
+
+    /// <summary>
+    /// Cấu hình giá phạt được áp dụng cho sự cố này.
+    /// </summary>
+    public virtual PenaltyConfig? PenaltyConfig { get; set; }
 
     /// <summary>
     /// Danh sách các xe/thẻ bị khóa hoặc đưa vào danh sách đen (Blacklist) do sự cố này gây ra.

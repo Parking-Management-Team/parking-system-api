@@ -251,4 +251,24 @@ public class ZoneService : IZoneService
         await _zoneRepository.RemoveAsync(zone);
         await _unitOfWork.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// Lấy sức chứa của zone (tổng số slot và số slot đã chiếm) bất đồng bộ.
+    /// </summary>
+    public async Task<CapacityDto> GetZoneCapacityAsync(int id)
+    {
+        var zone = await _zoneRepository.GetByIdAsync(id);
+        if (zone == null)
+        {
+            throw new NotFoundException("Zone", id);
+        }
+
+        int occupiedSlots = await _slotRepository.CountAsync(s => s.ZoneId == id && s.Status == SlotStatus.Occupied);
+
+        return new CapacityDto
+        {
+            TotalSlots = zone.Capacity,
+            OccupiedSlots = occupiedSlots
+        };
+    }
 }

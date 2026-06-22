@@ -71,6 +71,16 @@ public class BuildingsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy thông tin sức chứa của tòa nhà.
+    /// </summary>
+    [HttpGet("{id}/capacity")]
+    public async Task<IActionResult> GetBuildingCapacity(int id)
+    {
+        var capacity = await _buildingService.GetBuildingCapacityAsync(id);
+        return Ok(BaseResponse<CapacityDto>.Ok(capacity));
+    }
+
+    /// <summary>
     /// Xóa tòa nhà.
     /// </summary>
     [HttpDelete("{id}")]

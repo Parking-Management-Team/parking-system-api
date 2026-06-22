@@ -95,6 +95,16 @@ public class ZonesController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy thông tin sức chứa của khu vực.
+    /// </summary>
+    [HttpGet("{id}/capacity")]
+    public async Task<IActionResult> GetZoneCapacity(int id)
+    {
+        var capacity = await _zoneService.GetZoneCapacityAsync(id);
+        return Ok(BaseResponse<CapacityDto>.Ok(capacity));
+    }
+
+    /// <summary>
     /// Deletes a zone.
     /// </summary>
     /// <param name="id">The zone identifier.</param>

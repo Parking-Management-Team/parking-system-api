@@ -25,6 +25,7 @@ public class ParkingSessionServiceTests
     private readonly ICardRepository _cardRepositoryMock;
     private readonly IMonthlySubscriptionRepository _subscriptionRepositoryMock;
     private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
+    private readonly IIncidentRepository _incidentRepositoryMock;
     private readonly ParkingSessionService _service;
 
     public ParkingSessionServiceTests()
@@ -37,6 +38,7 @@ public class ParkingSessionServiceTests
         _cardRepositoryMock = Substitute.For<ICardRepository>();
         _subscriptionRepositoryMock = Substitute.For<IMonthlySubscriptionRepository>();
         _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
+        _incidentRepositoryMock = Substitute.For<IIncidentRepository>();
 
         _service = new ParkingSessionService(
             _sessionRepositoryMock,
@@ -46,7 +48,8 @@ public class ParkingSessionServiceTests
             _feeCalculationServiceMock,
             _cardRepositoryMock,
             _subscriptionRepositoryMock,
-            _parkingSlotRepositoryMock
+            _parkingSlotRepositoryMock,
+            _incidentRepositoryMock
         );
     }
 
@@ -92,12 +95,13 @@ public class ParkingSessionServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+        Assert.NotNull(result.Data);
         Assert.Equal(500, result.Data.MonthlySubscriptionId);
         Assert.Equal("Assigned", card.CardStatus); // Trạng thái thẻ tháng giữ nguyên Assigned
     }
 
     [Fact]
-    public async Task StartCheckoutAsync_ShouldCompleteImmediately_WhenMonthlySubscriptionIsValid()
+    public async Task StartCheckoutAsync_ShouldNotCompleteImmediately_WhenMonthlySubscriptionIsValid_DueToTask4Refactoring()
     {
         // Arrange
         int sessionId = 1;
@@ -128,7 +132,8 @@ public class ParkingSessionServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
-        Assert.Equal("COMPLETED", result.Data.SessionStatus); // Hoàn tất check-out ngay lập tức
+        Assert.NotNull(result.Data);
+        Assert.Equal("ACTIVE", result.Data.SessionStatus); // Giữ ACTIVE theo yêu cầu Task 4
     }
 
     [Fact]
@@ -165,6 +170,59 @@ public class ParkingSessionServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+        Assert.NotNull(result.Data);
         Assert.Equal("ACTIVE", result.Data.SessionStatus); // Giữ ACTIVE chờ thanh toán phí overtime
     }
+
+    [Fact]
+    public async Task CheckInAsync_ShouldAutoLinkBooking_WhenActiveConfirmedBookingExists()
+    {
+        // Arrange
+        var request = new CheckInRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "CARD-999",
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            StaffId = 5
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
+        var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
+
+        var booking = new Booking
+        {
+            Id = 700,
+            VehicleId = 200,
+            BuildingId = 10,
+            BookingStatus = BookingStatus.Confirmed,
+            PlannedCheckinTime = DateTime.UtcNow,
+            CheckinGraceUntil = DateTime.UtcNow.AddMinutes(30),
+            Vehicle = vehicle
+        };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+
+        // Mock FirstOrDefaultAsync trên _bookingRepositoryMock
+        _bookingRepositoryMock.FirstOrDefaultAsync(Arg.Any<System.Linq.Expressions.Expression<Func<Booking, bool>>>())
+            .Returns(booking);
+
+        // Act
+        var result = await _service.CheckInAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.Equal(700, result.Data.BookingId); // Phải liên kết BookingId tự động
+        Assert.Equal(BookingStatus.CheckedIn, booking.BookingStatus); // Trạng thái Booking phải chuyển sang CheckedIn
+        _bookingRepositoryMock.Received(1).Update(booking); // Phải lưu Booking cập nhật
+    }
 }
+

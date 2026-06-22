@@ -17,7 +17,7 @@ namespace PBMS.Application.Contracts
         /// </summary>
         /// <param name="id">The identifier of the entity to retrieve.</param>
         /// <returns>The entity if found; otherwise, null.</returns>
-        Task<TEntity> GetByIdAsync(int id);
+        Task<TEntity?> GetByIdAsync(int id);
 
         /// <summary>
         /// Retrieves all entities of the given type asynchronously.
@@ -37,7 +37,7 @@ namespace PBMS.Application.Contracts
         /// </summary>
         /// <param name="predicate">The condition to filter the entity.</param>
         /// <returns>The first entity that matches the condition; otherwise, null.</returns>
-        Task<TEntity> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate);
+        Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate);
 
         /// <summary>
         /// Adds a new entity to the repository asynchronously.

@@ -20,7 +20,12 @@ public class ParkingSlotRepository : BaseRepository<ParkingSlot>, IParkingSlotRe
 
     public async Task<IEnumerable<ParkingSlot>> GetSlotsByZoneIdAsync(int zoneId)
     {
-        return await FindAsync(s => s.ZoneId == zoneId);
+        return await _dbContext.Set<ParkingSlot>()
+            .Include(s => s.ParkingSessions)
+            .Include(s => s.MonthlySubscriptions)
+                .ThenInclude(ms => ms.Vehicle)
+            .Where(s => s.ZoneId == zoneId)
+            .ToListAsync();
     }
 
     public async Task<bool> SlotCodeExistsAsync(string slotCode)

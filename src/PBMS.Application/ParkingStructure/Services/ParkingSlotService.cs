@@ -47,6 +47,16 @@ public class ParkingSlotService : IParkingSlotService
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
         }
 
+        if (zone.VehicleTypeId != request.VehicleTypeId)
+        {
+            throw new ValidationException("The specified VehicleTypeId does not match the Zone's VehicleTypeId.");
+        }
+
+        if (!IsCarVehicleType(vehicleType))
+        {
+            throw new ValidationException("Parking slots can only be created manually for Car zones.");
+        }
+
         // 3. Kiểm tra SlotCode duy nhất
         var codeExists = await _slotRepository.SlotCodeExistsAsync(request.Code);
         if (codeExists)
@@ -85,7 +95,11 @@ public class ParkingSlotService : IParkingSlotService
         return _mapper.Map<IEnumerable<ParkingSlotDto>>(slots);
     }
 
-    public async Task<IEnumerable<ParkingSlotDto>> GetSlotsByZoneAsync(int zoneId)
+    public async Task<IEnumerable<ParkingSlotDto>> GetSlotsByZoneAsync(
+        int zoneId, 
+        List<SlotStatus>? statuses = null, 
+        List<int>? vehicleTypeIds = null, 
+        string? search = null)
     {
         var zone = await _zoneRepository.GetByIdAsync(zoneId);
         if (zone == null)
@@ -94,6 +108,24 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         var slots = await _slotRepository.GetSlotsByZoneIdAsync(zoneId);
+
+        if (statuses != null && statuses.Any())
+        {
+            slots = slots.Where(s => statuses.Contains(s.Status));
+        }
+
+        if (vehicleTypeIds != null && vehicleTypeIds.Any())
+        {
+            slots = slots.Where(s => vehicleTypeIds.Contains(s.VehicleTypeId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            slots = slots.Where(s => 
+                (s.Code != null && s.Code.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (s.Name != null && s.Name.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+
         return _mapper.Map<IEnumerable<ParkingSlotDto>>(slots);
     }
 
@@ -176,5 +208,12 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         await _slotRepository.RemoveAsync(slot);
+    }
+
+    private static bool IsCarVehicleType(VehicleType vehicleType)
+    {
+        return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
+            || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -24,7 +24,13 @@ public class MappingProfile : Profile
         CreateMap<FloorUpdateRequest, Floor>();
 
         // ParkingSlot mappings
-        CreateMap<ParkingSlot, ParkingSlotDto>();
+        CreateMap<ParkingSlot, ParkingSlotDto>()
+            .ForMember(dest => dest.OccupiedLicensePlate, opt => opt.MapFrom(src =>
+                src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active") != null
+                    ? src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active")!.LicensePlateIn
+                    : src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == Domain.Enums.MonthlySubscriptionStatus.Active) != null
+                        ? src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == Domain.Enums.MonthlySubscriptionStatus.Active)!.Vehicle!.LicensePlate
+                        : null));
         CreateMap<ParkingSlotCreateRequest, ParkingSlot>();
         CreateMap<ParkingSlotUpdateRequest, ParkingSlot>();
 
@@ -42,5 +48,12 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.IncidentName, opt => opt.MapFrom(src => src.IncidentType.IncidentName))
             .ForMember(dest => dest.LicensePlate, opt => opt.MapFrom(src => src.Session.LicensePlateIn));
         CreateMap<IncidentType, IncidentTypeDto>();
+
+        // Pricing Config mappings
+        CreateMap<SubscriptionPriceConfig, PBMS.Application.Pricing.DTOs.SubscriptionPriceConfigDto>()
+            .ForMember(dest => dest.VehicleTypeName, opt => opt.MapFrom(src => src.VehicleType.TypeName));
+        
+        CreateMap<PenaltyConfig, PenaltyConfigDto>()
+            .ForMember(dest => dest.IncidentTypeName, opt => opt.MapFrom(src => src.IncidentType.IncidentName));
     }
 }
