@@ -12,10 +12,19 @@ using PBMS.Application.ParkingStructure.Services;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Application.Pricing.Services;
 using PBMS.Application.Accounts;
+using PBMS.Application.Blacklist.Interfaces;
+using PBMS.Application.Blacklist.Services;
+using PBMS.Application.Incident.Interfaces;
+using PBMS.Application.Incident.Services;
 using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Payment.Services;
 using PBMS.Application.Revenue.Interfaces;
 using PBMS.Application.Revenue.Services;
+using PBMS.Application.MonthlyCard.Interfaces;
+using PBMS.Application.MonthlyCard.Services;
+using PBMS.Application.Booking.Interfaces;
+using PBMS.Application.Booking.Services;
+
 
 
 namespace PBMS.Application;
@@ -49,6 +58,9 @@ public static class DependencyInjection
         services.AddScoped<IParkingSlotService, ParkingSlotService>();
         services.AddScoped<IParkingSessionService, ParkingSessionService>();
         services.AddScoped<IBuildingService, BuildingService>();
+        services.AddScoped<IBlacklistService, BlacklistService>();
+        services.AddScoped<IIncidentService, IncidentService>();
+        services.AddScoped<IIncidentTypeService, IncidentTypeService>();
 
         // Pricing module
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();
@@ -66,10 +78,14 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         // Revenue module
         services.AddScoped<IRevenueService, RevenueService>();
+        // Monthly Subscription module
+        services.AddScoped<IMonthlySubscriptionService, MonthlySubscriptionService>();
 
-
+        // Booking module
+        services.AddScoped<IBookingService, BookingService>();
 
         return services;
+
 
 
     }

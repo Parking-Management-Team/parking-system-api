@@ -45,6 +45,14 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer")
+                        .HasColumnName("deleted_by");
+
                     b.Property<string>("Email")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -54,6 +62,12 @@ namespace PBMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("full_name");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -85,12 +99,16 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_account_email")
+                        .HasFilter("is_deleted = false AND email IS NOT NULL");
 
                     b.HasIndex("RoleId");
 
                     b.HasIndex("Username")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_account_username")
+                        .HasFilter("is_deleted = false");
 
                     b.ToTable("account", (string)null);
                 });
@@ -166,9 +184,23 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer")
+                        .HasColumnName("deleted_by");
+
                     b.Property<int?>("IncidentId")
                         .HasColumnType("integer")
                         .HasColumnName("incident_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -386,6 +418,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("LostAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lost_at");
+
                     b.Property<string>("RfidCode")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -477,22 +513,28 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer")
+                        .HasColumnName("deleted_by");
+
                     b.Property<string>("Description")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("description");
 
-                    b.Property<string>("IncidentStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Reported")
-                        .HasColumnName("incident_status");
-
                     b.Property<int>("IncidentTypeId")
                         .HasColumnType("integer")
                         .HasColumnName("incident_type_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<decimal?>("PenaltyFee")
                         .HasPrecision(18, 2)
@@ -512,6 +554,14 @@ namespace PBMS.Infrastructure.Migrations
                     b.Property<int>("SessionId")
                         .HasColumnType("integer")
                         .HasColumnName("session_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Open")
+                        .HasColumnName("incident_status");
 
                     b.HasKey("Id");
 
@@ -705,13 +755,13 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("BuildingId")
-                        .HasColumnType("integer")
-                        .HasColumnName("building_id");
-
                     b.Property<int?>("BookingId")
                         .HasColumnType("integer")
                         .HasColumnName("booking_id");
+
+                    b.Property<int>("BuildingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("building_id");
 
                     b.Property<int>("CardId")
                         .HasColumnType("integer")
@@ -760,10 +810,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<int?>("SlotId")
-                        .HasColumnType("integer")
-                        .HasColumnName("slot_id");
-
                     b.Property<string>("SessionStatus")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -771,6 +817,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("ACTIVE")
                         .HasColumnName("session_status");
+
+                    b.Property<int?>("SlotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("slot_id");
 
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer")
@@ -782,24 +832,17 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CardId")
-                        .IsUnique()
-                        .HasFilter("upper(session_status) = 'ACTIVE'")
-                        .HasDatabaseName("IX_parking_session_active_card");
-
                     b.HasIndex("BookingId")
                         .IsUnique()
-                        .HasFilter("booking_id IS NOT NULL")
-                        .HasDatabaseName("IX_parking_session_booking_id");
+                        .HasDatabaseName("IX_parking_session_booking_id")
+                        .HasFilter("booking_id IS NOT NULL");
 
                     b.HasIndex("BuildingId");
 
-                    b.HasIndex("VehicleId")
+                    b.HasIndex("CardId")
                         .IsUnique()
-                        .HasFilter("upper(session_status) = 'ACTIVE'")
-                        .HasDatabaseName("IX_parking_session_active_vehicle");
-
-                    b.HasIndex("ZoneId");
+                        .HasDatabaseName("IX_parking_session_active_card")
+                        .HasFilter("upper(session_status) = 'ACTIVE'");
 
                     b.HasIndex("InStaffId");
 
@@ -809,8 +852,15 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasIndex("SlotId")
                         .IsUnique()
-                        .HasFilter("slot_id IS NOT NULL AND upper(session_status) = 'ACTIVE'")
-                        .HasDatabaseName("IX_parking_session_active_slot");
+                        .HasDatabaseName("IX_parking_session_active_slot")
+                        .HasFilter("slot_id IS NOT NULL AND upper(session_status) = 'ACTIVE'");
+
+                    b.HasIndex("VehicleId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_parking_session_active_vehicle")
+                        .HasFilter("upper(session_status) = 'ACTIVE'");
+
+                    b.HasIndex("ZoneId");
 
                     b.ToTable("parking_session", null, t =>
                         {
@@ -1383,7 +1433,13 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("type_name");
+                        .HasColumnName("vehicle_type_name");
+
+                    b.Property<string>("VehicleTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("vehicle_type_code");
 
                     b.Property<string>("VehicleTypeStatus")
                         .IsRequired()
@@ -1411,13 +1467,8 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AccessType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("General")
-                        .HasColumnName("zone_access_type");
+                    b.Property<int>("AccessType")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Capacity")
                         .ValueGeneratedOnAdd()
@@ -1473,10 +1524,7 @@ namespace PBMS.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_zone_floor_id_zone_code");
 
-                    b.ToTable("zone", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_zone_capacity", "capacity >= 0");
-                        });
+                    b.ToTable("zone", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Account", b =>
@@ -1643,16 +1691,16 @@ namespace PBMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSession", b =>
                 {
+                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
+                        .WithOne()
+                        .HasForeignKey("PBMS.Domain.Entities.ParkingSession", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PBMS.Domain.Entities.Building", "Building")
                         .WithMany()
                         .HasForeignKey("BuildingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("PBMS.Domain.Entities.Booking", "Booking")
-                        .WithOne()
-                        .HasForeignKey("PBMS.Domain.Entities.ParkingSession", "BookingId")
-                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PBMS.Domain.Entities.Card", "Card")
                         .WithMany("ParkingSessions")
@@ -1691,10 +1739,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasForeignKey("ZoneId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Booking");
+
                     b.Navigation("Building");
 
-                    b.Navigation("Booking");
-                    
                     b.Navigation("Card");
 
                     b.Navigation("InStaff");
@@ -1995,16 +2043,6 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.Navigation("PricingPolicies");
 
-                    b.Navigation("Vehicles");
-                });
-
-            modelBuilder.Entity("PBMS.Domain.Entities.Vehicle", b =>
-                {
-                    b.Navigation("ParkingSessions");
-                });
-
-            modelBuilder.Entity("PBMS.Domain.Entities.VehicleType", b =>
-                {
                     b.Navigation("Vehicles");
                 });
 

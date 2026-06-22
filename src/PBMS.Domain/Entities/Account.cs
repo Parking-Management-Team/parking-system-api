@@ -4,7 +4,7 @@ namespace PBMS.Domain.Entities;
 /// Thực thể tài khoản (Account) đại diện cho thông tin người dùng trong hệ thống PBMS.
 /// Kế thừa từ BaseEntity (chứa Id, CreatedDate, UpdatedDate, v.v.).
 /// </summary>
-public class Account : BaseEntity
+public class Account : BaseEntity, ISoftDeletable
 {
     /// <summary>
     /// Khóa ngoại liên kết tới bảng vai trò (Role).
@@ -42,10 +42,17 @@ public class Account : BaseEntity
     /// </summary>
     public string AccountStatus { get; set; } = "Active";
 
+    // -----------------------------------------------------------------------
+    // SOFT DELETE PROPERTIES
+    // -----------------------------------------------------------------------
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public int? DeletedBy { get; set; }
+
     /// <summary>
     /// Thuộc tính logic tự động xác định tài khoản có đang ở trạng thái hoạt động bình thường hay không.
     /// </summary>
-    public bool IsActive => AccountStatus == "Active";
+    public bool IsActive => AccountStatus == "Active" && !IsDeleted;
 
     /// <summary>
     /// Thông tin vai trò (Role) liên kết trực tiếp với tài khoản này.

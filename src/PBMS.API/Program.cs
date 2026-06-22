@@ -93,8 +93,14 @@ if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
         {
             var context = services.GetRequiredService<AppDbContext>();
             
+            // Tự động xóa database cũ để tạo và seed lại từ đầu (chỉ nên dùng ở môi trường Development)
+            context.Database.EnsureDeleted();
+            Console.WriteLine("--> Existing database deleted successfully.");
+            
             context.Database.Migrate();
             Console.WriteLine("--> Database migration completed successfully.");
+
+
 
             // Seed dữ liệu mẫu
             await DbInitializer.SeedAsync(context);

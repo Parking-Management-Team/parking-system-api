@@ -37,8 +37,18 @@ public static class DependencyInjection
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
 
+        // Blacklist Management — Repository
+        services.AddScoped<IBlacklistRepository, BlacklistRepository>();
+
+        // Incident Management — Repository
+        services.AddScoped<IIncidentRepository, IncidentRepository>();
+
         //Google OauthServiceDI
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+        
+        // Cung cấp HttpContext cho CurrentUserService
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // Đăng ký repository chung
         services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
@@ -57,6 +67,11 @@ public static class DependencyInjection
         services.AddScoped<IBuildingRepository, BuildingRepository>();
         services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
+        services.AddScoped<IMonthlySubscriptionRepository, MonthlySubscriptionRepository>();
+
+        // Đăng ký repository Booking
+        services.AddScoped<IBookingRepository, BookingRepository>();
+
 
         // Pricing — Repository
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();

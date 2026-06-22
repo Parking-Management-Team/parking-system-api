@@ -21,4 +21,10 @@ public interface IParkingSlotRepository : IRepository<ParkingSlot>
     /// Lấy chi tiết slot kèm theo các thông tin liên quan (Zone, VehicleType).
     /// </summary>
     Task<ParkingSlot?> GetSlotWithDetailsAsync(int id);
+
+    /// <summary>
+    /// Tìm vị trí đỗ xe trống thuộc Zone có AccessType là Monthly phục vụ cho đăng ký ô tô tháng.
+    /// </summary>
+    Task<ParkingSlot?> FindAvailableMonthlySlotAsync(int buildingId, int vehicleTypeId);
 }
+

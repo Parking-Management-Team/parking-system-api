@@ -260,6 +260,46 @@ public class CardService : ICardService
         await _cardRepository.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Cập nhật trạng thái thẻ gửi xe (ví dụ: chuyển sang Lost và ghi nhận LostAt).
+    /// </summary>
+    public async Task<CardDto> UpdateCardStatusAsync(int id, string status)
+    {
+        var card = await _cardRepository.GetByIdAsync(id);
+        if (card == null)
+        {
+            throw new DomainException(
+                errorCode: "CARD_NOT_FOUND",
+                message: $"Card with ID '{id}' was not found."
+            );
+        }
+
+        if (!Enum.TryParse<Domain.Enums.CardStatus>(status, true, out var cardStatus))
+        {
+            throw new DomainException(
+                errorCode: "INVALID_CARD_STATUS",
+                message: $"Card status '{status}' is not a valid status."
+            );
+        }
+
+        card.CardStatus = cardStatus.ToString();
+
+        if (cardStatus == Domain.Enums.CardStatus.Lost)
+        {
+            card.LostAt = DateTime.UtcNow;
+        }
+        else
+        {
+            card.LostAt = null;
+        }
+
+        _cardRepository.Update(card);
+        await _cardRepository.SaveChangesAsync();
+
+        return MapToDto(card);
+    }
+
+
     // -----------------------------------------------------------------------
     // HELPER — MAP ENTITY → DTO (Dùng nội bộ trong Service)
     // -----------------------------------------------------------------------

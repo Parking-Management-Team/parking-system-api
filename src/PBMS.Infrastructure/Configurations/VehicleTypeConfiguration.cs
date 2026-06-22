@@ -17,8 +17,13 @@ public class VehicleTypeConfiguration : IEntityTypeConfiguration<VehicleType>
             .ValueGeneratedOnAdd();
 
         builder.Property(vt => vt.TypeName)
-            .HasColumnName("type_name")
+            .HasColumnName("vehicle_type_name")
             .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(vt => vt.VehicleTypeCode)
+            .HasColumnName("vehicle_type_code")
+            .HasMaxLength(20)
             .IsRequired();
 
         builder.HasIndex(vt => vt.TypeName)

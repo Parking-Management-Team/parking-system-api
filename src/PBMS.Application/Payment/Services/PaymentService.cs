@@ -10,6 +10,7 @@ using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Application.Revenue.Interfaces;
+using BookingEntity = PBMS.Domain.Entities.Booking;
 
 
 namespace PBMS.Application.Payment.Services;
@@ -21,9 +22,10 @@ public class PaymentService : IPaymentService
 {
     private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
-    private readonly IRepository<Booking> _bookingRepository;
-    private readonly IRepository<MonthlySubscription> _subscriptionRepository;
+    private readonly IRepository<BookingEntity> _bookingRepository;
+    private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
+    private readonly ICardRepository _cardRepository;
     private readonly IVNPayGateway _vnpayGateway;
     private readonly IParkingSessionService _sessionService;
     private readonly IFeeCalculationService _feeCalculationService;
@@ -34,9 +36,10 @@ public class PaymentService : IPaymentService
     public PaymentService(
         IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
-        IRepository<Booking> bookingRepository,
-        IRepository<MonthlySubscription> subscriptionRepository,
+        IRepository<BookingEntity> bookingRepository,
+        IMonthlySubscriptionRepository subscriptionRepository,
         IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
+        ICardRepository cardRepository,
         IVNPayGateway vnpayGateway,
         IParkingSessionService sessionService,
         IFeeCalculationService feeCalculationService,
@@ -47,12 +50,14 @@ public class PaymentService : IPaymentService
         _bookingRepository = bookingRepository;
         _subscriptionRepository = subscriptionRepository;
         _vehicleRepository = vehicleRepository;
+        _cardRepository = cardRepository;
         _vnpayGateway = vnpayGateway;
         _sessionService = sessionService;
         _feeCalculationService = feeCalculationService;
         _configuration = configuration;
         _revenueService = revenueService;
     }
+
 
     /// <summary>
     /// Tạo thanh toán mới.
@@ -89,7 +94,18 @@ public class PaymentService : IPaymentService
 
             // Tính toán tiền đỗ xe thực tế dựa vào thời điểm check-in & check-out
             var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
-            var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, session.CheckInTime, checkOutTime);
+            var calculationStartTime = session.CheckInTime;
+
+            if (session.MonthlySubscriptionId.HasValue)
+            {
+                var subscription = await _subscriptionRepository.GetByIdAsync(session.MonthlySubscriptionId.Value);
+                if (subscription != null && subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value < checkOutTime)
+                {
+                    calculationStartTime = subscription.ExpiredAt.Value;
+                }
+            }
+
+            var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime);
 
             decimal finalFee = feeResult.TotalFee;
             // Nếu lượt gửi xe có liên kết với đặt chỗ, thực hiện khấu trừ tiền đặt cọc vào tổng tiền thanh toán
@@ -288,17 +304,45 @@ public class PaymentService : IPaymentService
         }
         else if (payment.MonthlySubscriptionId.HasValue)
         {
-            // Thanh toán vé tháng -> Kích hoạt vé tháng và tính thời điểm hết hạn
+            // Thanh toán vé tháng -> Kích hoạt/Gia hạn vé tháng và tính thời điểm hết hạn
             var subscription = await _subscriptionRepository.GetByIdAsync(payment.MonthlySubscriptionId.Value);
             if (subscription != null)
             {
-                subscription.MonthlySubscriptionStatus = "ACTIVE";
-                subscription.ActivatedAt = DateTime.UtcNow;
-                subscription.ExpiredAt = DateTime.UtcNow.AddMonths(1); // Vé tháng có giá trị 1 tháng
+                subscription.MonthlySubscriptionStatus = PBMS.Domain.Enums.MonthlySubscriptionStatus.Active;
+                
+                var now = DateTime.UtcNow;
+                if (subscription.ActivatedAt == null)
+                {
+                    subscription.ActivatedAt = now;
+                }
+
+                // Gia hạn (Renewal) hoặc kích hoạt mới
+                if (subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value > now)
+                {
+                    subscription.ExpiredAt = subscription.ExpiredAt.Value.AddMonths(1);
+                }
+                else
+                {
+                    subscription.ExpiredAt = now.AddMonths(1);
+                }
+
                 _subscriptionRepository.Update(subscription);
                 await _subscriptionRepository.SaveChangesAsync();
+
+                // Cập nhật trạng thái thẻ đỗ xe sang Assigned
+                if (subscription.AssignedCardId.HasValue)
+                {
+                    var card = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
+                    if (card != null)
+                    {
+                        card.CardStatus = PBMS.Domain.Enums.CardStatus.Assigned.ToString();
+                        _cardRepository.Update(card);
+                        await _cardRepository.SaveChangesAsync();
+                    }
+                }
             }
         }
+
         await _revenueService.UpdateRevenueAfterPaymentAsync(payment.Id);
     }
 

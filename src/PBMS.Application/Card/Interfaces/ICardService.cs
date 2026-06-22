@@ -73,4 +73,10 @@ public interface ICardService
     ///   - Thẻ đang bận → DomainException "CARD_IN_ACTIVE_SESSION"
     /// </summary>
     Task DeleteCardAsync(int id);
+
+    /// <summary>
+    /// Cập nhật trạng thái thẻ gửi xe (ví dụ: chuyển sang Lost và ghi nhận LostAt).
+    /// </summary>
+    Task<CardDto> UpdateCardStatusAsync(int id, string status);
 }
+

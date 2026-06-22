@@ -14,7 +14,7 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
 
     Task<bool> HasParkingSessionForBookingAsync(int bookingId);
 
-    Task<Booking?> GetBookingForCheckInAsync(int bookingId);
+    Task<PBMS.Domain.Entities.Booking?> GetBookingForCheckInAsync(int bookingId);
 
     Task<MonthlySubscription?> GetMonthlySubscriptionForCheckInAsync(int monthlySubscriptionId);
 
