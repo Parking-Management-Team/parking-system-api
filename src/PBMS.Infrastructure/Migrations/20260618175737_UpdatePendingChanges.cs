@@ -10,10 +10,6 @@ namespace PBMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropCheckConstraint(
-                name: "CK_zone_capacity",
-                table: "zone");
-
             migrationBuilder.RenameColumn(
                 name: "zone_access_type",
                 table: "zone",
