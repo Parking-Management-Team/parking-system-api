@@ -15,17 +15,23 @@ public class IncidentService : IIncidentService
     private readonly IRepository<IncidentType> _incidentTypeRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
     private readonly IMapper _mapper;
+    private readonly IFeeCalculatorService _feeCalculatorService;
+    private readonly IPenaltyConfigRepository _penaltyConfigRepository;
 
     public IncidentService(
         IIncidentRepository incidentRepository,
         IRepository<IncidentType> incidentTypeRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IFeeCalculatorService feeCalculatorService,
+        IPenaltyConfigRepository penaltyConfigRepository)
     {
         _incidentRepository = incidentRepository;
         _incidentTypeRepository = incidentTypeRepository;
         _sessionRepository = sessionRepository;
         _mapper = mapper;
+        _feeCalculatorService = feeCalculatorService;
+        _penaltyConfigRepository = penaltyConfigRepository;
     }
 
     public async Task<IncidentDto> ReportIncidentAsync(ReportIncidentRequest request)
@@ -38,13 +44,18 @@ public class IncidentService : IIncidentService
         var incidentType = await _incidentTypeRepository.GetByIdAsync(request.IncidentTypeId);
         if (incidentType == null) throw new NotFoundException("IncidentType", request.IncidentTypeId);
 
-        // 3. Tạo sự cố
+        // 3. Lấy cấu hình giá phạt
+        var activePenaltyConfig = await _penaltyConfigRepository.GetActiveConfigByIncidentTypeAsync(request.IncidentTypeId);
+        var calculatedFee = activePenaltyConfig?.PenaltyFee ?? 0;
+
+        // 4. Tạo sự cố
         var incident = new PBMS.Domain.Entities.Incident
         {
             SessionId = request.SessionId,
             IncidentTypeId = request.IncidentTypeId,
             Description = request.Description,
-            PenaltyFee = request.PenaltyFee ?? incidentType.DefaultPenaltyFee,
+            PenaltyFee = request.PenaltyFee ?? calculatedFee,
+            PenaltyConfigId = activePenaltyConfig?.Id,
             Status = IncidentStatus.Open
         };
 

@@ -43,10 +43,7 @@ namespace PBMS.Infrastructure.Configurations
                 .HasColumnName("description")
                 .HasMaxLength(100);
 
-            // 7. Tiền phạt mặc định (DefaultPenaltyFee) - decimal(18,2), cho phép null
-            builder.Property(it => it.DefaultPenaltyFee)
-                .HasColumnName("default_penalty_fee")
-                .HasPrecision(18, 2);
+
 
             // 8. Concurrency RowVersion
             builder.Property(it => it.RowVersion)

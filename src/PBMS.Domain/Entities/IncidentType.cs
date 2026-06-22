@@ -24,17 +24,12 @@ public class IncidentType : BaseEntity
     public string? Description { get; set; }
 
     /// <summary>
-    /// Số tiền phạt mặc định được đề xuất khi xảy ra sự cố thuộc loại này.
-    /// Có thể null nếu không áp dụng phạt tiền.
-    /// </summary>
-    public decimal? DefaultPenaltyFee { get; set; }
-
-    // -----------------------------------------------------------------------
-    // NAVIGATION PROPERTIES
-    // -----------------------------------------------------------------------
-
-    /// <summary>
     /// Danh sách các sự cố (Incident) thực tế thuộc loại này.
     /// </summary>
     public virtual ICollection<Incident> Incidents { get; set; } = new List<Incident>();
+
+    /// <summary>
+    /// Danh sách các cấu hình giá phạt áp dụng cho loại sự cố này theo thời gian.
+    /// </summary>
+    public virtual ICollection<PenaltyConfig> PenaltyConfigs { get; set; } = new List<PenaltyConfig>();
 }
