@@ -83,9 +83,10 @@ public interface IBookingService
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Dọn dẹp các Booking ở trạng thái PENDING đã quá PaymentDeadline.
-    /// Chuyển trạng thái sang Expired và giải phóng Capacity.
+    /// Dọn dẹp các Booking hết hạn:
+    ///   - PENDING quá hạn thanh toán tiền cọc -> Expired
+    ///   - CONFIRMED quá hạn grace period check-in -> NoShow
     /// Dùng cho background job chạy định kỳ.
     /// </summary>
-    Task CleanupExpiredPendingBookingsAsync();
+    Task CleanupExpiredBookingsAsync();
 }

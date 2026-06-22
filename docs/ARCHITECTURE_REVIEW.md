@@ -1,6 +1,8 @@
+> 🔍 Audited at commit: 21a886a — 2026-06-21
+
 # 🏗️ Architecture Review
 
-Tài liệu này đánh giá chi tiết cấu trúc kiến trúc hệ thống của dự án PBMS API dưới vai trò của một **Senior .NET Architect**, chỉ ra các điểm mạnh, điểm yếu và các khuyến nghị tái cấu trúc (Refactoring).
+Tài liệu này đánh giá chi tiết cấu trúc kiến trúc hệ thống của dự án PBMS API dưới vai trò của một **Senior .NET Architect**, chỉ ra các điểm mạnh, điểm yếu, các điểm cải tiến đã thực hiện và danh sách khuyến nghị tái cấu trúc (Refactoring).
 
 ---
 
@@ -17,11 +19,12 @@ Hệ thống được tổ chức phân rã dự án theo cấu trúc Clean Arch
 
 * **Single Responsibility Principle (SRP - Đơn nhiệm):**
   * Các Controllers chỉ đảm nhận nhiệm vụ định tuyến và trả về HTTP Responses.
-  * Tuy nhiên, lớp `BookingService.cs` đang gánh vác quá nhiều logic nghiệp vụ bao gồm: tính giá cọc, kiểm tra sức chứa tòa nhà, tạo đơn, kiểm tra thời hạn và giải phóng bộ nhớ. Cần phân nhỏ ra các Domain Service chuyên biệt.
+  * **Cải tiến:** Giá vé đăng ký tháng và giá phạt sự cố đã được bóc tách hoàn toàn ra khỏi cấu trúc tĩnh thành các cấu hình động độc lập (`SubscriptionPriceConfig`, `PenaltyConfig`) và tra cứu thông qua `FeeCalculatorService`.
+  * *Hạn chế còn lại:* Lớp `BookingService.cs` vẫn đang gánh vác khá nhiều logic nghiệp vụ (kiểm tra sức chứa, tạo đơn, dọn dẹp trễ hẹn). Cần phân nhỏ tiếp ra các Domain Service chuyên biệt.
 * **Open/Closed Principle (OCP - Đóng/Mở):**
-  * Cấu hình DbContext linh hoạt qua Fluent API giúp dễ dàng mở rộng Entity mới mà không ảnh hưởng cấu trúc cũ.
+  * Việc tách biệt các thực thể cấu hình giá giúp dễ dàng mở rộng các loại hình giá mới (ví dụ: giá phạt tùy biến, giá tháng ưu đãi) mà không cần can thiệp hay sửa đổi cấu trúc của các thực thể chính như `MonthlySubscription` hay `IncidentType`.
 * **Liskov Substitution Principle (LSP):**
-  * Triển khai tốt. Các repository cụ thể (như `BookingRepository`) kế thừa thành công từ `BaseRepository` và bổ sung các hàm đặc thù mà không phá vỡ logic lớp cha.
+  * Triển khai tốt. Các repository cụ thể (như `BookingRepository`) kế thừa từ `BaseRepository` và bổ sung các hàm đặc thù mà không phá vỡ logic lớp cha.
 * **Interface Segregation Principle (ISP):**
   * Giao diện repository và dịch vụ được chia tách rõ ràng theo phân hệ (như `IBookingService`, `ICardService` thay vì một Interface khổng lồ).
 * **Dependency Inversion Principle (DIP):**
@@ -32,11 +35,11 @@ Hệ thống được tổ chức phân rã dự án theo cấu trúc Clean Arch
 ## 3. Review Chi Tiết Từng Layer
 
 ### 🛡️ Tầng Domain Layer
-* **Ưu điểm:** Các thực thể (Entities) kế thừa từ `BaseEntity` rất sạch sẽ, giải quyết tốt các thuộc tính audit (`CreatedAt`, `CreatedBy`,...) và Soft Delete (`IsDeleted`).
-* **Hạn chế:** Logic nghiệp vụ (Domain Logic) còn quá ít. Hầu hết các Entity chỉ chứa thuộc tính dữ liệu (Anemic Domain Model). Cần chuyển dịch các logic tính toán (ví dụ: chuyển trạng thái booking, tính tiền phạt quá hạn) từ Application Services về viết trực tiếp bên trong các Domain Entities.
+* **Ưu điểm:** Các thực thể (Entities) kế thừa từ `BaseEntity` sạch sẽ, giải quyết tốt các thuộc tính audit (`CreatedAt`, `CreatedBy`,...) và Soft Delete (`IsDeleted`).
+* **Hạn chế:** Logic nghiệp vụ (Domain Logic) còn ít (Anemic Domain Model). Hầu hết các Entity chỉ chứa thuộc tính dữ liệu. Cần chuyển dịch dần các logic tính toán (ví dụ: chuyển trạng thái booking sang checked-in) về viết trực tiếp bên trong các Domain Entities.
 
 ### ⚙️ Tầng Application Layer
-* **Ưu điểm:** Phân loại rõ ràng thư mục Module (Auth, Booking, ParkingSession, Payment, Revenue, ...). DTOs được tách biệt chi tiết giữa Request và Response.
+* **Ưu điểm:** Phân loại rõ ràng thư mục Module. DTOs được tách biệt chi tiết giữa Request và Response.
 * **Hạn chế:** Đăng ký AutoMapper trong [DependencyInjection.cs](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.Application/DependencyInjection.cs#L53) còn để trống cấu hình, dẫn đến việc map dữ liệu trong code Service đôi khi vẫn phải làm thủ công.
 
 ### 🗄️ Tầng Infrastructure Layer
@@ -52,20 +55,30 @@ Hệ thống được tổ chức phân rã dự án theo cấu trúc Clean Arch
 ## 4. Đánh Giá Khác
 
 ### A. Testing Readiness (Độ sẵn sàng kiểm thử)
-* Dự án đã có sẵn project unit tests `PBMS.UnitTests` và một số test mẫu cho `ParkingSessionService` và `PricingPolicy`. Nhờ kiến trúc lỏng lẻo (Loose coupling), việc viết Mock dịch vụ (sử dụng Moq hoặc NSubstitute) để phủ sóng 100% test coverage cho `BookingService` hay `PaymentService` là hoàn toàn khả thi và dễ dàng thực hiện.
+* Dự án đã có sẵn project unit tests `PBMS.UnitTests` và một số test mẫu. Nhờ vá lỗi luồng và cấu trúc lỏng lẻo (Loose coupling), việc viết Mock dịch vụ để tăng diện bao phủ (test coverage) cho `FeeCalculationServiceTests`, `BookingServiceTests` và `ParkingSessionServiceTests` đã được triển khai hiệu quả (số test tăng từ 80 lên 83 và đạt 100% tỷ lệ đỗ).
 
 ### B. Scalability & Maintainability (Khả năng mở rộng & bảo trì)
 * **Maintainability:** Rất cao nhờ sự tách biệt rõ ràng của Clean Architecture. Sửa đổi database không ảnh hưởng tới logic API.
-* **Scalability:** Tốt cho quy mô vừa và lớn. Tuy nhiên, nếu lượng truy cập Check-In/Check-Out đồng thời quá cao (ví dụ: bãi xe tòa nhà lớn giờ cao điểm), cơ chế khóa luồng `lock (_sync)` trong lớp In-Memory và các truy vấn DB trực tiếp không qua cache (Redis) có thể gây ra hiện tượng nghẽn cổ chai (bottleneck).
+* **Scalability:** Tốt cho quy mô vừa và lớn. Tuy nhiên, nếu lượng truy cập Check-In/Check-Out đồng thời quá cao, cơ chế khóa luồng `lock (_sync)` trong lớp In-Memory và các truy vấn DB trực tiếp không qua cache (Redis) có thể gây ra hiện tượng nghẽn cổ chai (bottleneck).
 
 ---
 
 ## 5. Danh Sách Khuyến Nghị Tái Cấu Trúc (Refactoring Recommendations)
 
+Dưới đây phân loại khuyến nghị theo trạng thái sau đợt cập nhật:
+
+### 🔍 Khuyến Nghị Còn Lại (Remaining Recommendations)
+
 | Khuyến nghị | Layer | Ảnh hưởng | Độ ưu tiên | Dẫn chứng chi tiết |
 | :--- | :--- | :--- | :--- | :--- |
-| Tách biệt cấu hình DI khởi động của lớp API và Infrastructure | API / Infrastructure | Tăng tính cô lập dự án | **P1** | [Program.cs](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.API/Program.cs#L43) tham chiếu trực tiếp lớp hiện thực của Infrastructure. |
 | Chuyển logic tự động `EnsureDeleted()` ra ngoài luồng chạy API chính | API | Tránh nguy cơ mất sạch data Production | **P0** (Nghiêm trọng) | [Program.cs: L97](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.API/Program.cs#L97) gọi lệnh xóa DB tự động nếu chạy debug. |
+| Tách biệt cấu hình DI khởi động của lớp API và Infrastructure | API / Infrastructure | Tăng tính cô lập dự án | **P1** | [Program.cs](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.API/Program.cs#L43) tham chiếu trực tiếp lớp hiện thực của Infrastructure. |
 | Bổ sung phân quyền `[Authorize(Roles = ...)]` cho các API quản trị chính sách | API | Bảo mật tài nguyên hệ thống | **P1** | `PricingPoliciesController` chưa có cấu hình phân quyền chặt chẽ trên từng Endpoint nhạy cảm. |
 | Tổ chức Mapping Profile cho AutoMapper | Application | Rút gọn code map thủ công trong Service | **P2** | [DependencyInjection.cs: L53](file:///D:/FPT/SWP391/parking-system-api/src/PBMS.Application/DependencyInjection.cs#L53). |
-| Chuyển dịch Anemic Domain Model sang Rich Domain Model | Domain | Tăng tính hướng đối tượng, giảm phình to Service | **P2** | Lớp `Booking` ở Domain chỉ chứa các getter/setter thuộc tính dữ liệu. |
+| Chuyển dịch Anemic Domain Model sang Rich Domain Model | Domain | Tăng tính hướng đối tượng, giảm phình to Service | **P2** | Lớp `Booking` ở Domain chỉ chứa các thuộc tính dữ liệu. |
+
+### ✅ Khuyến Nghị Đã Giải Quyết (Resolved Recommendations)
+
+- **[Resolved - P1] Tách biệt logic cấu hình giá vé tháng và giá phạt sự cố:** Đã bóc tách hoàn toàn logic giá cứng từ `IncidentType` và `MonthlySubscription` ra các thực thể cấu hình riêng biệt kế thừa `ISoftDeletable` và kết nối thông qua `FeeCalculatorService`.
+- **[Resolved - P0] Khắc phục lỗi tính phí gửi xe đêm sáng sớm:** Đảm bảo thuật toán phân đoạn thời gian xử lý chính xác và ổn định tuyệt đối (bao phủ bởi Unit Test tự động).
+- **[Resolved - P1] Quản lý vòng đời Booking chặt chẽ:** Tự động giải phóng capacity Booking bằng cách chuyển sang `CheckedIn` tại thời điểm xe vào bãi, và tự động dọn dẹp các Booking Confirmed quá hạn thành `NoShow`.
