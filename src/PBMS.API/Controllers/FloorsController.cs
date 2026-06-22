@@ -91,6 +91,16 @@ public class FloorsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy thống kê số lượng slot theo tầng của building (có filter theo loại xe và status)
+    /// </summary>
+    [HttpGet("building/{buildingId}/slot-summary")]
+    public async Task<IActionResult> GetFloorsSlotSummary(int buildingId, [FromQuery] int? vehicleTypeId = null, [FromQuery] string? status = null)
+    {
+        var summaries = await _floorService.GetFloorsSlotSummaryAsync(buildingId, vehicleTypeId, status);
+        return Ok(BaseResponse<IEnumerable<FloorSlotSummaryDto>>.Ok(summaries));
+    }
+
+    /// <summary>
     /// Xóa tầng.
     /// </summary>
     [HttpDelete("{id}")]
