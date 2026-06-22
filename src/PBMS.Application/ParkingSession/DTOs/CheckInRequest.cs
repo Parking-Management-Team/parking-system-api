@@ -19,4 +19,8 @@ public class CheckInRequest
     public int? BuildingId { get; set; }
 
     public int? StaffId { get; set; }
+
+    public int? BookingId { get; set; }
+
+    public int? MonthlySubscriptionId { get; set; }
 }

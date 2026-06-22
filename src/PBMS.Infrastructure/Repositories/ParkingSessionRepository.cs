@@ -28,12 +28,43 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .AnyAsync(ps => ps.VehicleId == vehicleId && ps.SessionStatus.ToUpper() == "ACTIVE");
     }
 
+    public async Task<bool> HasActiveSessionForSlotAsync(int slotId)
+    {
+        return await _context.ParkingSessions
+            .AnyAsync(ps => ps.SlotId == slotId && ps.SessionStatus.ToUpper() == "ACTIVE");
+    }
+
+    public async Task<bool> HasParkingSessionForBookingAsync(int bookingId)
+    {
+        return await _context.ParkingSessions
+            .AnyAsync(ps => ps.BookingId == bookingId);
+    }
+
+    public async Task<Booking?> GetBookingForCheckInAsync(int bookingId)
+    {
+        return await _context.Bookings
+            .Include(b => b.Vehicle)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
+    }
+
+    public async Task<MonthlySubscription?> GetMonthlySubscriptionForCheckInAsync(int monthlySubscriptionId)
+    {
+        return await _context.MonthlySubscriptions
+            .Include(ms => ms.Vehicle)
+            .Include(ms => ms.AssignedCard)
+            .Include(ms => ms.AssignedSlot)
+            .ThenInclude(s => s!.Zone)
+            .ThenInclude(z => z.Floor)
+            .FirstOrDefaultAsync(ms => ms.Id == monthlySubscriptionId);
+    }
+
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
     {
         var zones = _context.Zones
             .Include(z => z.Floor)
             .Where(z =>
                 z.VehicleTypeId == vehicleTypeId &&
+                z.AccessType == ZoneAccessType.General &&
                 z.Status == ZoneStatus.Available);
 
         if (buildingId.HasValue)
@@ -65,7 +96,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 s.VehicleTypeId == vehicleTypeId &&
                 s.Status == SlotStatus.Available &&
                 s.Zone.Status == ZoneStatus.Available &&
-                (s.Zone.Code == "GENERAL" || s.Zone.Name == "GENERAL"));
+                s.Zone.AccessType == ZoneAccessType.General);
 
         if (buildingId.HasValue)
         {
