@@ -117,4 +117,41 @@ public class IncidentService : IIncidentService
         var items = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(sessionId);
         return _mapper.Map<IEnumerable<IncidentDto>>(items);
     }
+
+    public async Task<IncidentDto> UpdateIncidentAsync(int id, UpdateIncidentRequest request)
+    {
+        var incident = await _incidentRepository.GetByIdAsync(id);
+        if (incident == null) throw new NotFoundException("Incident", id);
+
+        if (request.IncidentTypeId.HasValue && request.IncidentTypeId.Value != incident.IncidentTypeId)
+        {
+            var incidentType = await _incidentTypeRepository.GetByIdAsync(request.IncidentTypeId.Value);
+            if (incidentType == null) throw new NotFoundException("IncidentType", request.IncidentTypeId.Value);
+            incident.IncidentTypeId = request.IncidentTypeId.Value;
+        }
+
+        if (request.Description != null)
+        {
+            incident.Description = request.Description;
+        }
+
+        if (request.PenaltyFee.HasValue)
+        {
+            incident.PenaltyFee = request.PenaltyFee.Value;
+        }
+
+        _incidentRepository.Update(incident);
+        await _incidentRepository.SaveChangesAsync();
+
+        return _mapper.Map<IncidentDto>(incident);
+    }
+
+    public async Task DeleteIncidentAsync(int id)
+    {
+        var incident = await _incidentRepository.GetByIdAsync(id);
+        if (incident == null) throw new NotFoundException("Incident", id);
+
+        await _incidentRepository.RemoveAsync(incident);
+        await _incidentRepository.SaveChangesAsync();
+    }
 }
