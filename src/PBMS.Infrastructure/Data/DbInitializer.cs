@@ -371,17 +371,61 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // 11. Seed Penalty Configs based on existing IncidentTypes
+        // 11. Seed IncidentTypes
+        if (!await context.Set<IncidentType>().AnyAsync())
+        {
+            var lostCardType = new IncidentType
+            {
+                IncidentCode = "LOST_CARD",
+                IncidentName = "Mất thẻ gửi xe",
+                Description = "Sự cố mất thẻ đỗ xe vật lý"
+            };
+            var crashType = new IncidentType
+            {
+                IncidentCode = "VEHICLE_CRASH",
+                IncidentName = "Va chạm xe",
+                Description = "Sự cố va chạm hoặc gây tai nạn trong bãi xe"
+            };
+            var wrongLaneType = new IncidentType
+            {
+                IncidentCode = "WRONG_LANE",
+                IncidentName = "Đi sai làn đường",
+                Description = "Sự cố đi sai làn đường quy định"
+            };
+
+            await context.AddRangeAsync(lostCardType, crashType, wrongLaneType);
+            await context.SaveChangesAsync();
+        }
+
+        // 12. Seed Penalty Configs based on existing IncidentTypes
         var incidentTypes = await context.Set<IncidentType>().ToListAsync();
         if (incidentTypes.Any() && !await context.Set<PenaltyConfig>().AnyAsync())
         {
-            var penaltyConfigs = incidentTypes.Select(it => new PenaltyConfig
+            var penaltyConfigs = new List<PenaltyConfig>();
+            foreach (var it in incidentTypes)
             {
-                IncidentTypeId = it.Id,
-                PenaltyFee = 50000, // default penalty
-                EffectiveFrom = DateTime.UtcNow,
-                IsActive = true
-            }).ToList();
+                decimal fee = 50000; // default penalty
+                if (it.IncidentCode.Equals("LOST_CARD", StringComparison.OrdinalIgnoreCase))
+                {
+                    fee = 100000; // Phạt mất thẻ: 100k
+                }
+                else if (it.IncidentCode.Equals("VEHICLE_CRASH", StringComparison.OrdinalIgnoreCase))
+                {
+                    fee = 200000; // Phạt va chạm xe: 200k
+                }
+                else if (it.IncidentCode.Equals("WRONG_LANE", StringComparison.OrdinalIgnoreCase))
+                {
+                    fee = 30000; // Phạt đi sai làn: 30k
+                }
+
+                penaltyConfigs.Add(new PenaltyConfig
+                {
+                    IncidentTypeId = it.Id,
+                    PenaltyFee = fee,
+                    EffectiveFrom = DateTime.UtcNow,
+                    IsActive = true
+                });
+            }
 
             await context.AddRangeAsync(penaltyConfigs);
             await context.SaveChangesAsync();
