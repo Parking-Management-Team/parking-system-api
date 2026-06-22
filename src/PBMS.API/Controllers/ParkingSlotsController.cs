@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Common;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
+using PBMS.Domain.Enums;
 
 namespace PBMS.API.Controllers;
 
@@ -51,12 +52,16 @@ public class ParkingSlotsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách vị trí đỗ xe theo khu vực (Zone).
+    /// Lấy danh sách vị trí đỗ xe theo khu vực (Zone), hỗ trợ lọc nâng cao theo nhiều tiêu chí.
     /// </summary>
     [HttpGet("zone/{zoneId}")]
-    public async Task<IActionResult> GetSlotsByZone(int zoneId)
+    public async Task<IActionResult> GetSlotsByZone(
+        int zoneId, 
+        [FromQuery] List<SlotStatus>? statuses = null,
+        [FromQuery] List<int>? vehicleTypeIds = null,
+        [FromQuery] string? search = null)
     {
-        var slots = await _slotService.GetSlotsByZoneAsync(zoneId);
+        var slots = await _slotService.GetSlotsByZoneAsync(zoneId, statuses, vehicleTypeIds, search);
         return Ok(BaseResponse<IEnumerable<ParkingSlotDto>>.Ok(slots));
     }
 

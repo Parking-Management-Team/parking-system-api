@@ -13,4 +13,5 @@ public class ParkingSlotDto
     public string Code { get; set; } = null!;
     public string? Name { get; set; }
     public SlotStatus Status { get; set; }
+    public string? OccupiedLicensePlate { get; set; }
 }

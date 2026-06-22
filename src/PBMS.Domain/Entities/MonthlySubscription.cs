@@ -51,6 +51,11 @@ public class MonthlySubscription : BaseEntity
     public DateTime? ExpiredAt { get; set; }
 
     /// <summary>
+    /// Khóa ngoại liên kết tới cấu hình giá vé tháng áp dụng tại thời điểm đăng ký.
+    /// </summary>
+    public int? SubscriptionPriceConfigId { get; set; }
+
+    /// <summary>
     /// Trạng thái của hồ sơ đăng ký vé tháng.
     /// Các giá trị hợp lệ: "PENDING", "ACTIVE", "EXPIRED", "DOWNGRADED", "CANCELLED".
     /// </summary>
@@ -84,6 +89,11 @@ public class MonthlySubscription : BaseEntity
     /// Thông tin tòa nhà/bãi đỗ xe áp dụng.
     /// </summary>
     public virtual Building Building { get; set; } = null!;
+
+    /// <summary>
+    /// Cấu hình giá vé tháng áp dụng cho đăng ký này.
+    /// </summary>
+    public virtual SubscriptionPriceConfig? SubscriptionPriceConfig { get; set; }
 
     /// <summary>
     /// Danh sách các giao dịch thanh toán liên quan đến vé tháng này.

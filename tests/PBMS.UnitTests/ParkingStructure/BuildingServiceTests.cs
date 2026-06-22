@@ -15,6 +15,8 @@ public class BuildingServiceTests
 {
     private readonly IBuildingRepository _buildingRepositoryMock;
     private readonly IRepository<Floor> _floorRepositoryMock;
+    private readonly IZoneRepository _zoneRepositoryMock;
+    private readonly IParkingSlotRepository _slotRepositoryMock;
     private readonly IMapper _mapperMock;
     private readonly BuildingService _buildingService;
 
@@ -22,9 +24,16 @@ public class BuildingServiceTests
     {
         _buildingRepositoryMock = Substitute.For<IBuildingRepository>();
         _floorRepositoryMock = Substitute.For<IRepository<Floor>>();
+        _zoneRepositoryMock = Substitute.For<IZoneRepository>();
+        _slotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _mapperMock = Substitute.For<IMapper>();
 
-        _buildingService = new BuildingService(_buildingRepositoryMock, _floorRepositoryMock, _mapperMock);
+        _buildingService = new BuildingService(
+            _buildingRepositoryMock, 
+            _floorRepositoryMock, 
+            _zoneRepositoryMock, 
+            _slotRepositoryMock, 
+            _mapperMock);
     }
 
     [Fact]

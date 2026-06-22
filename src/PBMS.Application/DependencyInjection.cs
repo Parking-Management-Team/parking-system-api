@@ -65,6 +65,7 @@ public static class DependencyInjection
         // Pricing module
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();
         services.AddScoped<IFeeCalculationService, FeeCalculationService>();
+        services.AddScoped<PBMS.Application.Common.IFeeCalculatorService, PBMS.Application.Common.FeeCalculatorService>();
         services.AddScoped<IAccountService, AccountService>();
         if (useInMemoryParkingSession)
         {

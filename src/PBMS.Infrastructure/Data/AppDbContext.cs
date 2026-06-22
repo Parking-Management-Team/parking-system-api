@@ -145,6 +145,16 @@ public class AppDbContext : DbContext
     /// Tập hợp dữ liệu bảng trung gian Vai trò - Quyền hạn (RolePermissions).
     /// </summary>
     public DbSet<RolePermission> RolePermissions { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Cấu hình giá vé tháng (SubscriptionPriceConfigs).
+    /// </summary>
+    public DbSet<SubscriptionPriceConfig> SubscriptionPriceConfigs { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Cấu hình giá phạt sự cố (PenaltyConfigs).
+    /// </summary>
+    public DbSet<PenaltyConfig> PenaltyConfigs { get; set; } = null!;
     
     // =======================================================
 

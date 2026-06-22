@@ -24,7 +24,13 @@ public class MappingProfile : Profile
         CreateMap<FloorUpdateRequest, Floor>();
 
         // ParkingSlot mappings
-        CreateMap<ParkingSlot, ParkingSlotDto>();
+        CreateMap<ParkingSlot, ParkingSlotDto>()
+            .ForMember(dest => dest.OccupiedLicensePlate, opt => opt.MapFrom(src =>
+                src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active") != null
+                    ? src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active")!.LicensePlateIn
+                    : src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == Domain.Enums.MonthlySubscriptionStatus.Active) != null
+                        ? src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == Domain.Enums.MonthlySubscriptionStatus.Active)!.Vehicle!.LicensePlate
+                        : null));
         CreateMap<ParkingSlotCreateRequest, ParkingSlot>();
         CreateMap<ParkingSlotUpdateRequest, ParkingSlot>();
 

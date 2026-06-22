@@ -366,19 +366,35 @@ public class BookingService : IBookingService
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Dọn dẹp các Booking PENDING đã quá PaymentDeadline → chuyển sang Expired.
+    /// Dọn dẹp các Booking hết hạn:
+    ///   - PENDING quá hạn thanh toán tiền cọc -> Expired
+    ///   - CONFIRMED quá hạn grace period check-in -> NoShow
     /// </summary>
-    public async Task CleanupExpiredPendingBookingsAsync()
+    public async Task CleanupExpiredBookingsAsync()
     {
         var now = DateTime.UtcNow;
-        var expiredBookings = await _bookingRepository.FindAsync(b =>
+
+        // 1. Pending quá hạn thanh toán cọc -> Expired
+        var expiredPendingBookings = await _bookingRepository.FindAsync(b =>
             b.BookingStatus == BookingStatus.Pending &&
             b.PaymentDeadline < now);
 
-        foreach (var booking in expiredBookings)
+        foreach (var booking in expiredPendingBookings)
         {
             booking.BookingStatus = BookingStatus.Expired;
             booking.CancelReason = "Hết hạn thanh toán tiền cọc";
+            _bookingRepository.Update(booking);
+        }
+
+        // 2. Confirmed quá hạn check-in -> NoShow
+        var expiredConfirmedBookings = await _bookingRepository.FindAsync(b =>
+            b.BookingStatus == BookingStatus.Confirmed &&
+            b.CheckinGraceUntil < now);
+
+        foreach (var booking in expiredConfirmedBookings)
+        {
+            booking.BookingStatus = BookingStatus.NoShow;
+            booking.CancelReason = "Khách hàng không đến (No-Show)";
             _bookingRepository.Update(booking);
         }
 
