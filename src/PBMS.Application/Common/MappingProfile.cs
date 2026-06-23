@@ -1,4 +1,5 @@
 using AutoMapper;
+using PBMS.Application.AuditLog.DTOs;
 using PBMS.Application.Blacklist.DTOs;
 using PBMS.Application.Incident.DTOs;
 using PBMS.Application.ParkingStructure.DTOs;
@@ -55,5 +56,9 @@ public class MappingProfile : Profile
         
         CreateMap<PenaltyConfig, PenaltyConfigDto>()
             .ForMember(dest => dest.IncidentTypeName, opt => opt.MapFrom(src => src.IncidentType.IncidentName));
+
+        // AuditLog mappings
+        CreateMap<PBMS.Domain.Entities.AuditLog, AuditLogDto>()
+            .ForMember(dest => dest.AccountName, opt => opt.MapFrom(src => src.Account != null ? src.Account.FullName : null));
     }
 }

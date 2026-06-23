@@ -75,6 +75,7 @@ public class ParkingSlotService : IParkingSlotService
         };
 
         await _slotRepository.AddAsync(slot);
+        await _slotRepository.SaveChangesAsync();
         return _mapper.Map<ParkingSlotDto>(slot);
     }
 
@@ -184,6 +185,7 @@ public class ParkingSlotService : IParkingSlotService
         slot.Status = request.Status;
 
         _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
         return _mapper.Map<ParkingSlotDto>(slot);
     }
 
@@ -208,6 +210,77 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         await _slotRepository.RemoveAsync(slot);
+        await _slotRepository.SaveChangesAsync();
+    }
+
+    public async Task<ParkingSlotDto> BlockSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status == SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot block slot '{slot.Code}' because it is currently occupied.");
+        }
+
+        if (slot.Status == SlotStatus.Blocked)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is already blocked.");
+        }
+
+        slot.Status = SlotStatus.Blocked;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
+    }
+
+    public async Task<ParkingSlotDto> UnblockSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status != SlotStatus.Blocked)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is not blocked. Current status: {slot.Status}.");
+        }
+
+        slot.Status = SlotStatus.Available;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
+    }
+
+    public async Task<ParkingSlotDto> SetMaintenanceSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status == SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot set slot '{slot.Code}' to maintenance because it is currently occupied.");
+        }
+
+        if (slot.Status == SlotStatus.Maintenance)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is already in maintenance.");
+        }
+
+        slot.Status = SlotStatus.Maintenance;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
     }
 
     private static bool IsCarVehicleType(VehicleType vehicleType)

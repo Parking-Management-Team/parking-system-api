@@ -222,6 +222,6 @@ public class FloorServiceTests
         Assert.Equal(1, firstSummary.TotalSlots);
         Assert.Single(firstSummary.VehicleTypeSummaries);
         Assert.Equal("Car", firstSummary.VehicleTypeSummaries[0].VehicleTypeName);
-        Assert.Equal(1, firstSummary.VehicleTypeSummaries[0].StatusCounts["Available"]);
+        Assert.Equal(1, firstSummary.VehicleTypeSummaries[0].StatusCounts.First(sc => sc.Status == "Available").Count);
     }
 }
