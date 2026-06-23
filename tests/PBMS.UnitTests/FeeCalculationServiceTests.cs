@@ -426,4 +426,64 @@ public class FeeCalculationServiceTests
 
         Assert.Equal("PRICING_POLICY_NOT_FOUND", exception.ErrorCode);
     }
+
+    /// <summary>
+    /// Kiểm tra xe đỗ ngắn hạn vào sáng sớm hôm sau (nằm trong khung giờ đêm bắt đầu từ tối hôm trước).
+    /// Ví dụ: Vào 02:00 sáng, ra 05:00 sáng cùng ngày.
+    /// Khung giờ đêm: 22:00 -> 06:00, Base 60 phút / 10000đ, Increment 30 phút / 5000đ.
+    /// Tổng thời gian: 180 phút.
+    /// Dự kiến: Base (60p) + 4 blocks lũy tiến (120p) = 10000 + 20000 = 30000đ.
+    /// </summary>
+    [Fact]
+    public void CalculateFeeFromWindows_ShouldCalculateOvernightWindowCorrectly_WhenParkingShortTermEarlyMorning()
+    {
+        // Arrange
+        var windows = new List<PricingWindow>
+        {
+            new PricingWindow
+            {
+                Id = 1,
+                WindowName = "Day Time Window",
+                StartTime = new TimeSpan(6, 0, 0),
+                EndTime = new TimeSpan(22, 0, 0),
+                BaseDurationMinutes = 60,
+                BasePrice = 5000m,
+                IncrementBlockMinutes = 15,
+                IncrementPrice = 2000m,
+                WindowCap = null,
+                GracePeriodMinutes = 0
+            },
+            new PricingWindow
+            {
+                Id = 2,
+                WindowName = "Night Time Window",
+                StartTime = new TimeSpan(22, 0, 0),
+                EndTime = new TimeSpan(6, 0, 0), // qua đêm
+                BaseDurationMinutes = 60,
+                BasePrice = 10000m,
+                IncrementBlockMinutes = 30,
+                IncrementPrice = 5000m,
+                WindowCap = null,
+                GracePeriodMinutes = 0
+            }
+        };
+
+        var checkIn = new DateTime(2024, 1, 15, 2, 0, 0); // 02:00 AM
+        var checkOut = new DateTime(2024, 1, 15, 5, 0, 0); // 05:00 AM
+
+        // Act
+        var result = _feeCalculationService.CalculateFeeFromWindows(windows, checkIn, checkOut);
+
+        // Assert
+        Assert.Equal(30000m, result.TotalFee);
+        Assert.Single(result.Details);
+
+        var detail = result.Details[0];
+        Assert.Equal(2, detail.PricingWindowId);
+        Assert.Equal(10000m, detail.BaseCharge);
+        Assert.Equal(4, detail.IncrementBlocks);
+        Assert.Equal(20000m, detail.IncrementCharge);
+        Assert.Equal(30000m, detail.CappedFee);
+    }
 }
+

@@ -348,5 +348,87 @@ public static class DbInitializer
                 }
             }
         }
+        // 10. Seed Subscription Price Configs
+        if (!await context.Set<SubscriptionPriceConfig>().AnyAsync())
+        {
+            var motorcycleConfig = new SubscriptionPriceConfig
+            {
+                VehicleTypeId = motorcycleType!.Id,
+                Price = 150000, // 150k/tháng
+                EffectiveFrom = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            var carConfig = new SubscriptionPriceConfig
+            {
+                VehicleTypeId = carType!.Id,
+                Price = 1000000, // 1 triệu/tháng
+                EffectiveFrom = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            await context.AddRangeAsync(motorcycleConfig, carConfig);
+            await context.SaveChangesAsync();
+        }
+
+        // 11. Seed IncidentTypes
+        if (!await context.Set<IncidentType>().AnyAsync())
+        {
+            var lostCardType = new IncidentType
+            {
+                IncidentCode = "LOST_CARD",
+                IncidentName = "Mất thẻ gửi xe",
+                Description = "Sự cố mất thẻ đỗ xe vật lý"
+            };
+            var crashType = new IncidentType
+            {
+                IncidentCode = "VEHICLE_CRASH",
+                IncidentName = "Va chạm xe",
+                Description = "Sự cố va chạm hoặc gây tai nạn trong bãi xe"
+            };
+            var wrongLaneType = new IncidentType
+            {
+                IncidentCode = "WRONG_LANE",
+                IncidentName = "Đi sai làn đường",
+                Description = "Sự cố đi sai làn đường quy định"
+            };
+
+            await context.AddRangeAsync(lostCardType, crashType, wrongLaneType);
+            await context.SaveChangesAsync();
+        }
+
+        // 12. Seed Penalty Configs based on existing IncidentTypes
+        var incidentTypes = await context.Set<IncidentType>().ToListAsync();
+        if (incidentTypes.Any() && !await context.Set<PenaltyConfig>().AnyAsync())
+        {
+            var penaltyConfigs = new List<PenaltyConfig>();
+            foreach (var it in incidentTypes)
+            {
+                decimal fee = 50000; // default penalty
+                if (it.IncidentCode.Equals("LOST_CARD", StringComparison.OrdinalIgnoreCase))
+                {
+                    fee = 100000; // Phạt mất thẻ: 100k
+                }
+                else if (it.IncidentCode.Equals("VEHICLE_CRASH", StringComparison.OrdinalIgnoreCase))
+                {
+                    fee = 200000; // Phạt va chạm xe: 200k
+                }
+                else if (it.IncidentCode.Equals("WRONG_LANE", StringComparison.OrdinalIgnoreCase))
+                {
+                    fee = 30000; // Phạt đi sai làn: 30k
+                }
+
+                penaltyConfigs.Add(new PenaltyConfig
+                {
+                    IncidentTypeId = it.Id,
+                    PenaltyFee = fee,
+                    EffectiveFrom = DateTime.UtcNow,
+                    IsActive = true
+                });
+            }
+
+            await context.AddRangeAsync(penaltyConfigs);
+            await context.SaveChangesAsync();
+        }
     }
 }

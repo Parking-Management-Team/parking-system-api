@@ -1,3 +1,5 @@
+> 🔍 Audited at commit: 21a886a — 2026-06-21
+
 # 📋 API Inventory
 
 Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự án PBMS API, được quét trực tiếp từ mã nguồn thực tế ở tầng Web API Controllers.
@@ -65,7 +67,7 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/parkingslots` | `POST` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Tạo vị trí đỗ xe mới |
 | `/api/parkingslots/{id}` | `GET` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Xem chi tiết vị trí đỗ xe |
 | `/api/parkingslots` | `GET` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Lấy danh sách tất cả vị trí đỗ xe |
-| `/api/parkingslots/zone/{zoneId}` | `GET` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Lấy danh sách vị trí đỗ theo khu vực (Zone) |
+| `/api/parkingslots/zone/{zoneId}` | `GET` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Lấy danh sách vị trí đỗ theo khu vực (Zone), hỗ trợ lọc nâng cao theo trạng thái (statuses), loại xe (vehicleTypeIds), và tìm kiếm (search) |
 | `/api/parkingslots/paged` | `GET` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Lấy danh sách vị trí đỗ phân trang |
 | `/api/parkingslots/{id}` | `PUT` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Cập nhật thông tin vị trí đỗ xe |
 | `/api/parkingslots/{id}` | `DELETE` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Xóa vị trí đỗ xe |

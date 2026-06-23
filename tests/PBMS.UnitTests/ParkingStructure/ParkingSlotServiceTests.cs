@@ -45,8 +45,8 @@ public class ParkingSlotServiceTests
             Name = "Slot 1"
         };
 
-        var zone = new Zone { Id = 1 };
-        var vehicleType = new VehicleType { Id = 1 };
+        var zone = new Zone { Id = 1, VehicleTypeId = 1 };
+        var vehicleType = new VehicleType { Id = 1, TypeName = "Car" };
         var slotDto = new ParkingSlotDto { Id = 1, Code = "SLOT-01", ZoneId = 1 };
 
         _zoneRepositoryMock.GetByIdAsync(request.ZoneId).Returns(zone);
@@ -79,8 +79,8 @@ public class ParkingSlotServiceTests
     {
         // Arrange
         var request = new ParkingSlotCreateRequest { ZoneId = 1, VehicleTypeId = 1, Code = "EXISTING" };
-        var zone = new Zone { Id = 1 };
-        var vehicleType = new VehicleType { Id = 1 };
+        var zone = new Zone { Id = 1, VehicleTypeId = 1 };
+        var vehicleType = new VehicleType { Id = 1, TypeName = "Car" };
 
         _zoneRepositoryMock.GetByIdAsync(request.ZoneId).Returns(zone);
         _vehicleTypeRepositoryMock.GetByIdAsync(request.VehicleTypeId).Returns(vehicleType);

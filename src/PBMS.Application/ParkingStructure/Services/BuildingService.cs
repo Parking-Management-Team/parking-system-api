@@ -16,15 +16,21 @@ public class BuildingService : IBuildingService
 {
     private readonly IBuildingRepository _buildingRepository;
     private readonly IRepository<Floor> _floorRepository;
+    private readonly IZoneRepository _zoneRepository;
+    private readonly IParkingSlotRepository _slotRepository;
     private readonly IMapper _mapper;
 
     public BuildingService(
         IBuildingRepository buildingRepository, 
         IRepository<Floor> floorRepository,
+        IZoneRepository zoneRepository,
+        IParkingSlotRepository slotRepository,
         IMapper mapper)
     {
         _buildingRepository = buildingRepository;
         _floorRepository = floorRepository;
+        _zoneRepository = zoneRepository;
+        _slotRepository = slotRepository;
         _mapper = mapper;
     }
 
@@ -157,5 +163,39 @@ public class BuildingService : IBuildingService
 
         await _buildingRepository.RemoveAsync(building);
         await _buildingRepository.SaveChangesAsync();
+    }
+
+    public async Task<CapacityDto> GetBuildingCapacityAsync(int id)
+    {
+        var building = await _buildingRepository.GetByIdAsync(id);
+        if (building == null)
+        {
+            throw new NotFoundException("Building", id);
+        }
+
+        var floors = await _floorRepository.FindAsync(f => f.BuildingId == id);
+        var floorIds = floors.Select(f => f.Id).ToList();
+
+        if (!floorIds.Any())
+        {
+            return new CapacityDto { TotalSlots = 0, OccupiedSlots = 0 };
+        }
+
+        var zones = await _zoneRepository.FindAsync(z => floorIds.Contains(z.FloorId));
+        var zoneIds = zones.Select(z => z.Id).ToList();
+
+        int totalSlots = zones.Sum(z => z.Capacity);
+        int occupiedSlots = 0;
+
+        if (zoneIds.Any())
+        {
+            occupiedSlots = await _slotRepository.CountAsync(s => zoneIds.Contains(s.ZoneId) && s.Status == SlotStatus.Occupied);
+        }
+
+        return new CapacityDto
+        {
+            TotalSlots = totalSlots,
+            OccupiedSlots = occupiedSlots
+        };
     }
 }

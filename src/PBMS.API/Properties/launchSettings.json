@@ -8,7 +8,7 @@
       "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5029",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Production",
         "ConnectionStrings__DefaultConnection": "Host=aws-1-ap-southeast-2.pooler.supabase.com;Database=postgres;Username=postgres.umkabswquswaaheqvmxj;Password=ky5-nhom4-PBMS;SSL Mode=Require;Trust Server Certificate=true"
       }
     },

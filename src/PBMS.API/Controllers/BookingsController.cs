@@ -194,7 +194,7 @@ public class BookingsController : ControllerBase
     [HttpPost("cleanup")]
     public async Task<ActionResult<BaseResponse<string>>> CleanupExpiredBookings()
     {
-        await _bookingService.CleanupExpiredPendingBookingsAsync();
+        await _bookingService.CleanupExpiredBookingsAsync();
         return Ok(BaseResponse<string>.Ok("Dọn dẹp các Booking hết hạn thành công."));
     }
 }

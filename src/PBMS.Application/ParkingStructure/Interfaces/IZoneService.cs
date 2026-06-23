@@ -58,5 +58,12 @@ namespace PBMS.Application.ParkingStructure.Interfaces
         /// <param name="id">ID zone.</param>
         /// <returns>Bình thường trả về void hoặc task, ở đây có thể trả về bool hoặc void.</returns>
         Task DeleteZoneAsync(int id);
+
+        /// <summary>
+        /// Lấy sức chứa của zone (tổng số slot và số slot đã chiếm) bất đồng bộ.
+        /// </summary>
+        /// <param name="id">ID zone.</param>
+        /// <returns>CapacityDto.</returns>
+        Task<CapacityDto> GetZoneCapacityAsync(int id);
     }
 }

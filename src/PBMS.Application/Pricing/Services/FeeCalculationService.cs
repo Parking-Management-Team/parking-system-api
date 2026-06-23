@@ -149,8 +149,8 @@ public class FeeCalculationService : IFeeCalculationService
         var result = new List<(PricingWindow Window, DateTime SegmentStart, DateTime SegmentEnd)>();
 
         // Duyệt từng ngày trong khoảng thời gian gửi xe
-        // Ngày bắt đầu là ngày của checkIn, kết thúc khi đã quét hết checkOut
-        var currentDayStart = checkIn.Date; // 00:00:00 của ngày check-in
+        // Ngày bắt đầu lùi lại 1 ngày so với checkIn để bao phủ được khung giờ đêm bắt đầu từ ngày hôm trước
+        var currentDayStart = checkIn.Date.AddDays(-1); // 00:00:00 của ngày check-in
 
         while (currentDayStart < checkOut)
         {

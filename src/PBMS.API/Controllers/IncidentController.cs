@@ -50,4 +50,18 @@ public class IncidentController : ControllerBase
         var result = await _incidentService.GetIncidentsBySessionAsync(sessionId);
         return Ok(BaseResponse<IEnumerable<IncidentDto>>.Ok(result));
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateIncident(int id, [FromBody] UpdateIncidentRequest request)
+    {
+        var result = await _incidentService.UpdateIncidentAsync(id, request);
+        return Ok(BaseResponse<IncidentDto>.Ok(result, "Incident updated successfully."));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteIncident(int id)
+    {
+        await _incidentService.DeleteIncidentAsync(id);
+        return Ok(BaseResponse<string>.Ok(id.ToString(), "Incident deleted successfully."));
+    }
 }

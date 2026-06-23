@@ -5,7 +5,7 @@ namespace PBMS.Domain.Entities;
 /// Kế thừa từ BaseEntity (Id, CreatedAt, RowVersion).
 /// Tham chiếu SRS: §8.3.3.13 — Physical Model: incident_type
 /// </summary>
-public class IncidentType : BaseEntity
+public class IncidentType : BaseEntity, ISoftDeletable
 {
     /// <summary>
     /// Mã loại sự cố duy nhất (Ví dụ: "LOST_CARD", "WRONG_LANE").
@@ -24,17 +24,19 @@ public class IncidentType : BaseEntity
     public string? Description { get; set; }
 
     /// <summary>
-    /// Số tiền phạt mặc định được đề xuất khi xảy ra sự cố thuộc loại này.
-    /// Có thể null nếu không áp dụng phạt tiền.
-    /// </summary>
-    public decimal? DefaultPenaltyFee { get; set; }
-
-    // -----------------------------------------------------------------------
-    // NAVIGATION PROPERTIES
-    // -----------------------------------------------------------------------
-
-    /// <summary>
     /// Danh sách các sự cố (Incident) thực tế thuộc loại này.
     /// </summary>
     public virtual ICollection<Incident> Incidents { get; set; } = new List<Incident>();
+
+    /// <summary>
+    /// Danh sách các cấu hình giá phạt áp dụng cho loại sự cố này theo thời gian.
+    /// </summary>
+    public virtual ICollection<PenaltyConfig> PenaltyConfigs { get; set; } = new List<PenaltyConfig>();
+
+    // -----------------------------------------------------------------------
+    // SOFT DELETE PROPERTIES
+    // -----------------------------------------------------------------------
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public int? DeletedBy { get; set; }
 }

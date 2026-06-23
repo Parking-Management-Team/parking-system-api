@@ -25,6 +25,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly ICardRepository _cardRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IParkingSlotRepository _parkingSlotRepository;
+    private readonly IIncidentRepository _incidentRepository;
 
     public ParkingSessionService(
         IParkingSessionRepository sessionRepository,
@@ -34,7 +35,8 @@ public class ParkingSessionService : IParkingSessionService
         IFeeCalculationService feeCalculationService,
         ICardRepository cardRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
-        IParkingSlotRepository parkingSlotRepository)
+        IParkingSlotRepository parkingSlotRepository,
+        IIncidentRepository incidentRepository)
     {
         _sessionRepository = sessionRepository;
         _vehicleRepository = vehicleRepository;
@@ -44,6 +46,7 @@ public class ParkingSessionService : IParkingSessionService
         _cardRepository = cardRepository;
         _subscriptionRepository = subscriptionRepository;
         _parkingSlotRepository = parkingSlotRepository;
+        _incidentRepository = incidentRepository;
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
@@ -299,7 +302,26 @@ public class ParkingSessionService : IParkingSessionService
             }
         }
 
+        var isMonthly = effectiveMonthlySubscription != null;
         var buildingId = booking?.BuildingId ?? effectiveMonthlySubscription?.BuildingId ?? request.BuildingId ?? assignedZone.Floor.BuildingId;
+
+        BookingEntity? activeBooking = booking;
+        if (!isMonthly && activeBooking == null)
+        {
+            var now = DateTime.UtcNow;
+            activeBooking = await _bookingRepository.FirstOrDefaultAsync(b =>
+                b.Vehicle.LicensePlate.ToUpper() == normalizedPlate &&
+                b.BuildingId == buildingId &&
+                b.BookingStatus == BookingStatus.Confirmed &&
+                b.PlannedCheckinTime.AddMinutes(-30) <= now &&
+                b.CheckinGraceUntil >= now);
+
+            if (activeBooking != null)
+            {
+                buildingId = activeBooking.BuildingId;
+            }
+        }
+
         var session = new ParkingSessionEntity
         {
             Vehicle = vehicle,
@@ -310,7 +332,7 @@ public class ParkingSessionService : IParkingSessionService
             CardId = card.Id,
             ZoneId = assignedZone.Id,
             SlotId = assignedSlot?.Id,
-            BookingId = booking?.Id,
+            BookingId = activeBooking?.Id,
             MonthlySubscriptionId = effectiveMonthlySubscription?.Id,
             Booking = booking,
             MonthlySubscription = effectiveMonthlySubscription,
@@ -320,7 +342,13 @@ public class ParkingSessionService : IParkingSessionService
             SessionStatus = ActiveStatus
         };
 
-        if (effectiveMonthlySubscription == null)
+        if (activeBooking != null)
+        {
+            activeBooking.BookingStatus = BookingStatus.CheckedIn;
+            _bookingRepository.Update(activeBooking);
+        }
+
+        if (!isMonthly)
         {
             card.CardStatus = CardStatus.Active.ToString();
             _cardRepository.Update(card);
@@ -491,31 +519,9 @@ public class ParkingSessionService : IParkingSessionService
 
                 if (amountDue == 0)
                 {
-                    session.SessionStatus = CompletedStatus;
-                    booking.BookingStatus = "Completed";
-
-                    if (session.SlotId.HasValue)
-                    {
-                        var slot = await _parkingSlotRepository.GetByIdAsync(session.SlotId.Value);
-                        if (slot != null)
-                        {
-                            slot.Status = SlotStatus.Available;
-                            _parkingSlotRepository.Update(slot);
-                        }
-                    }
-
-                    var card = await _cardRepository.GetByIdAsync(session.CardId);
-                    if (card != null && card.CardStatus == CardStatus.Active.ToString())
-                    {
-                        card.CardStatus = CardStatus.Available.ToString();
-                        _cardRepository.Update(card);
-                    }
-
-                    _sessionRepository.Update(session);
-                    _bookingRepository.Update(booking);
-                    await _sessionRepository.SaveChangesAsync();
-
-                    return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Succesfull. Parking fee is fully deducted by deposit. Parking session completed immediately.");
+                    // LƯU Ý: Không giải phóng Slot và Card ở đây nữa theo yêu cầu Task 4.
+                    // Việc giải phóng sẽ được thực hiện tại CompleteAsync.
+                    // Tương tự, không chuyển status sang Completed để Frontend có thể gọi CompleteAsync.
                 }
             }
         }
@@ -523,30 +529,19 @@ public class ParkingSessionService : IParkingSessionService
         if (session.MonthlySubscriptionId.HasValue)
         {
             var subscription = await _subscriptionRepository.GetByIdAsync(session.MonthlySubscriptionId.Value);
-            if (subscription != null && subscription.ExpiredAt.HasValue && checkOutTime <= subscription.ExpiredAt.Value)
+            if (subscription != null)
             {
-                session.SessionStatus = CompletedStatus;
-
-                if (session.SlotId.HasValue)
+                if (subscription.ExpiredAt.HasValue && checkOutTime <= subscription.ExpiredAt.Value)
                 {
-                    var slot = await _parkingSlotRepository.GetByIdAsync(session.SlotId.Value);
-                    if (slot != null)
-                    {
-                        slot.Status = SlotStatus.Available;
-                        _parkingSlotRepository.Update(slot);
-                    }
+                    // Vé tháng còn hiệu lực
+                    // Không chuyển status sang Completed và không giải phóng Slot/Card ở đây.
                 }
-
-                _sessionRepository.Update(session);
-                await _sessionRepository.SaveChangesAsync();
-
-                return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Monthly card is still valid. Checkout completed immediately.");
             }
         }
 
         _sessionRepository.Update(session);
         await _sessionRepository.SaveChangesAsync();
-        return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Started checkout successfully.");
+        return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Started checkout successfully. Waiting for completion.");
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CompleteAsync(int id)
@@ -581,6 +576,25 @@ public class ParkingSessionService : IParkingSessionService
         {
             card.CardStatus = CardStatus.Available.ToString();
             _cardRepository.Update(card);
+        }
+
+        // Cập nhật trạng thái Booking nếu có (đã xử lý CheckedIn tại Check-in)
+
+        // Tự động giải quyết sự cố "Mất thẻ" (Lost Card) nếu có
+        var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(id);
+        if (sessionIncidents != null)
+        {
+            var lostCardIncidents = sessionIncidents.Where(i => 
+                i.Status == IncidentStatus.Open && 
+                i.IncidentType != null && 
+                i.IncidentType.IncidentCode.Equals("LOST_CARD", StringComparison.OrdinalIgnoreCase));
+
+            foreach (var incident in lostCardIncidents)
+            {
+                incident.Status = IncidentStatus.Resolved;
+                incident.ResolvedAt = DateTime.UtcNow;
+                _incidentRepository.Update(incident);
+            }
         }
 
         _sessionRepository.Update(session);
