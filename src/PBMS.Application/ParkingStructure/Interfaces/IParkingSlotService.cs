@@ -20,4 +20,7 @@ public interface IParkingSlotService
     Task<PagedResult<ParkingSlotDto>> GetSlotsPagedAsync(int pageIndex, int pageSize);
     Task<ParkingSlotDto> UpdateSlotAsync(int id, ParkingSlotUpdateRequest request);
     Task DeleteSlotAsync(int id);
+    Task<ParkingSlotDto> BlockSlotAsync(int id, SlotStatusChangeRequest request);
+    Task<ParkingSlotDto> UnblockSlotAsync(int id, SlotStatusChangeRequest request);
+    Task<ParkingSlotDto> SetMaintenanceSlotAsync(int id, SlotStatusChangeRequest request);
 }
