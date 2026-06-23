@@ -16,4 +16,10 @@ public class UpdateBookingRequest
     /// </summary>
     [Required]
     public DateTime PlannedCheckinTime { get; set; }
+
+    /// <summary>
+    /// Thời gian dự kiến ra khỏi bãi mới (UTC).
+    /// </summary>
+    [Required]
+    public DateTime PlannedCheckoutTime { get; set; }
 }

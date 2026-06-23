@@ -11,9 +11,8 @@ namespace PBMS.Application.Auth.DTOs
         /// Địa chỉ thư điện tử (Email) đăng nhập của tài khoản.
         /// Bắt buộc nhập và phải đúng định dạng email.
         /// </summary>
-        [Required(ErrorMessage = "Email is required.")]
-        [EmailAddress(ErrorMessage = "Email address is invalid.")]
-        [MaxLength(100, ErrorMessage = "Email cannot exceed 100 characters.")]
+        [Required(ErrorMessage = "Email or Username is required.")]
+        [MaxLength(100, ErrorMessage = "Email/Username cannot exceed 100 characters.")]
         public string Email { get; set; } = null!;
 
         /// <summary>

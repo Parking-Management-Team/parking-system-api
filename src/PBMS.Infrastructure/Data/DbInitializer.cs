@@ -348,43 +348,5 @@ public static class DbInitializer
                 }
             }
         }
-        // 10. Seed Subscription Price Configs
-        if (!await context.Set<SubscriptionPriceConfig>().AnyAsync())
-        {
-            var motorcycleConfig = new SubscriptionPriceConfig
-            {
-                VehicleTypeId = motorcycleType!.Id,
-                Price = 150000, // 150k/tháng
-                EffectiveFrom = DateTime.UtcNow,
-                IsActive = true
-            };
-
-            var carConfig = new SubscriptionPriceConfig
-            {
-                VehicleTypeId = carType!.Id,
-                Price = 1000000, // 1 triệu/tháng
-                EffectiveFrom = DateTime.UtcNow,
-                IsActive = true
-            };
-
-            await context.AddRangeAsync(motorcycleConfig, carConfig);
-            await context.SaveChangesAsync();
-        }
-
-        // 11. Seed Penalty Configs based on existing IncidentTypes
-        var incidentTypes = await context.Set<IncidentType>().ToListAsync();
-        if (incidentTypes.Any() && !await context.Set<PenaltyConfig>().AnyAsync())
-        {
-            var penaltyConfigs = incidentTypes.Select(it => new PenaltyConfig
-            {
-                IncidentTypeId = it.Id,
-                PenaltyFee = 50000, // default penalty
-                EffectiveFrom = DateTime.UtcNow,
-                IsActive = true
-            }).ToList();
-
-            await context.AddRangeAsync(penaltyConfigs);
-            await context.SaveChangesAsync();
-        }
     }
 }

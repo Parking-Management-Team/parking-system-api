@@ -18,6 +18,13 @@ namespace PBMS.Application.Contracts
         Task<Account?> GetByEmailAsync(string email);
 
         /// <summary>
+        /// Tìm kiếm tài khoản trong hệ thống thông qua địa chỉ Email hoặc Username.
+        /// </summary>
+        /// <param name="identifier">Địa chỉ email hoặc tên đăng nhập của tài khoản cần tìm.</param>
+        /// <returns>Thực thể Account nếu tồn tại; ngược lại là null.</returns>
+        Task<Account?> GetByUsernameOrEmailAsync(string identifier);
+
+        /// <summary>
         /// Lấy toàn bộ danh sách tài khoản kèm theo thông tin vai trò (Role).
         /// </summary>
         Task<IEnumerable<Account>> GetAllWithRolesAsync();

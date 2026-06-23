@@ -34,8 +34,8 @@ namespace PBMS.Application.Auth.Services
         /// </summary>
         public async Task<LoginResponseDto> LoginAsync(LoginRequest request)
         {
-            // 1. Tìm kiếm tài khoản từ Database dựa theo Email nhận được từ Client
-            var account = await _accountRepository.GetByEmailAsync(request.Email);
+            // 1. Tìm kiếm tài khoản từ Database dựa theo Email hoặc Username nhận được từ Client
+            var account = await _accountRepository.GetByUsernameOrEmailAsync(request.Email);
 
             // 2. Nếu không tìm thấy tài khoản, ném ngoại lệ UnauthorizedAccessException
             // (Thông báo chung chung để tránh rò rỉ thông tin tài khoản tồn tại trong hệ thống)
@@ -93,7 +93,7 @@ namespace PBMS.Application.Auth.Services
 
             if (account == null)
             {
-                // 3. TÀI KHOẢN CHƯA TỒN TẠI: Tự động đăng ký mới với vai trò là Driver (RoleId = 3)
+                // 3. TÀI KHOẢN CHƯA TỒN TẠI: Tự động đăng ký mới với vai trò là Driver (RoleId = 4)
                 account = new Account
                 {
                     Email = googleUser.Email,
@@ -101,7 +101,7 @@ namespace PBMS.Application.Auth.Services
                     Username = googleUser.Email.Split('@')[0] + "_" + Guid.NewGuid().ToString().Substring(0, 4),
                     FullName = googleUser.Name,
                     AccountStatus = "Active",
-                    RoleId = 3, // Vai trò Driver mặc định
+                    RoleId = 4, // Vai trò Driver mặc định
                     // Hash một GUID ngẫu nhiên làm mật khẩu để không thể dùng cách đăng nhập mật khẩu truyền thống
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())
                 };

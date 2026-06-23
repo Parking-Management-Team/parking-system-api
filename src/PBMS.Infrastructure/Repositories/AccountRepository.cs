@@ -37,6 +37,25 @@ namespace PBMS.Infrastructure.Repositories
         }
 
         /// <summary>
+        /// Tìm kiếm tài khoản dựa vào địa chỉ Email hoặc Username và nạp kèm thông tin vai trò (Role).
+        /// </summary>
+        public async Task<Account?> GetByUsernameOrEmailAsync(string identifier)
+        {
+            if (string.IsNullOrWhiteSpace(identifier))
+            {
+                return null;
+            }
+
+            var normalizedIdentifier = identifier.Trim().ToLower();
+
+            return await _dbSet
+                .Include(a => a.Role)
+                .FirstOrDefaultAsync(a => 
+                    (a.Email != null && a.Email.ToLower() == normalizedIdentifier) || 
+                    (a.Username != null && a.Username.ToLower() == normalizedIdentifier));
+        }
+
+        /// <summary>
         /// Lấy toàn bộ danh sách tài khoản kèm theo thông tin vai trò (Role).
         /// </summary>
         public async Task<IEnumerable<Account>> GetAllWithRolesAsync()
