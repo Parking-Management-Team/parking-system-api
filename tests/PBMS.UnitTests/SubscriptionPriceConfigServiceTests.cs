@@ -260,6 +260,6 @@ public class SubscriptionPriceConfigServiceTests
         var result = (await _service.GetAllConfigsAsync(1, null)).ToList();
 
         Assert.Single(result);
-        _repositoryMock.Received(1).GetAllConfigsWithDetailsAsync(1, null);
+        await _repositoryMock.Received(1).GetAllConfigsWithDetailsAsync(1, null);
     }
 }
