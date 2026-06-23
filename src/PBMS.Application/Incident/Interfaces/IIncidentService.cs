@@ -10,4 +10,6 @@ public interface IIncidentService
     Task<IncidentDto> GetIncidentByIdAsync(int id);
     Task<PagedResult<IncidentDto>> GetIncidentsPagedAsync(int pageIndex, int pageSize);
     Task<IEnumerable<IncidentDto>> GetIncidentsBySessionAsync(int sessionId);
+    Task<IncidentDto> UpdateIncidentAsync(int id, UpdateIncidentRequest request);
+    Task DeleteIncidentAsync(int id);
 }
