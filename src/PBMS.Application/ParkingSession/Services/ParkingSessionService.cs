@@ -111,12 +111,19 @@ public class ParkingSessionService : IParkingSessionService
 
         var vehicle = await _sessionRepository.GetVehicleByLicensePlateAsync(normalizedPlate);
 
-        if (request.BookingId.HasValue)
+        var effectiveBookingId = request.BookingId;
+        if (!effectiveBookingId.HasValue && !request.MonthlySubscriptionId.HasValue && !isMonthlyCard)
         {
-            booking = await _sessionRepository.GetBookingForCheckInAsync(request.BookingId.Value);
+            var plateBooking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, request.BuildingId);
+            effectiveBookingId = plateBooking?.Id;
+        }
+
+        if (effectiveBookingId.HasValue)
+        {
+            booking = await _sessionRepository.GetBookingForCheckInAsync(effectiveBookingId.Value);
             if (booking == null)
             {
-                return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Booking with ID {request.BookingId.Value} not found.");
+                return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Booking with ID {effectiveBookingId.Value} not found.");
             }
 
             if (!StatusEquals(booking.BookingStatus, "CONFIRMED"))
@@ -305,6 +312,8 @@ public class ParkingSessionService : IParkingSessionService
             SlotId = assignedSlot?.Id,
             BookingId = booking?.Id,
             MonthlySubscriptionId = effectiveMonthlySubscription?.Id,
+            Booking = booking,
+            MonthlySubscription = effectiveMonthlySubscription,
             CheckInTime = checkInTime,
             InStaffId = request.StaffId,
             LicensePlateIn = normalizedPlate,
@@ -317,10 +326,45 @@ public class ParkingSessionService : IParkingSessionService
             _cardRepository.Update(card);
         }
 
+        if (booking != null)
+        {
+            booking.BookingStatus = BookingStatus.CheckedIn;
+            _bookingRepository.Update(booking);
+        }
+
         await _sessionRepository.AddAsync(session);
         await _sessionRepository.SaveChangesAsync();
 
         return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Vehicle checked in successfully.");
+    }
+
+    public async Task<BaseResponse<CheckInBookingLookupDto>> GetCheckInBookingByLicensePlateAsync(string licensePlate, int? buildingId = null)
+    {
+        if (string.IsNullOrWhiteSpace(licensePlate))
+        {
+            return BaseResponse<CheckInBookingLookupDto>.Fail("INVALID_LICENSE_PLATE", "License plate is required.");
+        }
+
+        var normalizedPlate = Normalize(licensePlate);
+        var booking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, buildingId);
+        if (booking == null)
+        {
+            return BaseResponse<CheckInBookingLookupDto>.Fail("BOOKING_NOT_FOUND", "No confirmed booking found for this license plate.");
+        }
+
+        return BaseResponse<CheckInBookingLookupDto>.Ok(new CheckInBookingLookupDto
+        {
+            BookingId = booking.Id,
+            BookingCode = FormatBookingCode(booking.Id),
+            LicensePlate = booking.Vehicle.LicensePlate,
+            VehicleTypeId = booking.VehicleTypeId,
+            VehicleTypeName = booking.VehicleType?.TypeName,
+            BuildingId = booking.BuildingId,
+            BuildingName = booking.Building?.Name,
+            PlannedCheckinTime = booking.PlannedCheckinTime,
+            CheckinGraceUntil = booking.CheckinGraceUntil,
+            BookingStatus = booking.BookingStatus
+        });
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request)
@@ -581,6 +625,8 @@ public class ParkingSessionService : IParkingSessionService
     private static DateTime ToUtc(DateTime value) =>
         value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
+    private static string FormatBookingCode(int bookingId) => $"BK-{bookingId:D6}";
+
     private static ParkingSessionDto Map(ParkingSessionEntity session) => new()
     {
         Id = session.Id,
@@ -590,6 +636,7 @@ public class ParkingSessionService : IParkingSessionService
         ZoneId = session.ZoneId,
         SlotId = session.SlotId,
         BookingId = session.BookingId,
+        BookingCode = session.BookingId.HasValue ? FormatBookingCode(session.BookingId.Value) : null,
         MonthlySubscriptionId = session.MonthlySubscriptionId,
         InStaffId = session.InStaffId,
         OutStaffId = session.OutStaffId,

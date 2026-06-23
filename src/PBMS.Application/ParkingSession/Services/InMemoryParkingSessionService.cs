@@ -27,6 +27,13 @@ public class InMemoryParkingSessionService : IParkingSessionService
         return CreateAsync(createRequest);
     }
 
+    public Task<BaseResponse<CheckInBookingLookupDto>> GetCheckInBookingByLicensePlateAsync(string licensePlate, int? buildingId = null)
+    {
+        return Task.FromResult(BaseResponse<CheckInBookingLookupDto>.Fail(
+            "BOOKING_NOT_FOUND",
+            "No confirmed booking found for this license plate."));
+    }
+
     public Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request)
     {
         lock (_sync)
@@ -68,6 +75,7 @@ public class InMemoryParkingSessionService : IParkingSessionService
                 ZoneId = request.ZoneId,
                 SlotId = request.SlotId,
                 BookingId = request.BookingId,
+                BookingCode = request.BookingId.HasValue ? FormatBookingCode(request.BookingId.Value) : null,
                 MonthlySubscriptionId = request.MonthlySubscriptionId,
                 InStaffId = request.InStaffId,
                 CheckInTime = ToUtc(request.CheckInTime ?? DateTime.UtcNow),
@@ -211,4 +219,6 @@ public class InMemoryParkingSessionService : IParkingSessionService
 
     private static DateTime ToUtc(DateTime value) =>
         value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+
+    private static string FormatBookingCode(int bookingId) => $"BK-{bookingId:D6}";
 }

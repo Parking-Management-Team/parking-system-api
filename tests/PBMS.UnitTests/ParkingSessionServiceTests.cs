@@ -98,6 +98,84 @@ public class ParkingSessionServiceTests
     }
 
     [Fact]
+    public async Task GetCheckInBookingByLicensePlateAsync_ShouldReturnBookingCode_WhenConfirmedBookingExists()
+    {
+        // Arrange
+        var booking = new Booking
+        {
+            Id = 42,
+            VehicleId = 200,
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            PlannedCheckinTime = DateTime.UtcNow.AddMinutes(-10),
+            CheckinGraceUntil = DateTime.UtcNow.AddMinutes(20),
+            BookingStatus = BookingStatus.Confirmed,
+            Vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 },
+            VehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName },
+            Building = new Building { Id = 10, Name = "Building 10" }
+        };
+
+        _sessionRepositoryMock.GetActiveBookingForCheckInByLicensePlateAsync("29A-12345", 10).Returns(booking);
+
+        // Act
+        var result = await _service.GetCheckInBookingByLicensePlateAsync("29a-12345", 10);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.Equal(42, result.Data.BookingId);
+        Assert.Equal("BK-000042", result.Data.BookingCode);
+        Assert.Equal("29A-12345", result.Data.LicensePlate);
+    }
+
+    [Fact]
+    public async Task CheckInAsync_ShouldAttachBooking_WhenLicensePlateHasConfirmedBookingAndBookingIdIsNotProvided()
+    {
+        // Arrange
+        var request = new CheckInRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "CARD-1",
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            StaffId = 5
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
+        var card = new Card { Id = 100, CardCode = "CARD-1", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var booking = new Booking
+        {
+            Id = 42,
+            VehicleId = 200,
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            CheckinGraceUntil = DateTime.UtcNow.AddMinutes(20),
+            BookingStatus = BookingStatus.Confirmed,
+            Vehicle = vehicle
+        };
+        var zone = new Zone { Id = 9, Code = "G-ZONE", Floor = new Floor { BuildingId = 10 } };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-1").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetActiveBookingForCheckInByLicensePlateAsync("29A-12345", 10).Returns(booking);
+        _sessionRepositoryMock.GetBookingForCheckInAsync(42).Returns(booking);
+        _sessionRepositoryMock.HasParkingSessionForBookingAsync(42).Returns(false);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+
+        // Act
+        var result = await _service.CheckInAsync(request);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.Equal(42, result.Data.BookingId);
+        Assert.Equal("BK-000042", result.Data.BookingCode);
+    }
+
+    [Fact]
     public async Task StartCheckoutAsync_ShouldCompleteImmediately_WhenMonthlySubscriptionIsValid()
     {
         // Arrange
