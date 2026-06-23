@@ -6,6 +6,7 @@ namespace PBMS.Application.ParkingSession.Interfaces;
 public interface IParkingSessionService
 {
     Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request);
+    Task<BaseResponse<CheckInBookingLookupDto>> GetCheckInBookingByLicensePlateAsync(string licensePlate, int? buildingId = null);
     Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request);
     Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetAllAsync();
     Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync();

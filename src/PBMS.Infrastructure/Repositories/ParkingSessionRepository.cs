@@ -44,7 +44,35 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
     {
         return await _context.Bookings
             .Include(b => b.Vehicle)
+            .Include(b => b.VehicleType)
+            .Include(b => b.Building)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
+    }
+
+    public async Task<Booking?> GetActiveBookingForCheckInByLicensePlateAsync(string licensePlate, int? buildingId = null)
+    {
+        var normalized = licensePlate.Trim().ToUpperInvariant();
+        var now = DateTime.UtcNow;
+
+        var query = _context.Bookings
+            .Include(b => b.Vehicle)
+            .Include(b => b.VehicleType)
+            .Include(b => b.Building)
+            .Where(b =>
+                b.Vehicle.LicensePlate.ToUpper() == normalized &&
+                b.BookingStatus.ToUpper() == "CONFIRMED" &&
+                b.CheckinGraceUntil >= now &&
+                !_context.ParkingSessions.Any(ps => ps.BookingId == b.Id));
+
+        if (buildingId.HasValue)
+        {
+            query = query.Where(b => b.BuildingId == buildingId.Value);
+        }
+
+        return await query
+            .OrderBy(b => b.PlannedCheckinTime)
+            .ThenBy(b => b.Id)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<MonthlySubscription?> GetMonthlySubscriptionForCheckInAsync(int monthlySubscriptionId)

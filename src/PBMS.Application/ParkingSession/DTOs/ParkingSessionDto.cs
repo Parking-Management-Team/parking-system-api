@@ -9,6 +9,7 @@ public class ParkingSessionDto
     public int? ZoneId { get; set; }
     public int? SlotId { get; set; }
     public int? BookingId { get; set; }
+    public string? BookingCode { get; set; }
     public int? MonthlySubscriptionId { get; set; }
     public int? InStaffId { get; set; }
     public int? OutStaffId { get; set; }
