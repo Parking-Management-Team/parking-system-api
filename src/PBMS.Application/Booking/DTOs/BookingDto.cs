@@ -41,6 +41,9 @@ public class BookingDto
     /// <summary>Thời gian dự kiến vào bãi.</summary>
     public DateTime PlannedCheckinTime { get; set; }
 
+    /// <summary>Thời gian dự kiến ra bãi.</summary>
+    public DateTime PlannedCheckoutTime { get; set; }
+
     /// <summary>
     /// Số tiền đặt cọc (bằng BasePrice của PricingWindow tại giờ check-in dự kiến).
     /// </summary>

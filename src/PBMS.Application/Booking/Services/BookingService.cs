@@ -1,3 +1,4 @@
+using System;
 using PBMS.Application.Booking.DTOs;
 using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Contracts;
@@ -29,10 +30,11 @@ public class BookingService : IBookingService
     private readonly IUnitOfWork _unitOfWork;
 
     // Hằng số nghiệp vụ
-    private const int MinBookingHours = 1;
-    private const int MaxBookingHours = 8;
+    private const int MinBookingMinutes = 15;
     private const int PaymentDeadlineMinutes = 15;
     private const int CheckinGracePeriodMinutes = 30;
+
+
 
     /// <summary>
     /// Constructor nhận các dependency qua Dependency Injection.
@@ -75,18 +77,26 @@ public class BookingService : IBookingService
     public async Task<BookingDto> CreateBookingAsync(CreateBookingRequest request)
     {
         var now = DateTime.UtcNow;
+        now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
+        var checkinTime = request.PlannedCheckinTime.ToUniversalTime();
+        var checkoutTime = request.PlannedCheckoutTime.ToUniversalTime();
 
         // Bước 1: Validate thời gian đặt chỗ
-        // Phải từ 1h đến 8h tính từ thời điểm hiện tại
-        var minAllowed = now.AddHours(MinBookingHours);
-        var maxAllowed = now.AddHours(MaxBookingHours);
+        if (checkinTime < now.AddMinutes(MinBookingMinutes))
+        {
+            var minAllowedLocal = now.AddMinutes(MinBookingMinutes).AddHours(7);
+            throw new DomainException(
+                errorCode: "INVALID_BOOKING_TIME",
+                message: $"Thời gian bắt đầu đặt chỗ phải cách thời điểm hiện tại tối thiểu {MinBookingMinutes} phút. " +
+                         $"Thời gian tối thiểu cho phép: [{minAllowedLocal:yyyy-MM-dd HH:mm} (Giờ Việt Nam)]."
+            );
+        }
 
-        if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
+        if (checkoutTime < checkinTime.AddHours(4))
         {
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
-                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingHours} đến {MaxBookingHours} tiếng. " +
-                         $"Thời gian hợp lệ: [{minAllowed:yyyy-MM-dd HH:mm} UTC] đến [{maxAllowed:yyyy-MM-dd HH:mm} UTC]."
+                message: "Thời gian kết thúc đặt chỗ phải cách thời gian bắt đầu tối thiểu 4 tiếng."
             );
         }
 
@@ -141,7 +151,7 @@ public class BookingService : IBookingService
         // Bước 5: Tính Deposit Fee
         // Tra cứu PricingPolicy Active cho loại xe tại thời điểm check-in dự kiến
         var pricingPolicy = await _pricingPolicyRepository.GetActivePolicyAsync(
-            vehicle.VehicleTypeId, request.PlannedCheckinTime);
+            vehicle.VehicleTypeId, checkinTime);
 
         if (pricingPolicy == null)
         {
@@ -152,7 +162,7 @@ public class BookingService : IBookingService
         }
 
         // Tìm PricingWindow tương ứng với giờ check-in dự kiến
-        var checkInTimeOfDay = request.PlannedCheckinTime.TimeOfDay;
+        var checkInTimeOfDay = checkinTime.TimeOfDay;
         var applicableWindow = pricingPolicy.PricingWindows
             .FirstOrDefault(w => IsTimeInWindow(checkInTimeOfDay, w.StartTime, w.EndTime));
 
@@ -179,12 +189,12 @@ public class BookingService : IBookingService
             VehicleId = vehicle.Id,
             VehicleTypeId = vehicle.VehicleTypeId,
             BuildingId = request.BuildingId,
-            PlannedCheckinTime = request.PlannedCheckinTime,
-            PlannedCheckoutTime = request.PlannedCheckinTime.AddHours(2), // Mặc định dự kiến 2h
+            PlannedCheckinTime = checkinTime,
+            PlannedCheckoutTime = checkoutTime, // Mặc định dự kiến 2h
             DepositAmount = depositAmount,
             BookingStatus = BookingStatus.Pending,
             PaymentDeadline = now.AddMinutes(PaymentDeadlineMinutes),
-            CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes),
+            CheckinGraceUntil = checkinTime.AddMinutes(CheckinGracePeriodMinutes),
         };
 
         await _bookingRepository.AddAsync(booking);
@@ -286,24 +296,35 @@ public class BookingService : IBookingService
         }
 
         var now = DateTime.UtcNow;
-        var minAllowed = now.AddHours(MinBookingHours);
-        var maxAllowed = now.AddHours(MaxBookingHours);
+        now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
+        var checkinTime = request.PlannedCheckinTime.ToUniversalTime();
+        var checkoutTime = request.PlannedCheckoutTime.ToUniversalTime();
 
-        if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
+        if (checkinTime < now.AddMinutes(MinBookingMinutes))
+        {
+            var minAllowedLocal = now.AddMinutes(MinBookingMinutes).AddHours(7);
+            throw new DomainException(
+                errorCode: "INVALID_BOOKING_TIME",
+                message: $"Thời gian bắt đầu đặt chỗ phải cách thời điểm hiện tại tối thiểu {MinBookingMinutes} phút. " +
+                         $"Thời gian tối thiểu cho phép: [{minAllowedLocal:yyyy-MM-dd HH:mm} (Giờ Việt Nam)]."
+            );
+        }
+
+        if (checkoutTime < checkinTime.AddHours(4))
         {
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
-                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingHours} đến {MaxBookingHours} tiếng."
+                message: "Thời gian kết thúc đặt chỗ phải cách thời gian bắt đầu tối thiểu 4 tiếng."
             );
         }
 
         // Tính lại Deposit Fee theo giờ mới
         var pricingPolicy = await _pricingPolicyRepository.GetActivePolicyAsync(
-            booking.VehicleTypeId, request.PlannedCheckinTime);
+            booking.VehicleTypeId, checkinTime);
 
         if (pricingPolicy != null)
         {
-            var checkInTimeOfDay = request.PlannedCheckinTime.TimeOfDay;
+            var checkInTimeOfDay = checkinTime.TimeOfDay;
             var applicableWindow = pricingPolicy.PricingWindows
                 .FirstOrDefault(w => IsTimeInWindow(checkInTimeOfDay, w.StartTime, w.EndTime))
                 ?? pricingPolicy.PricingWindows.FirstOrDefault();
@@ -314,9 +335,9 @@ public class BookingService : IBookingService
             }
         }
 
-        booking.PlannedCheckinTime = request.PlannedCheckinTime;
-        booking.PlannedCheckoutTime = request.PlannedCheckinTime.AddHours(2);
-        booking.CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes);
+        booking.PlannedCheckinTime = checkinTime;
+        booking.PlannedCheckoutTime = checkoutTime;
+        booking.CheckinGraceUntil = checkinTime.AddMinutes(CheckinGracePeriodMinutes);
 
         _bookingRepository.Update(booking);
         await _unitOfWork.SaveChangesAsync();
@@ -466,6 +487,7 @@ public class BookingService : IBookingService
             BuildingId = booking.BuildingId,
             BuildingName = buildingName,
             PlannedCheckinTime = booking.PlannedCheckinTime,
+            PlannedCheckoutTime = booking.PlannedCheckoutTime,
             DepositAmount = booking.DepositAmount,
             BookingStatus = booking.BookingStatus,
             PaymentDeadline = booking.PaymentDeadline,

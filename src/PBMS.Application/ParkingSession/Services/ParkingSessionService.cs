@@ -26,6 +26,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IParkingSlotRepository _parkingSlotRepository;
     private readonly IIncidentRepository _incidentRepository;
+    private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
 
     public ParkingSessionService(
         IParkingSessionRepository sessionRepository,
@@ -36,7 +37,8 @@ public class ParkingSessionService : IParkingSessionService
         ICardRepository cardRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
         IParkingSlotRepository parkingSlotRepository,
-        IIncidentRepository incidentRepository)
+        IIncidentRepository incidentRepository,
+        IRepository<PBMS.Domain.Entities.Payment> paymentRepository)
     {
         _sessionRepository = sessionRepository;
         _vehicleRepository = vehicleRepository;
@@ -47,6 +49,7 @@ public class ParkingSessionService : IParkingSessionService
         _subscriptionRepository = subscriptionRepository;
         _parkingSlotRepository = parkingSlotRepository;
         _incidentRepository = incidentRepository;
+        _paymentRepository = paymentRepository;
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
@@ -557,7 +560,70 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be completed.");
         }
 
-        session.CheckOutTime ??= DateTime.UtcNow;
+        var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
+
+        // --- Bắt đầu kiểm tra số dư chưa thanh toán ---
+        var vehicle = await _vehicleRepository.GetByIdAsync(session.VehicleId);
+        if (vehicle == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_NOT_FOUND", "Vehicle info not found.");
+        }
+
+        var calculationStartTime = session.CheckInTime;
+        if (session.MonthlySubscriptionId.HasValue)
+        {
+            var subscription = await _subscriptionRepository.GetByIdAsync(session.MonthlySubscriptionId.Value);
+            if (subscription != null && subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value < checkOutTime)
+            {
+                calculationStartTime = subscription.ExpiredAt.Value;
+            }
+        }
+
+        var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime);
+        decimal finalFee = feeResult.TotalFee;
+        decimal bookingOvertimePenalty = 0;
+
+        if (session.BookingId.HasValue)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            if (booking != null)
+            {
+                finalFee = Math.Max(0, finalFee - booking.DepositAmount);
+                if (checkOutTime > booking.PlannedCheckoutTime)
+                {
+                    bookingOvertimePenalty = 50000;
+                }
+            }
+        }
+
+        decimal totalPenaltyFee = 0;
+        var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
+        if (sessionIncidents != null)
+        {
+            var openIncidents = sessionIncidents.Where(i => i.Status == IncidentStatus.Open);
+            totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
+        }
+
+        decimal totalAmountDue = finalFee + totalPenaltyFee + bookingOvertimePenalty;
+
+        if (totalAmountDue > 0)
+        {
+            var payments = await _paymentRepository.FindAsync(p => p.SessionId == session.Id && p.PaymentStatus == "PAID");
+            decimal totalPaid = 0;
+            foreach (var p in payments)
+            {
+                totalPaid += p.Amount;
+            }
+
+            // Cho phép sai số nhỏ 1000đ do làm tròn tiền mặt
+            if (totalPaid < totalAmountDue - 1000)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("UNPAID_BALANCE", $"This session has an unpaid balance of {(totalAmountDue - totalPaid):N0} VND. Please complete payment before check-out.");
+            }
+        }
+        // --- Kết thúc kiểm tra số dư ---
+
+        session.CheckOutTime = checkOutTime;
         session.LicensePlateOut ??= session.LicensePlateIn;
         session.SessionStatus = CompletedStatus;
 
@@ -581,7 +647,6 @@ public class ParkingSessionService : IParkingSessionService
         // Cập nhật trạng thái Booking nếu có (đã xử lý CheckedIn tại Check-in)
 
         // Tự động giải quyết sự cố "Mất thẻ" (Lost Card) nếu có
-        var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(id);
         if (sessionIncidents != null)
         {
             var lostCardIncidents = sessionIncidents.Where(i => 

@@ -26,6 +26,7 @@ public class ParkingSessionServiceTests
     private readonly IMonthlySubscriptionRepository _subscriptionRepositoryMock;
     private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
     private readonly IIncidentRepository _incidentRepositoryMock;
+    private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepositoryMock;
     private readonly ParkingSessionService _service;
 
     public ParkingSessionServiceTests()
@@ -39,6 +40,7 @@ public class ParkingSessionServiceTests
         _subscriptionRepositoryMock = Substitute.For<IMonthlySubscriptionRepository>();
         _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _incidentRepositoryMock = Substitute.For<IIncidentRepository>();
+        _paymentRepositoryMock = Substitute.For<IRepository<PBMS.Domain.Entities.Payment>>();
 
         _service = new ParkingSessionService(
             _sessionRepositoryMock,
@@ -49,7 +51,8 @@ public class ParkingSessionServiceTests
             _cardRepositoryMock,
             _subscriptionRepositoryMock,
             _parkingSlotRepositoryMock,
-            _incidentRepositoryMock
+            _incidentRepositoryMock,
+            _paymentRepositoryMock
         );
     }
 

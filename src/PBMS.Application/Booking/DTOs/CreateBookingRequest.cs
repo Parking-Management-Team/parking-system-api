@@ -30,9 +30,16 @@ public class CreateBookingRequest
     public int BuildingId { get; set; }
 
     /// <summary>
-    /// Thời gian dự kiến vào bãi (UTC).
-    /// Phải từ 1 đến 8 tiếng tính từ thời điểm gửi request.
+    /// Thời gian dự kiến vào bãi (Giờ Việt Nam).
+    /// Phải cách hiện tại tối thiểu 15 phút.
     /// </summary>
     [Required]
     public DateTime PlannedCheckinTime { get; set; }
+
+    /// <summary>
+    /// Thời gian dự kiến ra bãi (Giờ Việt Nam).
+    /// Phải cách thời gian vào bãi tối thiểu 4 tiếng.
+    /// </summary>
+    [Required]
+    public DateTime PlannedCheckoutTime { get; set; }
 }

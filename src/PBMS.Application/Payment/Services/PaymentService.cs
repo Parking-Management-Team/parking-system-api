@@ -112,6 +112,7 @@ public class PaymentService : IPaymentService
             var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime);
 
             decimal finalFee = feeResult.TotalFee;
+            decimal bookingOvertimePenalty = 0;
             // Nếu lượt gửi xe có liên kết với đặt chỗ, thực hiện khấu trừ tiền đặt cọc vào tổng tiền thanh toán
             if (session.BookingId.HasValue)
             {
@@ -119,6 +120,12 @@ public class PaymentService : IPaymentService
                 if (booking != null)
                 {
                     finalFee = Math.Max(0, finalFee - booking.DepositAmount);
+                    
+                    // Nếu thời gian checkout thực tế trễ hơn thời gian checkout dự kiến của Booking
+                    if (checkOutTime > booking.PlannedCheckoutTime)
+                    {
+                        bookingOvertimePenalty = 50000;
+                    }
                 }
             }
 
@@ -131,11 +138,11 @@ public class PaymentService : IPaymentService
                 totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
             }
 
-            originalAmount = finalFee + totalPenaltyFee;
+            originalAmount = finalFee + totalPenaltyFee + bookingOvertimePenalty;
             description = $"Parking fee payment for session {session.Id}";
-            if (totalPenaltyFee > 0)
+            if (totalPenaltyFee > 0 || bookingOvertimePenalty > 0)
             {
-                description += $" (Includes incident penalty fee of {totalPenaltyFee:N0} VND)";
+                description += $" (Includes penalty fee of {(totalPenaltyFee + bookingOvertimePenalty):N0} VND)";
             }
 
         }
