@@ -14,6 +14,8 @@ using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
 using BuildingEntity = PBMS.Domain.Entities.Building;
 using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
 
+using PBMS.Application.Pricing.Interfaces;
+
 namespace PBMS.UnitTests;
 
 public class BookingServiceTests
@@ -26,6 +28,7 @@ public class BookingServiceTests
     private readonly IPricingPolicyRepository _pricingPolicyRepositoryMock;
     private readonly IRepository<ParkingSessionEntity> _sessionRepositoryMock;
     private readonly IUnitOfWork _unitOfWorkMock;
+    private readonly IFeeCalculationService _feeCalculationServiceMock;
     private readonly BookingService _service;
 
     public BookingServiceTests()
@@ -38,6 +41,7 @@ public class BookingServiceTests
         _pricingPolicyRepositoryMock = Substitute.For<IPricingPolicyRepository>();
         _sessionRepositoryMock = Substitute.For<IRepository<ParkingSessionEntity>>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
+        _feeCalculationServiceMock = Substitute.For<IFeeCalculationService>();
 
         _service = new BookingService(
             _bookingRepositoryMock,
@@ -47,7 +51,8 @@ public class BookingServiceTests
             _buildingDetailRepositoryMock,
             _pricingPolicyRepositoryMock,
             _sessionRepositoryMock,
-            _unitOfWorkMock
+            _unitOfWorkMock,
+            _feeCalculationServiceMock
         );
     }
 

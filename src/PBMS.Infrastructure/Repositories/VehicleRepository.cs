@@ -21,6 +21,7 @@ public class VehicleRepository : IVehicleRepository
     {
         return await _context.Vehicles
             .Include(v => v.VehicleType)
+            .Where(v => v.VehicleStatus != Vehicle.StatusArchived)
             .OrderBy(v => v.LicensePlate)
             .ToListAsync();
     }
@@ -29,7 +30,7 @@ public class VehicleRepository : IVehicleRepository
     {
         return await _context.Vehicles
             .Include(v => v.VehicleType)
-            .Where(v => v.AccountId == accountId)
+            .Where(v => v.AccountId == accountId && v.VehicleStatus != Vehicle.StatusArchived)
             .OrderBy(v => v.LicensePlate)
             .ToListAsync();
     }

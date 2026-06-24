@@ -1,6 +1,7 @@
 using PBMS.Application.Booking.DTOs;
 using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Contracts;
+using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
 using BookingEntity = PBMS.Domain.Entities.Booking;
@@ -27,6 +28,7 @@ public class BookingService : IBookingService
     private readonly IPricingPolicyRepository _pricingPolicyRepository;
     private readonly IRepository<ParkingSessionEntity> _sessionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFeeCalculationService _feeCalculationService;
 
     // Hằng số nghiệp vụ
     private const int MinBookingHours = 1;
@@ -45,7 +47,8 @@ public class BookingService : IBookingService
         IBuildingRepository buildingDetailRepository,
         IPricingPolicyRepository pricingPolicyRepository,
         IRepository<ParkingSessionEntity> sessionRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IFeeCalculationService feeCalculationService)
     {
         _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
         _vehicleRepository = vehicleRepository ?? throw new ArgumentNullException(nameof(vehicleRepository));
@@ -55,6 +58,7 @@ public class BookingService : IBookingService
         _pricingPolicyRepository = pricingPolicyRepository ?? throw new ArgumentNullException(nameof(pricingPolicyRepository));
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _feeCalculationService = feeCalculationService ?? throw new ArgumentNullException(nameof(feeCalculationService));
     }
 
     // -----------------------------------------------------------------------
@@ -74,6 +78,8 @@ public class BookingService : IBookingService
     /// </summary>
     public async Task<BookingDto> CreateBookingAsync(CreateBookingRequest request)
     {
+        var plannedCheckin = ToUtc(request.PlannedCheckinTime);
+        var plannedCheckout = ToUtc(request.PlannedCheckoutTime);
         var now = DateTime.UtcNow;
 
         // Bước 1: Validate thời gian đặt chỗ
@@ -81,12 +87,15 @@ public class BookingService : IBookingService
         var minAllowed = now.AddHours(MinBookingHours);
         var maxAllowed = now.AddHours(MaxBookingHours);
 
-        if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
+        if (plannedCheckin < minAllowed || plannedCheckin > maxAllowed)
         {
+            // Display times in Vietnam timezone (UTC+7) for user-friendly error message
+            var minVn = minAllowed.AddHours(7);
+            var maxVn = maxAllowed.AddHours(7);
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
                 message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingHours} đến {MaxBookingHours} tiếng. " +
-                         $"Thời gian hợp lệ: [{minAllowed:yyyy-MM-dd HH:mm} UTC] đến [{maxAllowed:yyyy-MM-dd HH:mm} UTC]."
+                         $"Thời gian hợp lệ: [{minVn:yyyy-MM-dd HH:mm}] đến [{maxVn:yyyy-MM-dd HH:mm}] (Giờ VN)."
             );
         }
 
@@ -138,39 +147,10 @@ public class BookingService : IBookingService
             );
         }
 
-        // Bước 5: Tính Deposit Fee
-        // Tra cứu PricingPolicy Active cho loại xe tại thời điểm check-in dự kiến
-        var pricingPolicy = await _pricingPolicyRepository.GetActivePolicyAsync(
-            vehicle.VehicleTypeId, request.PlannedCheckinTime);
-
-        if (pricingPolicy == null)
-        {
-            throw new DomainException(
-                errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: "Không tìm thấy chính sách giá phù hợp cho loại xe này tại thời điểm đặt chỗ."
-            );
-        }
-
-        // Tìm PricingWindow tương ứng với giờ check-in dự kiến
-        var checkInTimeOfDay = request.PlannedCheckinTime.TimeOfDay;
-        var applicableWindow = pricingPolicy.PricingWindows
-            .FirstOrDefault(w => IsTimeInWindow(checkInTimeOfDay, w.StartTime, w.EndTime));
-
-        if (applicableWindow == null)
-        {
-            // Fallback: lấy window đầu tiên nếu không tìm được window khớp
-            applicableWindow = pricingPolicy.PricingWindows.FirstOrDefault();
-        }
-
-        if (applicableWindow == null)
-        {
-            throw new DomainException(
-                errorCode: "PRICING_WINDOW_NOT_FOUND",
-                message: "Không tìm thấy khung giờ tính giá phù hợp."
-            );
-        }
-
-        decimal depositAmount = applicableWindow.BasePrice;
+        // Bước 5: Tính Deposit Fee (bằng đúng tổng số tiền tạm tính cho toàn bộ thời gian đặt chỗ)
+        var feeResult = await _feeCalculationService.CalculateFeeAsync(
+            vehicle.VehicleTypeId, plannedCheckin, plannedCheckout);
+        decimal depositAmount = feeResult.TotalFee;
 
         // Bước 6: Tạo entity Booking
         var booking = new BookingEntity
@@ -179,12 +159,12 @@ public class BookingService : IBookingService
             VehicleId = vehicle.Id,
             VehicleTypeId = vehicle.VehicleTypeId,
             BuildingId = request.BuildingId,
-            PlannedCheckinTime = request.PlannedCheckinTime,
-            PlannedCheckoutTime = request.PlannedCheckinTime.AddHours(2), // Mặc định dự kiến 2h
+            PlannedCheckinTime = plannedCheckin,
+            PlannedCheckoutTime = plannedCheckout,
             DepositAmount = depositAmount,
             BookingStatus = BookingStatus.Pending,
-            PaymentDeadline = now.AddMinutes(PaymentDeadlineMinutes),
-            CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes),
+            PaymentDeadline = now.AddMinutes(PaymentDeadlineMinutes), // UTC
+            CheckinGraceUntil = plannedCheckin.AddMinutes(CheckinGracePeriodMinutes),
         };
 
         await _bookingRepository.AddAsync(booking);
@@ -266,6 +246,8 @@ public class BookingService : IBookingService
     /// </summary>
     public async Task<BookingDto> UpdateBookingAsync(int id, UpdateBookingRequest request)
     {
+        var plannedCheckin = ToUtc(request.PlannedCheckinTime);
+        var plannedCheckout = ToUtc(request.PlannedCheckoutTime);
         var booking = await _bookingRepository.GetByIdWithDetailsAsync(id);
         if (booking == null)
         {
@@ -289,7 +271,7 @@ public class BookingService : IBookingService
         var minAllowed = now.AddHours(MinBookingHours);
         var maxAllowed = now.AddHours(MaxBookingHours);
 
-        if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
+        if (plannedCheckin < minAllowed || plannedCheckin > maxAllowed)
         {
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
@@ -298,25 +280,13 @@ public class BookingService : IBookingService
         }
 
         // Tính lại Deposit Fee theo giờ mới
-        var pricingPolicy = await _pricingPolicyRepository.GetActivePolicyAsync(
-            booking.VehicleTypeId, request.PlannedCheckinTime);
+        var feeResult = await _feeCalculationService.CalculateFeeAsync(
+            booking.VehicleTypeId, plannedCheckin, plannedCheckout);
+        booking.DepositAmount = feeResult.TotalFee;
 
-        if (pricingPolicy != null)
-        {
-            var checkInTimeOfDay = request.PlannedCheckinTime.TimeOfDay;
-            var applicableWindow = pricingPolicy.PricingWindows
-                .FirstOrDefault(w => IsTimeInWindow(checkInTimeOfDay, w.StartTime, w.EndTime))
-                ?? pricingPolicy.PricingWindows.FirstOrDefault();
-
-            if (applicableWindow != null)
-            {
-                booking.DepositAmount = applicableWindow.BasePrice;
-            }
-        }
-
-        booking.PlannedCheckinTime = request.PlannedCheckinTime;
-        booking.PlannedCheckoutTime = request.PlannedCheckinTime.AddHours(2);
-        booking.CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes);
+        booking.PlannedCheckinTime = plannedCheckin;
+        booking.PlannedCheckoutTime = plannedCheckout;
+        booking.CheckinGraceUntil = plannedCheckin.AddMinutes(CheckinGracePeriodMinutes);
 
         _bookingRepository.Update(booking);
         await _unitOfWork.SaveChangesAsync();
@@ -476,4 +446,7 @@ public class BookingService : IBookingService
             CreatedAt = booking.CreatedAt,
         };
     }
+
+    private static DateTime ToUtc(DateTime value) =>
+        value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 }
