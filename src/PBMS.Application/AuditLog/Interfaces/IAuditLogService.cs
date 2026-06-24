@@ -13,4 +13,6 @@ public interface IAuditLogService
         string? targetTable = null);
 
     Task<AuditLogDto?> GetAuditLogByIdAsync(int id);
+
+    Task LogAsync(int? accountId, string action, string? targetTable, int? targetId, string? description);
 }

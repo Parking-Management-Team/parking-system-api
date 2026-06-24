@@ -66,4 +66,18 @@ public class AuditLogService : IAuditLogService
 
         return _mapper.Map<AuditLogDto>(auditLog);
     }
+
+    public async Task LogAsync(int? accountId, string action, string? targetTable, int? targetId, string? description)
+    {
+        var log = new PBMS.Domain.Entities.AuditLog
+        {
+            AccountId = accountId,
+            Action = action,
+            TargetTable = targetTable,
+            TargetId = targetId,
+            Description = description
+        };
+
+        await _auditLogRepository.AddAsync(log);
+    }
 }
