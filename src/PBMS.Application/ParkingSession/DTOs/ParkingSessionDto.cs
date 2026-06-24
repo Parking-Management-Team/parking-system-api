@@ -21,4 +21,8 @@ public class ParkingSessionDto
     public string? CardCode { get; set; }
     public string? ZoneCode { get; set; }
     public string? SlotCode { get; set; }
+
+    public decimal? TotalFee { get; set; }
+    public decimal? PenaltyFee { get; set; }
+    public decimal? AmountDue { get; set; }
 }

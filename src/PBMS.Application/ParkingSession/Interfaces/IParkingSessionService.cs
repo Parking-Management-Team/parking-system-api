@@ -15,4 +15,5 @@ public interface IParkingSessionService
     Task<BaseResponse<ParkingSessionDto>> StartCheckoutAsync(int id, StartCheckoutRequest request);
     Task<BaseResponse<ParkingSessionDto>> CompleteAsync(int id);
     Task<BaseResponse<ParkingSessionDto>> RollbackCheckoutAsync(int id);
+    Task SendOvertimeWarningsAsync();
 }

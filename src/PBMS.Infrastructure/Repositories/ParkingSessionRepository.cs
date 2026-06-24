@@ -136,4 +136,30 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .ThenBy(s => s.Id)
             .FirstOrDefaultAsync();
     }
+
+    public async Task<ParkingSessionEntity?> GetSessionWithDetailsAsync(int id)
+    {
+        return await _context.ParkingSessions
+            .Include(s => s.Vehicle)
+            .Include(s => s.Building)
+            .FirstOrDefaultAsync(s => s.Id == id);
+    }
+
+    public async Task<bool> HasPaidPaymentForSessionAsync(int sessionId)
+    {
+        return await _context.Payments
+            .AnyAsync(p => p.SessionId == sessionId && p.PaymentStatus == "PAID");
+    }
+
+    public async Task<IEnumerable<ParkingSessionEntity>> GetOvertimeWarningSessionsAsync(DateTime warningTimeLimit, DateTime now)
+    {
+        return await _context.ParkingSessions
+            .Include(s => s.Booking)
+            .Include(s => s.Vehicle)
+            .Where(s => s.SessionStatus == "ACTIVE" &&
+                        s.BookingId != null &&
+                        s.Booking!.PlannedCheckoutTime <= warningTimeLimit &&
+                        s.Booking!.PlannedCheckoutTime > now)
+            .ToListAsync();
+    }
 }
