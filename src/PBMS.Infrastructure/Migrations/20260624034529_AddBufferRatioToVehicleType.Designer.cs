@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260624034529_AddBufferRatioToVehicleType")]
+    partial class AddBufferRatioToVehicleType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -303,10 +306,6 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<int?>("SlotId")
-                        .HasColumnType("integer")
-                        .HasColumnName("slot_id");
-
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer")
                         .HasColumnName("vehicle_id");
@@ -319,17 +318,7 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.HasIndex("BookingStatus");
-
                     b.HasIndex("BuildingId");
-
-                    b.HasIndex("CheckinGraceUntil");
-
-                    b.HasIndex("PaymentDeadline");
-
-                    b.HasIndex("PlannedCheckoutTime");
-
-                    b.HasIndex("SlotId");
 
                     b.HasIndex("VehicleId");
 
@@ -877,9 +866,6 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasIndex("MonthlySubscriptionId");
 
                     b.HasIndex("OutStaffId");
-
-                    b.HasIndex("SessionStatus")
-                        .HasDatabaseName("IX_parking_session_status");
 
                     b.HasIndex("SlotId")
                         .IsUnique()
@@ -1724,11 +1710,6 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PBMS.Domain.Entities.ParkingSlot", "ParkingSlot")
-                        .WithMany("Bookings")
-                        .HasForeignKey("SlotId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
                         .WithMany("Bookings")
                         .HasForeignKey("VehicleId")
@@ -1744,8 +1725,6 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Account");
 
                     b.Navigation("Building");
-
-                    b.Navigation("ParkingSlot");
 
                     b.Navigation("Vehicle");
 
@@ -2171,8 +2150,6 @@ namespace PBMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("MonthlySubscriptions");
 
                     b.Navigation("ParkingSessions");

@@ -57,6 +57,13 @@ public class ParkingSlotService : IParkingSlotService
             throw new ValidationException("Parking slots can only be created manually for Car zones.");
         }
 
+        // Check capacity limit
+        var currentSlots = await _slotRepository.FindAsync(s => s.ZoneId == request.ZoneId);
+        if (currentSlots.Count() >= zone.Capacity)
+        {
+            throw new ValidationException($"Cannot create more slots. Zone '{zone.Name}' has reached its maximum capacity of {zone.Capacity} slots.");
+        }
+
         // 3. Kiểm tra SlotCode duy nhất
         var codeExists = await _slotRepository.SlotCodeExistsAsync(request.Code);
         if (codeExists)
@@ -166,6 +173,18 @@ public class ParkingSlotService : IParkingSlotService
         if (vehicleType == null)
         {
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
+        }
+
+        // Kiểm tra Zone tồn tại và VehicleTypeId khớp với VehicleTypeId của Zone
+        var zone = await _zoneRepository.GetByIdAsync(slot.ZoneId);
+        if (zone == null)
+        {
+            throw new NotFoundException("Zone", slot.ZoneId);
+        }
+
+        if (zone.VehicleTypeId != request.VehicleTypeId)
+        {
+            throw new ValidationException("The specified VehicleTypeId does not match the Zone's VehicleTypeId.");
         }
 
         // Kiểm tra SlotCode mới nếu thay đổi
@@ -285,6 +304,10 @@ public class ParkingSlotService : IParkingSlotService
 
     private static bool IsCarVehicleType(VehicleType vehicleType)
     {
+        if (string.IsNullOrWhiteSpace(vehicleType.TypeName))
+        {
+            return false;
+        }
         return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);

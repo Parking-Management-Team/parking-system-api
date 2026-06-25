@@ -188,11 +188,18 @@ public class ZoneService : IZoneService
             throw new NotFoundException("Zone", id);
         }
 
-        // Kiểm tra loại xe tồn tại
+        // Kiểm tra loại xe mới tồn tại
         var vehicleType = await _vehicleTypeRepository.GetByIdAsync(request.VehicleTypeId);
         if (vehicleType == null)
         {
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
+        }
+
+        // Lấy loại xe cũ
+        var oldVehicleType = await _vehicleTypeRepository.GetByIdAsync(zone.VehicleTypeId);
+        if (oldVehicleType == null)
+        {
+            throw new NotFoundException("VehicleType", zone.VehicleTypeId);
         }
 
         // Kiểm tra mã mới có trùng trong cùng floor không
@@ -205,17 +212,155 @@ public class ZoneService : IZoneService
             }
         }
 
-        // Cập nhật thuộc tính zone
-        zone.Code = NormalizeZoneCode(request.Code, zone.Code ?? request.Name);
-        zone.Name = request.Name;
-        zone.Capacity = request.Capacity;
-        zone.VehicleTypeId = request.VehicleTypeId;
-        zone.AccessType = request.AccessType;
+        var isOldCar = IsCarVehicleType(oldVehicleType);
+        var isNewCar = IsCarVehicleType(vehicleType);
+        var newZoneCode = NormalizeZoneCode(request.Code, zone.Code ?? request.Name);
 
-        _zoneRepository.Update(zone);
-        await _unitOfWork.SaveChangesAsync();
+        // Bắt đầu transaction để đảm bảo an toàn dữ liệu
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var currentSlots = (await _slotRepository.FindAsync(s => s.ZoneId == id)).ToList();
+            var currentSlotCount = currentSlots.Count;
 
-        return _mapper.Map<ZoneDto>(zone);
+            if (!isOldCar && isNewCar)
+            {
+                // Từ Xe máy sang Ô tô: Tự động sinh slot mới tương ứng sức chứa
+                for (var slotNumber = 1; slotNumber <= request.Capacity; slotNumber++)
+                {
+                    var slotCode = $"{newZoneCode}-{slotNumber:D2}";
+                    await _slotRepository.AddAsync(new ParkingSlot
+                    {
+                        ZoneId = id,
+                        VehicleTypeId = request.VehicleTypeId,
+                        Code = slotCode,
+                        Name = $"Slot {slotCode}",
+                        Status = SlotStatus.Available
+                    });
+                }
+            }
+            else if (isOldCar && !isNewCar)
+            {
+                // Từ Ô tô sang Xe máy: Tự động xóa hết slot (nếu không bận)
+                foreach (var slot in currentSlots)
+                {
+                    if (slot.Status == SlotStatus.Occupied)
+                    {
+                        throw new ValidationException($"Cannot change zone type because slot '{slot.Code}' is currently occupied.");
+                    }
+                    var slotWithDetails = await _slotRepository.GetSlotWithDetailsAsync(slot.Id);
+                    if (slotWithDetails != null && slotWithDetails.ParkingSessions.Any(ps => string.Equals(ps.SessionStatus, "ACTIVE", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        throw new ValidationException($"Cannot change zone type because slot '{slot.Code}' has an active parking session.");
+                    }
+                }
+
+                foreach (var slot in currentSlots)
+                {
+                    await _slotRepository.RemoveAsync(slot);
+                }
+            }
+            else if (isOldCar && isNewCar)
+            {
+                // Từ Ô tô sang Ô tô: Điều chỉnh số lượng slot và đổi VehicleTypeId/Code
+                if (request.Capacity > currentSlotCount)
+                {
+                    // Tăng sức chứa: Cập nhật slot cũ và sinh thêm slot mới
+                    foreach (var slot in currentSlots)
+                    {
+                        slot.VehicleTypeId = request.VehicleTypeId;
+                        if (zone.Code != newZoneCode)
+                        {
+                            var parts = slot.Code.Split('-');
+                            var suffix = parts.Length > 1 ? parts[^1] : slot.Id.ToString();
+                            slot.Code = $"{newZoneCode}-{suffix}";
+                        }
+                        _slotRepository.Update(slot);
+                    }
+
+                    for (var slotNumber = currentSlotCount + 1; slotNumber <= request.Capacity; slotNumber++)
+                    {
+                        var slotCode = $"{newZoneCode}-{slotNumber:D2}";
+                        await _slotRepository.AddAsync(new ParkingSlot
+                        {
+                            ZoneId = id,
+                            VehicleTypeId = request.VehicleTypeId,
+                            Code = slotCode,
+                            Name = $"Slot {slotCode}",
+                            Status = SlotStatus.Available
+                        });
+                    }
+                }
+                else if (request.Capacity < currentSlotCount)
+                {
+                    // Giảm sức chứa: Xóa bớt slot từ số hiệu cao nhất (phải rảnh)
+                    var slotsToRemove = currentSlots.OrderByDescending(s => s.Code).Take(currentSlotCount - request.Capacity).ToList();
+                    foreach (var slot in slotsToRemove)
+                    {
+                        if (slot.Status == SlotStatus.Occupied)
+                        {
+                            throw new ValidationException($"Cannot reduce capacity because slot '{slot.Code}' is currently occupied.");
+                        }
+                        var slotWithDetails = await _slotRepository.GetSlotWithDetailsAsync(slot.Id);
+                        if (slotWithDetails != null && slotWithDetails.ParkingSessions.Any(ps => string.Equals(ps.SessionStatus, "ACTIVE", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            throw new ValidationException($"Cannot reduce capacity because slot '{slot.Code}' has an active parking session.");
+                        }
+                    }
+
+                    foreach (var slot in slotsToRemove)
+                    {
+                        await _slotRepository.RemoveAsync(slot);
+                    }
+
+                    var remainingSlots = currentSlots.Except(slotsToRemove);
+                    foreach (var slot in remainingSlots)
+                    {
+                        slot.VehicleTypeId = request.VehicleTypeId;
+                        if (zone.Code != newZoneCode)
+                        {
+                            var parts = slot.Code.Split('-');
+                            var suffix = parts.Length > 1 ? parts[^1] : slot.Id.ToString();
+                            slot.Code = $"{newZoneCode}-{suffix}";
+                        }
+                        _slotRepository.Update(slot);
+                    }
+                }
+                else
+                {
+                    // Giữ nguyên sức chứa: Chỉ cập nhật loại xe và đổi mã code của slot nếu zone code đổi
+                    foreach (var slot in currentSlots)
+                    {
+                        slot.VehicleTypeId = request.VehicleTypeId;
+                        if (zone.Code != newZoneCode)
+                        {
+                            var parts = slot.Code.Split('-');
+                            var suffix = parts.Length > 1 ? parts[^1] : slot.Id.ToString();
+                            slot.Code = $"{newZoneCode}-{suffix}";
+                        }
+                        _slotRepository.Update(slot);
+                    }
+                }
+            }
+
+            // Cập nhật thuộc tính zone
+            zone.Code = newZoneCode;
+            zone.Name = request.Name;
+            zone.Capacity = request.Capacity;
+            zone.VehicleTypeId = request.VehicleTypeId;
+            zone.AccessType = request.AccessType;
+
+            _zoneRepository.Update(zone);
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitAsync();
+
+            return _mapper.Map<ZoneDto>(zone);
+        }
+        catch (Exception)
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
     }
 
     private static string NormalizeZoneCode(string? code, string fallback)
@@ -226,6 +371,10 @@ public class ZoneService : IZoneService
 
     private static bool IsCarVehicleType(VehicleType vehicleType)
     {
+        if (string.IsNullOrWhiteSpace(vehicleType.TypeName))
+        {
+            return false;
+        }
         return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);

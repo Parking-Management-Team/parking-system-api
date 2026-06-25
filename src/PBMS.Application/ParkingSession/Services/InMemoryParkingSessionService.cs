@@ -210,6 +210,11 @@ public class InMemoryParkingSessionService : IParkingSessionService
         }
     }
 
+    public Task SendOvertimeWarningsAsync()
+    {
+        return Task.CompletedTask;
+    }
+
     private ParkingSessionDto? Find(int id) => _sessions.FirstOrDefault(s => s.Id == id);
 
     private bool HasActive(Func<ParkingSessionDto, bool> predicate) => _sessions.Any(s => IsActive(s) && predicate(s));
