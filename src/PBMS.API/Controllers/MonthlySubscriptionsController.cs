@@ -85,6 +85,39 @@ public class MonthlySubscriptionsController : ControllerBase
     }
 
     /// <summary>
+    /// Get monthly subscriptions by account ID.
+    /// </summary>
+    [HttpGet("by-account/{accountId:int}")]
+    public async Task<ActionResult<BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>>> GetByAccount(int accountId)
+    {
+        var filter = new MonthlySubscriptionFilterRequest
+        {
+            AccountId = accountId,
+            Page = 1,
+            PageSize = 100
+        };
+        var result = await _subscriptionService.GetAllSubscriptionsAsync(filter);
+        return Ok(BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>.Ok(result.Items.ToList()));
+    }
+
+    /// <summary>
+    /// Get monthly subscriptions by building ID with optional status filter.
+    /// </summary>
+    [HttpGet("by-building/{buildingId:int}")]
+    public async Task<ActionResult<BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>>> GetByBuilding(int buildingId, [FromQuery] string? status)
+    {
+        var filter = new MonthlySubscriptionFilterRequest
+        {
+            BuildingId = buildingId,
+            Status = status,
+            Page = 1,
+            PageSize = 100
+        };
+        var result = await _subscriptionService.GetAllSubscriptionsAsync(filter);
+        return Ok(BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>.Ok(result.Items.ToList()));
+    }
+
+    /// <summary>
     /// Cleanup expired pending subscriptions.
     /// </summary>
     [HttpPost("cleanup")]
