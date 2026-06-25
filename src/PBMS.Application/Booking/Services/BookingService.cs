@@ -33,8 +33,9 @@ public class BookingService : IBookingService
     private readonly IUnitOfWork _unitOfWork;
 
     // Hằng số nghiệp vụ
-    private const int MinBookingHours = 1;
-    private const int MaxBookingHours = 8;
+    private const int MinBookingMinutes = 30;           // Thời gian đặt trước tối thiểu: 30 phút
+    private const int MaxBookingHours = 8;              // Thời gian đặt trước tối đa: 8 tiếng
+    private const int MinBookingDurationHours = 4;      // Thời lượng đặt chỗ tối thiểu: 4 tiếng
     private const int PaymentDeadlineMinutes = 15;
     private const int CheckinGracePeriodMinutes = 30;
 
@@ -85,16 +86,19 @@ public class BookingService : IBookingService
         var now = DateTime.UtcNow;
 
         // Bước 1: Validate thời gian đặt chỗ
-        // Phải từ 1h đến 8h tính từ thời điểm hiện tại
-        var minAllowed = now.AddHours(MinBookingHours);
+        // Check-in phải cách hiện tại tối thiểu 30 phút, tối đa 8 tiếng
+        var minAllowed = now.AddMinutes(MinBookingMinutes);
         var maxAllowed = now.AddHours(MaxBookingHours);
 
         if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
         {
+            // Hiển thị giờ VN (UTC+7) cho user-friendly
+            var minVn = minAllowed.AddHours(7);
+            var maxVn = maxAllowed.AddHours(7);
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
-                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingHours} đến {MaxBookingHours} tiếng. " +
-                         $"Thời gian hợp lệ: [{minAllowed:yyyy-MM-dd HH:mm} UTC] đến [{maxAllowed:yyyy-MM-dd HH:mm} UTC]."
+                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingMinutes} phút đến {MaxBookingHours} tiếng. " +
+                         $"Thời gian hợp lệ: [{minVn:yyyy-MM-dd HH:mm}] đến [{maxVn:yyyy-MM-dd HH:mm}] (Giờ VN)."
             );
         }
 
@@ -146,13 +150,24 @@ public class BookingService : IBookingService
             s.SessionStatus == SessionStatus.Active);
 
         var start = request.PlannedCheckinTime;
-        var end = request.PlannedCheckoutTime ?? request.PlannedCheckinTime.AddHours(2);
+        var end = request.PlannedCheckoutTime ?? request.PlannedCheckinTime.AddHours(MinBookingDurationHours);
 
         if (end <= start)
         {
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
                 message: "Thời gian dự kiến ra bãi phải lớn hơn thời gian dự kiến vào bãi."
+            );
+        }
+
+        // Kiểm tra thời lượng đặt chỗ tối thiểu
+        var duration = end - start;
+        if (duration.TotalHours < MinBookingDurationHours)
+        {
+            throw new DomainException(
+                errorCode: "INVALID_BOOKING_DURATION",
+                message: $"Thời lượng đặt chỗ tối thiểu là {MinBookingDurationHours} tiếng. " +
+                         $"Thời lượng hiện tại: {duration.TotalMinutes:F0} phút."
             );
         }
 
@@ -381,14 +396,14 @@ public class BookingService : IBookingService
         }
 
         var now = DateTime.UtcNow;
-        var minAllowed = now.AddHours(MinBookingHours);
+        var minAllowed = now.AddMinutes(MinBookingMinutes);
         var maxAllowed = now.AddHours(MaxBookingHours);
 
         if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
         {
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
-                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingHours} đến {MaxBookingHours} tiếng."
+                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingMinutes} phút đến {MaxBookingHours} tiếng."
             );
         }
 
