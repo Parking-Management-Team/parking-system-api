@@ -30,15 +30,19 @@ public class CreateBookingRequest
     public int BuildingId { get; set; }
 
     /// <summary>
-    /// Thời gian dự kiến vào bãi (UTC/Local tùy chỉnh).
+    /// Thời gian dự kiến vào bãi (UTC).
     /// Phải từ 1 đến 8 tiếng tính từ thời điểm gửi request.
     /// </summary>
     [Required]
     public DateTime PlannedCheckinTime { get; set; }
 
     /// <summary>
-    /// Thời gian dự kiến ra khỏi bãi.
+    /// Thời gian dự kiến ra bãi (UTC). Nếu không chỉ định, mặc định là PlannedCheckinTime + 2 tiếng.
     /// </summary>
-    [Required]
-    public DateTime PlannedCheckoutTime { get; set; }
+    public DateTime? PlannedCheckoutTime { get; set; }
+
+    /// <summary>
+    /// Vị trí đỗ xe mong muốn chọn trước (tùy chọn, chỉ áp dụng cho xe hơi).
+    /// </summary>
+    public int? SlotId { get; set; }
 }

@@ -73,6 +73,11 @@ public class Booking : BaseEntity
     /// </summary>
     public DateTime? ConfirmedAt { get; set; }
 
+    /// <summary>
+    /// Khóa ngoại liên kết tới vị trí đỗ cụ thể được chọn trước (chỉ áp dụng cho xe hơi).
+    /// </summary>
+    public int? SlotId { get; set; }
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------
@@ -96,6 +101,11 @@ public class Booking : BaseEntity
     /// Thông tin tòa nhà đặt chỗ.
     /// </summary>
     public virtual Building Building { get; set; } = null!;
+
+    /// <summary>
+    /// Vị trí đỗ xe được đặt trước (nếu có).
+    /// </summary>
+    public virtual ParkingSlot? ParkingSlot { get; set; }
 
     /// <summary>
     /// Danh sách các giao dịch thanh toán liên quan đến đặt chỗ này.

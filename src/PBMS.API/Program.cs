@@ -7,6 +7,7 @@ using PBMS.API.Middlewares;
 using PBMS.Application;
 using PBMS.Infrastructure;
 using PBMS.Infrastructure.Data;
+using PBMS.API.Workers;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,10 @@ var useInMemoryParkingSession = builder.Configuration.GetValue<bool>("ParkingSes
 var useHttpsRedirection = builder.Configuration.GetValue("Api:UseHttpsRedirection", !builder.Environment.IsDevelopment());
 builder.Services.AddApplicationServices(useInMemoryParkingSession);
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Đăng ký các hosted services chạy nền (Workers)
+builder.Services.AddHostedService<ExpiredBookingCleanupWorker>();
+builder.Services.AddHostedService<OvertimeWarningWorker>();
 
 // Cấu hình CORS (Cross-Origin Resource Sharing)
 // Cho phép Web Frontend (chạy trên localhost:3000 hoặc localhost:5173) gọi API
@@ -93,9 +98,13 @@ if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
         {
             var context = services.GetRequiredService<AppDbContext>();
             
-            // Tự động xóa database cũ để tạo và seed lại từ đầu (chỉ nên dùng ở môi trường Development)
-            context.Database.EnsureDeleted();
-            Console.WriteLine("--> Existing database deleted successfully.");
+            // Tự động xóa database cũ nếu cấu hình Db:ResetOnStartup = true (mặc định là false)
+            var resetDb = builder.Configuration.GetValue<bool>("Db:ResetOnStartup", false);
+            if (resetDb)
+            {
+                context.Database.EnsureDeleted();
+                Console.WriteLine("--> Existing database deleted successfully.");
+            }
             
             context.Database.Migrate();
             Console.WriteLine("--> Database migration completed successfully.");

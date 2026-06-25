@@ -29,9 +29,8 @@ public interface IBookingRepository : IRepository<BookingEntity>
     Task<IEnumerable<BookingEntity>> GetByBuildingIdAsync(int buildingId);
 
     /// <summary>
-    /// Đếm số Booking đang "chiếm" chỗ tại một Building cho một loại xe cụ thể.
-    /// Tính các Booking có Status = Pending hoặc Confirmed (chưa check-in, chưa hủy).
-    /// Dùng để kiểm tra General Capacity còn lại trước khi tạo Booking mới.
+    /// Đếm số Booking đang "chiếm" chỗ tại một Building cho một loại xe cụ thể trong khoảng thời gian xác định.
+    /// Tính các Booking có Status = Pending hoặc Confirmed có thời gian chồng lấn với khoảng [start, end].
     /// </summary>
-    Task<int> GetActiveBookingsCountAsync(int buildingId, int vehicleTypeId);
+    Task<int> GetActiveBookingsCountAsync(int buildingId, int vehicleTypeId, DateTime start, DateTime end);
 }

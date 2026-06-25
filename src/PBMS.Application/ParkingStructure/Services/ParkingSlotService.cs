@@ -57,6 +57,13 @@ public class ParkingSlotService : IParkingSlotService
             throw new ValidationException("Parking slots can only be created manually for Car zones.");
         }
 
+        // Check capacity limit
+        var currentSlots = await _slotRepository.FindAsync(s => s.ZoneId == request.ZoneId);
+        if (currentSlots.Count() >= zone.Capacity)
+        {
+            throw new ValidationException($"Cannot create more slots. Zone '{zone.Name}' has reached its maximum capacity of {zone.Capacity} slots.");
+        }
+
         // 3. Kiểm tra SlotCode duy nhất
         var codeExists = await _slotRepository.SlotCodeExistsAsync(request.Code);
         if (codeExists)
@@ -75,6 +82,7 @@ public class ParkingSlotService : IParkingSlotService
         };
 
         await _slotRepository.AddAsync(slot);
+        await _slotRepository.SaveChangesAsync();
         return _mapper.Map<ParkingSlotDto>(slot);
     }
 
@@ -167,6 +175,18 @@ public class ParkingSlotService : IParkingSlotService
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
         }
 
+        // Kiểm tra Zone tồn tại và VehicleTypeId khớp với VehicleTypeId của Zone
+        var zone = await _zoneRepository.GetByIdAsync(slot.ZoneId);
+        if (zone == null)
+        {
+            throw new NotFoundException("Zone", slot.ZoneId);
+        }
+
+        if (zone.VehicleTypeId != request.VehicleTypeId)
+        {
+            throw new ValidationException("The specified VehicleTypeId does not match the Zone's VehicleTypeId.");
+        }
+
         // Kiểm tra SlotCode mới nếu thay đổi
         var newCode = request.Code.Trim().ToUpper();
         if (slot.Code != newCode)
@@ -184,6 +204,7 @@ public class ParkingSlotService : IParkingSlotService
         slot.Status = request.Status;
 
         _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
         return _mapper.Map<ParkingSlotDto>(slot);
     }
 
@@ -208,10 +229,85 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         await _slotRepository.RemoveAsync(slot);
+        await _slotRepository.SaveChangesAsync();
+    }
+
+    public async Task<ParkingSlotDto> BlockSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status == SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot block slot '{slot.Code}' because it is currently occupied.");
+        }
+
+        if (slot.Status == SlotStatus.Blocked)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is already blocked.");
+        }
+
+        slot.Status = SlotStatus.Blocked;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
+    }
+
+    public async Task<ParkingSlotDto> UnblockSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status != SlotStatus.Blocked)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is not blocked. Current status: {slot.Status}.");
+        }
+
+        slot.Status = SlotStatus.Available;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
+    }
+
+    public async Task<ParkingSlotDto> SetMaintenanceSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status == SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot set slot '{slot.Code}' to maintenance because it is currently occupied.");
+        }
+
+        if (slot.Status == SlotStatus.Maintenance)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is already in maintenance.");
+        }
+
+        slot.Status = SlotStatus.Maintenance;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
     }
 
     private static bool IsCarVehicleType(VehicleType vehicleType)
     {
+        if (string.IsNullOrWhiteSpace(vehicleType.TypeName))
+        {
+            return false;
+        }
         return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
