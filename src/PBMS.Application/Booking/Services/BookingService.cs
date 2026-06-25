@@ -33,11 +33,31 @@ public class BookingService : IBookingService
     private readonly IUnitOfWork _unitOfWork;
 
     // Hằng số nghiệp vụ
-    private const int MinBookingMinutes = 30;           // Thời gian đặt trước tối thiểu: 30 phút
-    private const int MaxBookingHours = 8;              // Thời gian đặt trước tối đa: 8 tiếng
+    private const int MinBookingMinutes = 15;           // Thời gian đặt trước tối thiểu: 15 phút
     private const int MinBookingDurationHours = 4;      // Thời lượng đặt chỗ tối thiểu: 4 tiếng
     private const int PaymentDeadlineMinutes = 15;
     private const int CheckinGracePeriodMinutes = 30;
+
+    // Múi giờ Việt Nam (UTC+7)
+    private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
+    /// <summary>
+    /// Chuyển đổi DateTime UTC sang DateTimeOffset giờ Việt Nam (UTC+7).
+    /// Dùng cho pricing lookup — không gửi cho PostgreSQL.
+    /// </summary>
+    private static DateTimeOffset ToVietnamTimeOffset(DateTime utcDateTime)
+    {
+        return new DateTimeOffset(utcDateTime, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(7));
+    }
+
+    /// <summary>
+    /// Lấy phần ngày (Date) theo giờ Việt Nam từ DateTime UTC.
+    /// </summary>
+    private static DateTime GetVietnamDate(DateTime utcDateTime)
+    {
+        var vnOffset = ToVietnamTimeOffset(utcDateTime);
+        return vnOffset.Date;
+    }
 
     /// <summary>
     /// Constructor nhận các dependency qua Dependency Injection.
@@ -85,20 +105,28 @@ public class BookingService : IBookingService
     {
         var now = DateTime.UtcNow;
 
-        // Bước 1: Validate thời gian đặt chỗ
-        // Check-in phải cách hiện tại tối thiểu 30 phút, tối đa 8 tiếng
-        var minAllowed = now.AddMinutes(MinBookingMinutes);
-        var maxAllowed = now.AddHours(MaxBookingHours);
+        // Đảm bảo DateTime luôn là UTC cho PostgreSQL
+        var plannedCheckinUtc = request.PlannedCheckinTime.Kind == DateTimeKind.Utc
+            ? request.PlannedCheckinTime
+            : request.PlannedCheckinTime.ToUniversalTime();
+        var plannedCheckoutUtc = request.PlannedCheckoutTime.HasValue
+            ? (request.PlannedCheckoutTime.Value.Kind == DateTimeKind.Utc
+                ? request.PlannedCheckoutTime.Value
+                : request.PlannedCheckoutTime.Value.ToUniversalTime())
+            : (DateTime?)null;
 
-        if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
+        // Bước 1: Validate thời gian đặt chỗ
+        // Check-in phải cách hiện tại tối thiểu 15 phút (không giới hạn tối đa)
+        var minAllowed = now.AddMinutes(MinBookingMinutes);
+
+        if (plannedCheckinUtc < minAllowed)
         {
             // Hiển thị giờ VN (UTC+7) cho user-friendly
-            var minVn = minAllowed.AddHours(7);
-            var maxVn = maxAllowed.AddHours(7);
+            var minVn = ToVietnamTimeOffset(minAllowed);
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
-                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingMinutes} phút đến {MaxBookingHours} tiếng. " +
-                         $"Thời gian hợp lệ: [{minVn:yyyy-MM-dd HH:mm}] đến [{maxVn:yyyy-MM-dd HH:mm}] (Giờ VN)."
+                message: $"Thời gian đặt chỗ phải cách hiện tại ít nhất {MinBookingMinutes} phút. " +
+                         $"Thời gian hợp lệ: từ [{minVn:yyyy-MM-dd HH:mm}] trở đi (Giờ VN)."
             );
         }
 
@@ -149,8 +177,8 @@ public class BookingService : IBookingService
             s.Vehicle.VehicleTypeId == vehicle.VehicleTypeId &&
             s.SessionStatus == SessionStatus.Active);
 
-        var start = request.PlannedCheckinTime;
-        var end = request.PlannedCheckoutTime ?? request.PlannedCheckinTime.AddHours(MinBookingDurationHours);
+        var start = plannedCheckinUtc;
+        var end = plannedCheckoutUtc ?? plannedCheckinUtc.AddHours(MinBookingDurationHours);
 
         if (end <= start)
         {
@@ -186,8 +214,11 @@ public class BookingService : IBookingService
         }
 
         // Bước 5: Tính Deposit Fee (bằng đúng tổng số tiền tạm tính cho toàn bộ thời gian đặt chỗ)
+        // Chuyển sang giờ VN để lookup pricing policy và pricing window đúng ngày
+        var checkinVnOffset = ToVietnamTimeOffset(plannedCheckinUtc);
+        var checkinVnDate = checkinVnOffset.Date;
         var pricingPolicy = await _pricingPolicyRepository.GetActivePolicyAsync(
-            vehicle.VehicleTypeId, request.PlannedCheckinTime);
+            vehicle.VehicleTypeId, checkinVnDate);
 
         if (pricingPolicy == null)
         {
@@ -197,8 +228,8 @@ public class BookingService : IBookingService
             );
         }
 
-        // Tìm PricingWindow tương ứng với giờ check-in dự kiến
-        var checkInTimeOfDay = request.PlannedCheckinTime.TimeOfDay;
+        // Tìm PricingWindow tương ứng với giờ check-in dự kiến (dùng giờ VN)
+        var checkInTimeOfDay = checkinVnOffset.TimeOfDay;
         var applicableWindow = pricingPolicy.PricingWindows
             .FirstOrDefault(w => IsTimeInWindow(checkInTimeOfDay, w.StartTime, w.EndTime));
 
@@ -288,12 +319,12 @@ public class BookingService : IBookingService
             VehicleId = vehicle.Id,
             VehicleTypeId = vehicle.VehicleTypeId,
             BuildingId = request.BuildingId,
-            PlannedCheckinTime = request.PlannedCheckinTime,
+            PlannedCheckinTime = plannedCheckinUtc,
             PlannedCheckoutTime = end,
             DepositAmount = depositAmount,
             BookingStatus = BookingStatus.Pending,
             PaymentDeadline = now.AddMinutes(PaymentDeadlineMinutes),
-            CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes),
+            CheckinGraceUntil = plannedCheckinUtc.AddMinutes(CheckinGracePeriodMinutes),
             SlotId = request.SlotId
         };
 
@@ -397,23 +428,29 @@ public class BookingService : IBookingService
 
         var now = DateTime.UtcNow;
         var minAllowed = now.AddMinutes(MinBookingMinutes);
-        var maxAllowed = now.AddHours(MaxBookingHours);
 
-        if (request.PlannedCheckinTime < minAllowed || request.PlannedCheckinTime > maxAllowed)
+        // Đảm bảo DateTime luôn là UTC cho PostgreSQL
+        var plannedCheckinUtc = request.PlannedCheckinTime.Kind == DateTimeKind.Utc
+            ? request.PlannedCheckinTime
+            : request.PlannedCheckinTime.ToUniversalTime();
+
+        if (plannedCheckinUtc < minAllowed)
         {
             throw new DomainException(
                 errorCode: "INVALID_BOOKING_TIME",
-                message: $"Thời gian đặt chỗ phải cách hiện tại từ {MinBookingMinutes} phút đến {MaxBookingHours} tiếng."
+                message: $"Thời gian đặt chỗ phải cách hiện tại ít nhất {MinBookingMinutes} phút."
             );
         }
 
-        // Tính lại Deposit Fee theo giờ mới
+        // Tính lại Deposit Fee theo giờ mới (dùng giờ VN cho pricing lookup)
+        var checkinVnOffset = ToVietnamTimeOffset(plannedCheckinUtc);
+        var checkinVnDate = checkinVnOffset.Date;
         var pricingPolicy = await _pricingPolicyRepository.GetActivePolicyAsync(
-            booking.VehicleTypeId, request.PlannedCheckinTime);
+            booking.VehicleTypeId, checkinVnDate);
 
         if (pricingPolicy != null)
         {
-            var checkInTimeOfDay = request.PlannedCheckinTime.TimeOfDay;
+            var checkInTimeOfDay = checkinVnOffset.TimeOfDay;
             var applicableWindow = pricingPolicy.PricingWindows
                 .FirstOrDefault(w => IsTimeInWindow(checkInTimeOfDay, w.StartTime, w.EndTime))
                 ?? pricingPolicy.PricingWindows.FirstOrDefault();
@@ -424,9 +461,9 @@ public class BookingService : IBookingService
             }
         }
 
-        booking.PlannedCheckinTime = request.PlannedCheckinTime;
-        booking.PlannedCheckoutTime = request.PlannedCheckinTime.AddHours(2);
-        booking.CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes);
+        booking.PlannedCheckinTime = plannedCheckinUtc;
+        booking.PlannedCheckoutTime = plannedCheckinUtc.AddHours(2);
+        booking.CheckinGraceUntil = plannedCheckinUtc.AddMinutes(CheckinGracePeriodMinutes);
 
         _bookingRepository.Update(booking);
         await _unitOfWork.SaveChangesAsync();

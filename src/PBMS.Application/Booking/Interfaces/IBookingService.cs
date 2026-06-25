@@ -21,7 +21,7 @@ public interface IBookingService
     /// Tạo Booking mới với trạng thái PENDING.
     ///
     /// Business Rules:
-    ///   - PlannedCheckinTime phải từ 1 đến 8 tiếng tính từ Now (UTC).
+    ///   - PlannedCheckinTime phải cách Now ít nhất 15 phút (UTC).
     ///   - Building phải còn General Capacity cho loại xe tương ứng.
     ///   - Deposit Fee = BasePrice của PricingWindow tại giờ PlannedCheckinTime.
     ///   - PaymentDeadline = Now + 15 phút.
