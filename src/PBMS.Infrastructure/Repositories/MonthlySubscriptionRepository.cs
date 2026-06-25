@@ -76,4 +76,54 @@ public class MonthlySubscriptionRepository : BaseRepository<MonthlySubscription>
             .Where(ms => ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Pending && ms.CreatedAt < cutoff)
             .ToListAsync();
     }
+
+    /// <summary>
+    /// Lấy danh sách đăng ký vé tháng với phân trang và bộ lọc.
+    /// </summary>
+    public async Task<(IEnumerable<MonthlySubscription> Items, int TotalCount)> GetPagedAsync(
+        int pageIndex, int pageSize, string? status, int? buildingId, int? accountId, string? licensePlate, string? cardCode)
+    {
+        var query = _dbSet
+            .Include(ms => ms.Vehicle)
+            .ThenInclude(v => v.VehicleType)
+            .Include(ms => ms.AssignedCard)
+            .Include(ms => ms.AssignedSlot)
+            .Include(ms => ms.Building)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(ms => ms.MonthlySubscriptionStatus == status);
+        }
+
+        if (buildingId.HasValue)
+        {
+            query = query.Where(ms => ms.BuildingId == buildingId.Value);
+        }
+
+        if (accountId.HasValue)
+        {
+            query = query.Where(ms => ms.AccountId == accountId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(licensePlate))
+        {
+            query = query.Where(ms => ms.Vehicle.LicensePlate.Contains(licensePlate));
+        }
+
+        if (!string.IsNullOrWhiteSpace(cardCode))
+        {
+            query = query.Where(ms => ms.AssignedCard != null && ms.AssignedCard.CardCode.Contains(cardCode));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(ms => ms.CreatedAt)
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
 }

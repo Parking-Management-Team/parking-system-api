@@ -1,29 +1,45 @@
+using PBMS.Application.Common;
 using PBMS.Application.MonthlyCard.DTOs;
 
 namespace PBMS.Application.MonthlyCard.Interfaces;
 
 /// <summary>
-/// Giao diện dịch vụ nghiệp vụ đăng ký và quản lý vé tháng.
+/// Service interface for monthly subscription management.
 /// </summary>
 public interface IMonthlySubscriptionService
 {
     /// <summary>
-    /// Đăng ký vé tháng mới (Trạng thái mặc định: PENDING).
+    /// Register a new monthly subscription (default status: PENDING).
     /// </summary>
     Task<MonthlySubscriptionDto> RegisterSubscriptionAsync(CreateSubscriptionRequest request);
 
     /// <summary>
-    /// Lấy thông tin đăng ký vé tháng theo ID.
+    /// Get monthly subscription by ID.
     /// </summary>
     Task<MonthlySubscriptionDto> GetSubscriptionByIdAsync(int id);
 
     /// <summary>
-    /// Hủy đăng ký vé tháng.
+    /// Get list of monthly subscriptions with filtering and pagination.
+    /// </summary>
+    Task<PagedResult<MonthlySubscriptionDto>> GetAllSubscriptionsAsync(MonthlySubscriptionFilterRequest filter);
+
+    /// <summary>
+    /// Activate monthly subscription (PENDING -> ACTIVE).
+    /// </summary>
+    Task<MonthlySubscriptionDto> ActivateSubscriptionAsync(int id);
+
+    /// <summary>
+    /// Cancel monthly subscription.
     /// </summary>
     Task CancelSubscriptionAsync(int id);
 
     /// <summary>
-    /// Dọn dẹp các hồ sơ PENDING quá hạn thanh toán.
+    /// Update monthly subscription (card only).
+    /// </summary>
+    Task<MonthlySubscriptionDto> UpdateSubscriptionAsync(int id, UpdateSubscriptionRequest request);
+
+    /// <summary>
+    /// Cleanup expired pending subscriptions.
     /// </summary>
     Task CleanupExpiredPendingSubscriptionsAsync(int timeoutMinutes);
 }

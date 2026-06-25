@@ -5,10 +5,12 @@ using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
 using BookingEntity = PBMS.Domain.Entities.Booking;
+using ParkingSlotEntity = PBMS.Domain.Entities.ParkingSlot;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
 using BuildingEntity = PBMS.Domain.Entities.Building;
 using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
+using PaymentEntity = PBMS.Domain.Entities.Payment;
 
 namespace PBMS.Application.Booking.Services;
 
@@ -27,6 +29,8 @@ public class BookingService : IBookingService
     private readonly IBuildingRepository _buildingDetailRepository;
     private readonly IPricingPolicyRepository _pricingPolicyRepository;
     private readonly IRepository<ParkingSessionEntity> _sessionRepository;
+    private readonly IRepository<ParkingSlotEntity> _parkingSlotRepository;
+    private readonly IRepository<PaymentEntity> _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IFeeCalculationService _feeCalculationService;
 
@@ -41,24 +45,26 @@ public class BookingService : IBookingService
     /// </summary>
     public BookingService(
         IBookingRepository bookingRepository,
-        IRepository<VehicleEntity> vehicleRepository,
-        IRepository<VehicleTypeEntity> vehicleTypeRepository,
-        IRepository<BuildingEntity> buildingRepository,
-        IBuildingRepository buildingDetailRepository,
-        IPricingPolicyRepository pricingPolicyRepository,
-        IRepository<ParkingSessionEntity> sessionRepository,
-        IUnitOfWork unitOfWork,
-        IFeeCalculationService feeCalculationService)
+        IRepository<VehicleEntity> _vehicleRepositoryMock,
+        IRepository<VehicleTypeEntity> _vehicleTypeRepositoryMock,
+        IRepository<BuildingEntity> _buildingRepositoryMock,
+        IBuildingRepository _buildingDetailRepositoryMock,
+        IPricingPolicyRepository _pricingPolicyRepositoryMock,
+        IRepository<ParkingSessionEntity> _sessionRepositoryMock,
+        IRepository<ParkingSlotEntity> parkingSlotRepository,
+        IRepository<PaymentEntity> paymentRepositoryMock,
+        IUnitOfWork _unitOfWorkMock)
     {
         _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
-        _vehicleRepository = vehicleRepository ?? throw new ArgumentNullException(nameof(vehicleRepository));
-        _vehicleTypeRepository = vehicleTypeRepository ?? throw new ArgumentNullException(nameof(vehicleTypeRepository));
-        _buildingRepository = buildingRepository ?? throw new ArgumentNullException(nameof(buildingRepository));
-        _buildingDetailRepository = buildingDetailRepository ?? throw new ArgumentNullException(nameof(buildingDetailRepository));
-        _pricingPolicyRepository = pricingPolicyRepository ?? throw new ArgumentNullException(nameof(pricingPolicyRepository));
-        _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        _feeCalculationService = feeCalculationService ?? throw new ArgumentNullException(nameof(feeCalculationService));
+        _vehicleRepository = _vehicleRepositoryMock ?? throw new ArgumentNullException(nameof(_vehicleRepositoryMock));
+        _vehicleTypeRepository = _vehicleTypeRepositoryMock ?? throw new ArgumentNullException(nameof(_vehicleTypeRepositoryMock));
+        _buildingRepository = _buildingRepositoryMock ?? throw new ArgumentNullException(nameof(_buildingRepositoryMock));
+        _buildingDetailRepository = _buildingDetailRepositoryMock ?? throw new ArgumentNullException(nameof(_buildingDetailRepositoryMock));
+        _pricingPolicyRepository = _pricingPolicyRepositoryMock ?? throw new ArgumentNullException(nameof(_pricingPolicyRepositoryMock));
+        _sessionRepository = _sessionRepositoryMock ?? throw new ArgumentNullException(nameof(_sessionRepositoryMock));
+        _parkingSlotRepository = parkingSlotRepository ?? throw new ArgumentNullException(nameof(parkingSlotRepository));
+        _paymentRepository = paymentRepositoryMock ?? throw new ArgumentNullException(nameof(paymentRepositoryMock));
+        _unitOfWork = _unitOfWorkMock ?? throw new ArgumentNullException(nameof(_unitOfWorkMock));
     }
 
     // -----------------------------------------------------------------------
@@ -123,9 +129,22 @@ public class BookingService : IBookingService
         }
 
         // Bước 4: Kiểm tra General Capacity còn lại
+        var vehicleType = await _vehicleTypeRepository.GetByIdAsync(vehicle.VehicleTypeId);
+        if (vehicleType == null)
+        {
+            throw new DomainException(
+                errorCode: "VEHICLE_TYPE_NOT_FOUND",
+                message: "Không tìm thấy thông tin loại xe."
+            );
+        }
+
         // Tổng chỗ General = Tổng capacity Zone General của loại xe
         var totalCapacity = await _buildingDetailRepository.GetTotalGeneralCapacityAsync(
             request.BuildingId, vehicle.VehicleTypeId);
+
+        // Tính toán Sức chứa hiệu dụng sau khi trừ đi chỗ đỗ dự phòng (Buffer Slots)
+        var bufferSlots = (int)Math.Ceiling(totalCapacity * (vehicleType.BufferRatio / 100.0));
+        var effectiveCapacity = totalCapacity - bufferSlots;
 
         // Đã sử dụng = Active ParkingSession + Active Booking (Pending | Confirmed)
         var activeSessions = await _sessionRepository.CountAsync(s =>
@@ -133,17 +152,28 @@ public class BookingService : IBookingService
             s.Vehicle.VehicleTypeId == vehicle.VehicleTypeId &&
             s.SessionStatus == SessionStatus.Active);
 
+        var start = request.PlannedCheckinTime;
+        var end = request.PlannedCheckoutTime ?? request.PlannedCheckinTime.AddHours(2);
+
+        if (end <= start)
+        {
+            throw new DomainException(
+                errorCode: "INVALID_BOOKING_TIME",
+                message: "Thời gian dự kiến ra bãi phải lớn hơn thời gian dự kiến vào bãi."
+            );
+        }
+
         var activeBookings = await _bookingRepository.GetActiveBookingsCountAsync(
-            request.BuildingId, vehicle.VehicleTypeId);
+            request.BuildingId, vehicle.VehicleTypeId, start, end);
 
         var usedCapacity = activeSessions + activeBookings;
 
-        if (usedCapacity >= totalCapacity)
+        if (usedCapacity >= effectiveCapacity)
         {
             throw new DomainException(
                 errorCode: "NO_CAPACITY",
-                message: $"Tòa nhà không còn chỗ trống cho loại xe này. " +
-                         $"Tổng sức chứa: {totalCapacity}, Đang sử dụng: {usedCapacity}."
+                message: $"Tòa nhà không còn chỗ trống cho loại xe này (Đã trừ {vehicleType.BufferRatio}% chỗ dự phòng). " +
+                         $"Tổng sức chứa: {totalCapacity}, Chỗ khả dụng: {effectiveCapacity}, Đang sử dụng: {usedCapacity}."
             );
         }
 
@@ -152,6 +182,69 @@ public class BookingService : IBookingService
             vehicle.VehicleTypeId, plannedCheckin, plannedCheckout);
         decimal depositAmount = feeResult.TotalFee;
 
+        if (request.SlotId.HasValue)
+        {
+            // 1. Chỉ áp dụng chọn slot cho xe ô tô
+            var isCar = !string.IsNullOrWhiteSpace(vehicleType.TypeName) && (
+                string.Equals(vehicleType.TypeName, "Car", StringComparison.OrdinalIgnoreCase) ||
+                vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase) ||
+                vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase));
+            if (!isCar)
+            {
+                throw new DomainException(
+                    errorCode: "INVALID_SLOT_SELECTION",
+                    message: "Chỉ cho phép chọn vị trí đỗ (Slot) đối với xe ô tô."
+                );
+            }
+
+            // 2. Kiểm tra slot tồn tại và thuộc tòa nhà đã chọn
+            var slot = await _parkingSlotRepository.FirstOrDefaultAsync(s => 
+                s.Id == request.SlotId.Value && 
+                s.Zone.Floor.BuildingId == request.BuildingId);
+
+            if (slot == null)
+            {
+                throw new DomainException(
+                    errorCode: "SLOT_NOT_FOUND",
+                    message: $"Vị trí đỗ xe với ID {request.SlotId.Value} không tồn tại hoặc không thuộc Tòa nhà đã chọn."
+                );
+            }
+
+            // 3. Kiểm tra xem slot có phù hợp với loại xe không
+            if (slot.VehicleTypeId != vehicle.VehicleTypeId)
+            {
+                throw new DomainException(
+                    errorCode: "VEHICLE_TYPE_MISMATCH",
+                    message: "Vị trí đỗ xe đã chọn không tương thích với loại phương tiện của bạn."
+                );
+            }
+
+            // 4. Kiểm tra xem slot đó có đang bận/bị khóa hay không
+            if (slot.Status == SlotStatus.Blocked || slot.Status == SlotStatus.Maintenance)
+            {
+                throw new DomainException(
+                    errorCode: "SLOT_NOT_AVAILABLE",
+                    message: "Vị trí đỗ xe đã chọn hiện đang bị khóa hoặc bảo trì."
+                );
+            }
+
+            // 5. Kiểm tra xem slot đã được đặt bởi booking chồng lấn khác chưa (chỉ tính booking Confirmed hoặc Pending chưa quá hạn thanh toán)
+            var isSlotTaken = await _bookingRepository.AnyAsync(b =>
+                b.SlotId == request.SlotId.Value &&
+                b.BuildingId == request.BuildingId &&
+                (b.BookingStatus == BookingStatus.Confirmed || 
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                !(b.PlannedCheckoutTime <= start || b.PlannedCheckinTime >= end));
+
+            if (isSlotTaken)
+            {
+                throw new DomainException(
+                    errorCode: "SLOT_ALREADY_RESERVED",
+                    message: "Vị trí đỗ xe đã chọn đã được đặt trước bởi khách hàng khác trong khung giờ này."
+                );
+            }
+        }
+
         // Bước 6: Tạo entity Booking
         var booking = new BookingEntity
         {
@@ -159,12 +252,13 @@ public class BookingService : IBookingService
             VehicleId = vehicle.Id,
             VehicleTypeId = vehicle.VehicleTypeId,
             BuildingId = request.BuildingId,
-            PlannedCheckinTime = plannedCheckin,
-            PlannedCheckoutTime = plannedCheckout,
+            PlannedCheckinTime = request.PlannedCheckinTime,
+            PlannedCheckoutTime = end,
             DepositAmount = depositAmount,
             BookingStatus = BookingStatus.Pending,
-            PaymentDeadline = now.AddMinutes(PaymentDeadlineMinutes), // UTC
-            CheckinGraceUntil = plannedCheckin.AddMinutes(CheckinGracePeriodMinutes),
+            PaymentDeadline = now.AddMinutes(PaymentDeadlineMinutes),
+            CheckinGraceUntil = request.PlannedCheckinTime.AddMinutes(CheckinGracePeriodMinutes),
+            SlotId = request.SlotId
         };
 
         await _bookingRepository.AddAsync(booking);
@@ -323,9 +417,36 @@ public class BookingService : IBookingService
             );
         }
 
+        // Check cancellation refund policy
+        if (booking.BookingStatus == BookingStatus.Confirmed)
+        {
+            var timeRemaining = booking.PlannedCheckinTime - DateTime.UtcNow;
+
+            // Find paid payment for this booking
+            var payments = await _paymentRepository.FindAsync(p => p.BookingId == booking.Id && p.PaymentStatus == "PAID");
+            var payment = payments.FirstOrDefault();
+
+            if (timeRemaining.TotalMinutes >= 60) // Cancelled 60 minutes or more before check-in -> Refunded
+            {
+                if (payment != null)
+                {
+                    payment.PaymentStatus = "REFUNDED";
+                    _paymentRepository.Update(payment);
+                }
+                booking.CancelReason = $"{(reason ?? "Khách hàng hủy")} (Đã hoàn cọc)";
+            }
+            else // Cancelled less than 60 minutes before check-in -> Forfeited
+            {
+                booking.CancelReason = $"{(reason ?? "Khách hàng hủy muộn")} (Mất cọc)";
+            }
+        }
+        else
+        {
+            booking.CancelReason = reason ?? "Khách hàng hủy";
+        }
+
         booking.BookingStatus = BookingStatus.Cancelled;
         booking.CancelledAt = DateTime.UtcNow;
-        booking.CancelReason = reason ?? "Khách hàng hủy";
 
         _bookingRepository.Update(booking);
         await _unitOfWork.SaveChangesAsync();
@@ -424,6 +545,13 @@ public class BookingService : IBookingService
             buildingName = building?.Name;
         }
 
+        string? slotCode = booking.ParkingSlot?.Code;
+        if (booking.SlotId.HasValue && slotCode == null)
+        {
+            var slot = await _parkingSlotRepository.GetByIdAsync(booking.SlotId.Value);
+            slotCode = slot?.Code;
+        }
+
         return new BookingDto
         {
             Id = booking.Id,
@@ -444,6 +572,8 @@ public class BookingService : IBookingService
             CancelledAt = booking.CancelledAt,
             CancelReason = booking.CancelReason,
             CreatedAt = booking.CreatedAt,
+            SlotId = booking.SlotId,
+            SlotCode = slotCode
         };
     }
 

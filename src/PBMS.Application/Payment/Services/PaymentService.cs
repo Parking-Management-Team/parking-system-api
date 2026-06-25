@@ -78,6 +78,35 @@ public class PaymentService : IPaymentService
             return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId, BookingId, or MonthlySubscriptionId.");
         }
 
+        // Hủy (chuyển sang FAILED) toàn bộ các giao dịch PENDING cũ liên quan đến nguồn thanh toán này
+        if (request.SessionId.HasValue)
+        {
+            var pendingPayments = await _paymentRepository.FindAsync(p => p.SessionId == request.SessionId.Value && p.PaymentStatus == "PENDING");
+            foreach (var pendingPayment in pendingPayments)
+            {
+                pendingPayment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(pendingPayment);
+            }
+        }
+        else if (request.BookingId.HasValue)
+        {
+            var pendingPayments = await _paymentRepository.FindAsync(p => p.BookingId == request.BookingId.Value && p.PaymentStatus == "PENDING");
+            foreach (var pendingPayment in pendingPayments)
+            {
+                pendingPayment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(pendingPayment);
+            }
+        }
+        else if (request.MonthlySubscriptionId.HasValue)
+        {
+            var pendingPayments = await _paymentRepository.FindAsync(p => p.MonthlySubscriptionId == request.MonthlySubscriptionId.Value && p.PaymentStatus == "PENDING");
+            foreach (var pendingPayment in pendingPayments)
+            {
+                pendingPayment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(pendingPayment);
+            }
+        }
+
         decimal originalAmount = 0;
         string description = "Transaction payment";
 
@@ -268,6 +297,15 @@ public class PaymentService : IPaymentService
 
         if (payment.PaymentStatus == "PENDING")
         {
+            // Kiểm tra thời gian hết hạn của giao dịch thanh toán online (15 phút)
+            if (payment.CreatedAt.AddMinutes(15) < DateTime.UtcNow)
+            {
+                payment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(payment);
+                await _paymentRepository.SaveChangesAsync();
+                return BaseResponse<string>.Fail("PAYMENT_EXPIRED", "Payment transaction has expired. Please check out again.");
+            }
+
             vnpayData.TryGetValue("vnp_ResponseCode", out string? responseCode);
             vnpayData.TryGetValue("vnp_TransactionStatus", out string? transactionStatus);
 

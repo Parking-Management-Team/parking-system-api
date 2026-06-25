@@ -24,6 +24,8 @@ using PBMS.Application.MonthlyCard.Interfaces;
 using PBMS.Application.MonthlyCard.Services;
 using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Booking.Services;
+using PBMS.Application.AuditLog.Interfaces;
+using PBMS.Application.AuditLog.Services;
 
 
 
@@ -86,6 +88,9 @@ public static class DependencyInjection
 
         // Booking module
         services.AddScoped<IBookingService, BookingService>();
+
+        // AuditLog module
+        services.AddScoped<IAuditLogService, AuditLogService>();
 
         return services;
 
