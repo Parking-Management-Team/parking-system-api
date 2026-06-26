@@ -23,7 +23,12 @@ if (builder.Environment.IsDevelopment())
 // =========================================================================
 
 // Đăng ký các Controller vào DI Container để ASP.NET Core nhận diện các API endpoints
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new PBMS.API.Converters.DateTimeUtcJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new PBMS.API.Converters.TimeSpanJsonConverter());
+    });
 
 if (builder.Environment.IsDevelopment())
 {
@@ -35,7 +40,6 @@ if (builder.Environment.IsDevelopment())
 // Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
-builder.Services.AddControllers();
 
 // Đăng ký các dịch vụ của tầng Application và Infrastructure
 var useInMemoryParkingSession = builder.Configuration.GetValue<bool>("ParkingSession:UseInMemoryStore");

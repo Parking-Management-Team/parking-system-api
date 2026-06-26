@@ -341,9 +341,13 @@ public class BookingService : IBookingService
     /// <summary>
     /// Lấy danh sách toàn bộ Booking.
     /// </summary>
-    public async Task<List<BookingDto>> GetAllBookingsAsync()
+    public async Task<List<BookingDto>> GetAllBookingsAsync(string? status = null)
     {
         var bookings = await _bookingRepository.GetAllWithDetailsAsync();
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            bookings = bookings.Where(b => string.Equals(b.BookingStatus, status.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
         var dtos = new List<BookingDto>();
         foreach (var b in bookings)
         {
@@ -372,9 +376,13 @@ public class BookingService : IBookingService
     /// <summary>
     /// Lấy danh sách Booking của một Account.
     /// </summary>
-    public async Task<List<BookingDto>> GetBookingsByAccountIdAsync(int accountId)
+    public async Task<List<BookingDto>> GetBookingsByAccountIdAsync(int accountId, string? status = null)
     {
         var bookings = await _bookingRepository.GetByAccountIdAsync(accountId);
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            bookings = bookings.Where(b => string.Equals(b.BookingStatus, status.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
         var dtos = new List<BookingDto>();
         foreach (var b in bookings)
         {
@@ -386,9 +394,13 @@ public class BookingService : IBookingService
     /// <summary>
     /// Lấy danh sách Booking của một Building.
     /// </summary>
-    public async Task<List<BookingDto>> GetBookingsByBuildingIdAsync(int buildingId)
+    public async Task<List<BookingDto>> GetBookingsByBuildingIdAsync(int buildingId, string? status = null)
     {
         var bookings = await _bookingRepository.GetByBuildingIdAsync(buildingId);
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            bookings = bookings.Where(b => string.Equals(b.BookingStatus, status.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
         var dtos = new List<BookingDto>();
         foreach (var b in bookings)
         {

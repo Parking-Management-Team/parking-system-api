@@ -20,7 +20,7 @@ namespace PBMS.Application.Payment.Services;
 /// </summary>
 public class PaymentService : IPaymentService
 {
-    private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
+    private readonly IPaymentRepository _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
     private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
@@ -35,7 +35,7 @@ public class PaymentService : IPaymentService
 
 
     public PaymentService(
-        IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
+        IPaymentRepository paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
         IRepository<BookingEntity> bookingRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
@@ -399,6 +399,30 @@ public class PaymentService : IPaymentService
         }
 
         await _revenueService.UpdateRevenueAfterPaymentAsync(payment.Id);
+    }
+
+    public async Task<PagedResult<PaymentResponseDto>> GetPaymentsPagedAsync(
+        int pageIndex,
+        int pageSize,
+        DateTime? fromDate,
+        DateTime? toDate,
+        string? method)
+    {
+        var (items, totalCount) = await _paymentRepository.GetPagedAsync(pageIndex, pageSize, fromDate, toDate, method);
+        var dtos = items.Select(MapToDto).ToList();
+        return PagedResult<PaymentResponseDto>.Create(dtos, totalCount, pageIndex, pageSize);
+    }
+
+    public async Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsBySessionIdAsync(int sessionId)
+    {
+        var items = await _paymentRepository.GetBySessionIdAsync(sessionId);
+        return items.Select(MapToDto).ToList();
+    }
+
+    public async Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsByAccountIdAsync(int accountId)
+    {
+        var items = await _paymentRepository.GetByAccountIdAsync(accountId);
+        return items.Select(MapToDto).ToList();
     }
 
     private static PaymentResponseDto MapToDto(PBMS.Domain.Entities.Payment payment) => new()

@@ -37,6 +37,9 @@ public static class DependencyInjection
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
 
+        // Payment Management — Repository
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+
         // Blacklist Management — Repository
         services.AddScoped<IBlacklistRepository, BlacklistRepository>();
 
