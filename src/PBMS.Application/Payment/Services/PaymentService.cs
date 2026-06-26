@@ -126,7 +126,7 @@ public class PaymentService : IPaymentService
                 return BaseResponse<PaymentResponseDto>.Fail("VEHICLE_NOT_FOUND", "Vehicle information not found.");
 
             // Tính toán tiền đỗ xe thực tế dựa vào thời điểm check-in & check-out
-            var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
+            var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow.AddHours(7);
             var calculationStartTime = session.CheckInTime;
 
             if (session.MonthlySubscriptionId.HasValue)
@@ -208,7 +208,7 @@ public class PaymentService : IPaymentService
                 Amount = roundedAmount,
                 PaymentMethod = "CASH",
                 PaymentStatus = "PAID",
-                PaymentTime = DateTime.UtcNow
+                PaymentTime = DateTime.UtcNow.AddHours(7)
             };
 
             await _paymentRepository.AddAsync(payment);
@@ -313,7 +313,7 @@ public class PaymentService : IPaymentService
             if (responseCode == "00" && transactionStatus == "00")
             {
                 payment.PaymentStatus = "PAID";
-                payment.PaymentTime = DateTime.UtcNow;
+                payment.PaymentTime = DateTime.UtcNow.AddHours(7);
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
@@ -352,7 +352,7 @@ public class PaymentService : IPaymentService
             if (booking != null)
             {
                 booking.BookingStatus = "Confirmed";
-                booking.ConfirmedAt = DateTime.UtcNow;
+                booking.ConfirmedAt = DateTime.UtcNow.AddHours(7);
                 _bookingRepository.Update(booking);
                 await _bookingRepository.SaveChangesAsync();
             }
@@ -365,7 +365,7 @@ public class PaymentService : IPaymentService
             {
                 subscription.MonthlySubscriptionStatus = PBMS.Domain.Enums.MonthlySubscriptionStatus.Active;
                 
-                var now = DateTime.UtcNow;
+                var now = DateTime.UtcNow.AddHours(7);
                 if (subscription.ActivatedAt == null)
                 {
                     subscription.ActivatedAt = now;
