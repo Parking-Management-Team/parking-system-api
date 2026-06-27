@@ -112,4 +112,9 @@ public interface IPricingPolicyService
     ///   - Chính sách chỉ còn 1 window → DomainException "CANNOT_DELETE_LAST_PRICING_WINDOW"
     /// </summary>
     Task DeletePricingWindowAsync(int pricingWindowId);
+
+    /// <summary>
+    /// Tự động quét dọn và chuyển các chính sách giá Active có ngày kết thúc EffectiveEnd đã qua hạn sang trạng thái Expired.
+    /// </summary>
+    Task<int> CleanupExpiredPricingPoliciesAsync();
 }

@@ -4,6 +4,10 @@
 
 Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự án PBMS API, được quét trực tiếp từ mã nguồn thực tế ở tầng Web API Controllers.
 
+> 💡 **Swagger / OpenAPI Contract Links (Khi ứng dụng đang chạy ở môi trường Local/Dev):**
+> * **Swagger UI (Giao diện chạy thử trực quan)**: [http://localhost:5029/swagger](http://localhost:5029/swagger)
+> * **OpenAPI Contract File (JSON)**: [http://localhost:5029/swagger/v1/swagger.json](http://localhost:5029/swagger/v1/swagger.json) (Dùng để auto-generate code HttpClient/TypeScript ở Frontend)
+
 ---
 
 ## 🔍 Danh Sách Chi Tiết API Endpoints
@@ -40,6 +44,7 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/buildings/paged` | `GET` | Cấu trúc bãi xe | `BuildingsController` | ✅ Có | Lấy danh sách tòa nhà phân trang |
 | `/api/buildings/{id}` | `PUT` | Cấu trúc bãi xe | `BuildingsController` | ✅ Có | Cập nhật thông tin tòa nhà |
 | `/api/buildings/{id}` | `DELETE` | Cấu trúc bãi xe | `BuildingsController` | ✅ Có | Xóa thông tin tòa nhà |
+| `/api/buildings/{id}/available-capacity` | `GET` | Cấu trúc bãi xe | `BuildingsController` | ❌ Chưa | Lấy sức chứa khả dụng theo thời gian đặt |
 | `/api/cards` | `POST` | Quản lý thẻ | `CardController` | ✅ Có | Tạo mới thẻ vật lý RFID |
 | `/api/cards` | `GET` | Quản lý thẻ | `CardController` | ✅ Có | Lấy danh sách tất cả thẻ |
 | `/api/cards/{id}` | `GET` | Quản lý thẻ | `CardController` | ✅ Có | Xem chi tiết thẻ theo ID |
@@ -65,6 +70,8 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/monthly-subscriptions/{id}` | `GET` | Vé tháng | `MonthlySubscriptionsController` | ✅ Có | Xem chi tiết thông tin vé tháng theo ID |
 | `/api/monthly-subscriptions/{id}` | `DELETE` | Vé tháng | `MonthlySubscriptionsController` | ✅ Có | Hủy đăng ký vé tháng |
 | `/api/monthly-subscriptions/cleanup` | `POST` | Vé tháng | `MonthlySubscriptionsController` | ✅ Có | Tự động dọn dẹp đăng ký quá hạn thanh toán |
+| `/api/monthly-subscriptions/by-account/{accountId}` | `GET` | Vé tháng | `MonthlySubscriptionsController` | ✅ Có | Lấy danh sách đăng ký vé tháng của tài khoản |
+| `/api/monthly-subscriptions/by-building/{buildingId}` | `GET` | Vé tháng | `MonthlySubscriptionsController` | ✅ Có | Lấy danh sách đăng ký vé tháng của tòa nhà |
 | `/api/parking-sessions/check-in` | `POST` | Gửi xe thực tế | `ParkingSessionsController` | ✅ [Tài liệu](parking-sessions-api.md#1-post-apiparking-sessionscheck-in---check-in-vehicle) | Đăng ký xe vào bãi (Check-In) |
 | `/api/parking-sessions` | `POST` | Gửi xe thực tế | `ParkingSessionsController` | ✅ Có | Tạo mới một phiên gửi xe |
 | `/api/parking-sessions` | `GET` | Gửi xe thực tế | `ParkingSessionsController` | ✅ Có | Lấy danh sách tất cả các phiên gửi xe |
@@ -83,6 +90,10 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/parkingslots/{id}` | `DELETE` | Cấu trúc bãi xe | `ParkingSlotsController` | ✅ Có | Xóa vị trí đỗ xe |
 | `/api/payments` | `POST` | Thanh toán | `PaymentsController` | ✅ Có | Tạo mới yêu cầu thanh toán (Tiền mặt / Online) |
 | `/api/payments/callback` | `GET` | Thanh toán | `PaymentsController` | ✅ Có | Điểm tiếp nhận IPN callback tự động từ VNPay |
+| `/api/payments/vnpay-return` | `GET` | Thanh toán | `PaymentsController` | ❌ Chưa | Nhận redirect từ VNPay và chuyển hướng về FE |
+| `/api/payments` | `GET` | Thanh toán | `PaymentsController` | ✅ Có | Lấy danh sách giao dịch thanh toán phân trang (Admin/Staff) |
+| `/api/payments/by-session/{sessionId}` | `GET` | Thanh toán | `PaymentsController` | ✅ Có | Lấy danh sách giao dịch thanh toán theo sessionId |
+| `/api/payments/by-account/{accountId}` | `GET` | Thanh toán | `PaymentsController` | ✅ Có | Lấy danh sách giao dịch thanh toán theo accountId |
 | `/api/penalty-configs` | `GET` | Quản lý sự cố | `PenaltyConfigsController` | ❌ Chưa | Lấy danh sách cấu hình giá phạt sự cố |
 | `/api/penalty-configs/active/{incidentTypeId}` | `GET` | Quản lý sự cố | `PenaltyConfigsController` | ❌ Chưa | Lấy cấu hình giá phạt đang hoạt động |
 | `/api/penalty-configs` | `POST` | Quản lý sự cố | `PenaltyConfigsController` | ❌ Chưa | Tạo cấu hình giá phạt mới |
@@ -96,6 +107,7 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/pricing-policies/{id}/windows` | `POST` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Thêm khung giờ tính giá mới vào chính sách |
 | `/api/pricing-policies/windows/{windowId}` | `PUT` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Cập nhật thông tin một khung giờ tính giá |
 | `/api/pricing-policies/windows/{windowId}` | `DELETE` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Xóa một khung giờ khỏi chính sách |
+| `/api/pricing-policies/cleanup` | `POST` | Chính sách giá | `PricingPoliciesController` | ❌ Chưa | Dọn dẹp các chính sách giá Active quá hạn sang Expired |
 | `/api/revenue` | `GET` | Báo cáo doanh thu | `RevenueController` | ✅ Có | Xem thống kê doanh thu theo bộ lọc, phân trang |
 | `/api/revenue/{id}` | `GET` | Báo cáo doanh thu | `RevenueController` | ✅ Có | Xem chi tiết doanh thu và danh sách hóa đơn |
 | `/api/subscription-price-configs` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ❌ Chưa | Lấy danh sách cấu hình giá vé tháng |

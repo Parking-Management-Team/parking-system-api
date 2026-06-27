@@ -5,6 +5,7 @@ using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -32,6 +33,7 @@ public class BookingServiceTests
     private readonly IRepository<ParkingSlotEntity> _parkingSlotRepositoryMock;
     private readonly IRepository<PaymentEntity> _paymentRepositoryMock;
     private readonly IUnitOfWork _unitOfWorkMock;
+    private readonly IConfiguration _configurationMock;
     private readonly BookingService _service;
 
     public BookingServiceTests()
@@ -46,6 +48,7 @@ public class BookingServiceTests
         _parkingSlotRepositoryMock = Substitute.For<IRepository<ParkingSlotEntity>>();
         _paymentRepositoryMock = Substitute.For<IRepository<PaymentEntity>>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
+        _configurationMock = Substitute.For<IConfiguration>();
 
         _service = new BookingService(
             _bookingRepositoryMock,
@@ -57,7 +60,8 @@ public class BookingServiceTests
             _sessionRepositoryMock,
             _parkingSlotRepositoryMock,
             _paymentRepositoryMock,
-            _unitOfWorkMock
+            _unitOfWorkMock,
+            _configurationMock
         );
     }
 

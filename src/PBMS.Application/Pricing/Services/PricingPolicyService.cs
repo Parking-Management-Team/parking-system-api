@@ -669,4 +669,32 @@ public class PricingPolicyService : IPricingPolicyService
             CreatedAt = window.CreatedAt
         };
     }
+
+    /// <summary>
+    /// Tự động quét dọn và chuyển các chính sách giá Active có ngày kết thúc EffectiveEnd đã qua hạn sang trạng thái Expired.
+    /// </summary>
+    public async Task<int> CleanupExpiredPricingPoliciesAsync()
+    {
+        var today = DateTime.UtcNow.AddHours(7).Date; // Sử dụng giờ Việt Nam (UTC+7) để so sánh vì ngày hiệu lực của chính sách lưu theo giờ VN
+        
+        var expiredPolicies = await _policyRepository.FindAsync(pp =>
+            pp.PricingPolicyStatus == "Active" &&
+            pp.EffectiveEnd != null &&
+            pp.EffectiveEnd.Value < today);
+
+        int count = 0;
+        foreach (var policy in expiredPolicies)
+        {
+            policy.PricingPolicyStatus = "Expired";
+            _policyRepository.Update(policy);
+            count++;
+        }
+
+        if (count > 0)
+        {
+            await _policyRepository.SaveChangesAsync();
+        }
+
+        return count;
+    }
 }

@@ -6,7 +6,6 @@ using PBMS.API;
 using PBMS.API.Middlewares;
 using PBMS.Application;
 using PBMS.Infrastructure;
-using PBMS.Infrastructure.Data;
 using PBMS.API.Workers;
 using System.Text;
 
@@ -50,6 +49,7 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 // Đăng ký các hosted services chạy nền (Workers)
 builder.Services.AddHostedService<ExpiredBookingCleanupWorker>();
 builder.Services.AddHostedService<OvertimeWarningWorker>();
+builder.Services.AddHostedService<ExpiredPricingPolicyCleanupWorker>();
 
 // Cấu hình CORS (Cross-Origin Resource Sharing)
 // Cho phép Web Frontend (chạy trên localhost:3000 hoặc localhost:5173) gọi API
@@ -95,40 +95,19 @@ var app = builder.Build();
 // Tự động chạy Migration khi ứng dụng khởi động ở môi trường Development
 if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
 {
-    using (var scope = app.Services.CreateScope())
+    try
     {
-        var services = scope.ServiceProvider;
-        try
+        await app.Services.MigrateAndSeedDatabaseAsync(builder.Configuration);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"--> Error applying database migrations: {ex.Message}");
+        if (ex.InnerException != null)
         {
-            var context = services.GetRequiredService<AppDbContext>();
-            
-            // Tự động xóa database cũ nếu cấu hình Db:ResetOnStartup = true (mặc định là false)
-            var resetDb = builder.Configuration.GetValue<bool>("Db:ResetOnStartup", false);
-            if (resetDb)
-            {
-                context.Database.EnsureDeleted();
-                Console.WriteLine("--> Existing database deleted successfully.");
-            }
-            
-            context.Database.Migrate();
-            Console.WriteLine("--> Database migration completed successfully.");
-
-
-
-            // Seed dữ liệu mẫu
-            await DbInitializer.SeedAsync(context);
-            Console.WriteLine("--> Database seeding completed successfully.");
+            Console.WriteLine($"--> Inner Exception: {ex.InnerException.Message}");
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"--> Error applying database migrations: {ex.Message}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"--> Inner Exception: {ex.InnerException.Message}");
-            }
-            // Log full stack trace for better debugging
-            Console.WriteLine(ex.StackTrace);
-        }
+        // Log full stack trace for better debugging
+        Console.WriteLine(ex.StackTrace);
     }
 }
 else if (app.Environment.IsDevelopment())
