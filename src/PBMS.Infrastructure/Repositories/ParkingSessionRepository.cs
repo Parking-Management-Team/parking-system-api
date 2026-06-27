@@ -112,7 +112,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                     ps.SessionStatus.ToUpper() == "ACTIVE"),
                 ReservedBookings = _context.Set<Booking>().Count(b =>
                     b.SlotId != null &&
-                    b.Slot.ZoneId == z.Id &&
+                    b.ParkingSlot.ZoneId == z.Id &&
                     (b.BookingStatus == BookingStatus.Confirmed ||
                      (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
                     b.PlannedCheckinTime <= startGrace &&
