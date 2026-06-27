@@ -231,4 +231,22 @@ public class PricingPoliciesController : ControllerBase
 
         return NoContent();
     }
+
+    // -----------------------------------------------------------------------
+    // POST /api/pricing-policies/cleanup — Dọn dẹp chính sách giá hết hạn
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Dọn dẹp các chính sách giá Active đã hết hạn EffectiveEnd -> chuyển sang Expired.
+    ///
+    /// Route  : POST /api/pricing-policies/cleanup
+    /// Returns: 200 OK + thông báo số lượng chính sách giá đã được xử lý
+    /// </summary>
+    [HttpPost("cleanup")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult<BaseResponse<string>>> CleanupExpiredPricingPolicies()
+    {
+        var count = await _pricingPolicyService.CleanupExpiredPricingPoliciesAsync();
+        return Ok(BaseResponse<string>.Ok($"Dọn dẹp thành công. Đã hết hạn {count} chính sách giá."));
+    }
 }

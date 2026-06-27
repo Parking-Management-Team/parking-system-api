@@ -3,6 +3,7 @@ using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Contracts;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
+using Microsoft.Extensions.Configuration;
 using BookingEntity = PBMS.Domain.Entities.Booking;
 using ParkingSlotEntity = PBMS.Domain.Entities.ParkingSlot;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
@@ -31,12 +32,13 @@ public class BookingService : IBookingService
     private readonly IRepository<ParkingSlotEntity> _parkingSlotRepository;
     private readonly IRepository<PaymentEntity> _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IConfiguration _configuration;
 
-    // Hằng số nghiệp vụ
-    private const int MinBookingMinutes = 15;           // Thời gian đặt trước tối thiểu: 15 phút
-    private const int MinBookingDurationHours = 4;      // Thời lượng đặt chỗ tối thiểu: 4 tiếng
-    private const int PaymentDeadlineMinutes = 15;
-    private const int CheckinGracePeriodMinutes = 30;
+    // Cấu hình nghiệp vụ (lấy từ Configuration hoặc mặc định)
+    private int MinBookingMinutes => int.TryParse(_configuration["BookingSettings:MinBookingMinutes"], out var val) ? val : 15;
+    private int MinBookingDurationHours => int.TryParse(_configuration["BookingSettings:MinBookingDurationHours"], out var val) ? val : 4;
+    private int PaymentDeadlineMinutes => int.TryParse(_configuration["BookingSettings:PaymentDeadlineMinutes"], out var val) ? val : 15;
+    private int CheckinGracePeriodMinutes => int.TryParse(_configuration["BookingSettings:CheckinGracePeriodMinutes"], out var val) ? val : 30;
 
     // Múi giờ Việt Nam (UTC+7)
     private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
@@ -72,7 +74,8 @@ public class BookingService : IBookingService
         IRepository<ParkingSessionEntity> _sessionRepositoryMock,
         IRepository<ParkingSlotEntity> parkingSlotRepository,
         IRepository<PaymentEntity> paymentRepositoryMock,
-        IUnitOfWork _unitOfWorkMock)
+        IUnitOfWork _unitOfWorkMock,
+        IConfiguration configuration)
     {
         _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
         _vehicleRepository = _vehicleRepositoryMock ?? throw new ArgumentNullException(nameof(_vehicleRepositoryMock));
@@ -84,6 +87,7 @@ public class BookingService : IBookingService
         _parkingSlotRepository = parkingSlotRepository ?? throw new ArgumentNullException(nameof(parkingSlotRepository));
         _paymentRepository = paymentRepositoryMock ?? throw new ArgumentNullException(nameof(paymentRepositoryMock));
         _unitOfWork = _unitOfWorkMock ?? throw new ArgumentNullException(nameof(_unitOfWorkMock));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     // -----------------------------------------------------------------------

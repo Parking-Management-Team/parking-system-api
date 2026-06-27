@@ -16,6 +16,7 @@ public class ParkingSlotServiceTests
     private readonly IParkingSlotRepository _slotRepositoryMock;
     private readonly IRepository<Zone> _zoneRepositoryMock;
     private readonly IRepository<VehicleType> _vehicleTypeRepositoryMock;
+    private readonly IRepository<Booking> _bookingRepositoryMock;
     private readonly IMapper _mapperMock;
     private readonly ParkingSlotService _slotService;
 
@@ -24,12 +25,14 @@ public class ParkingSlotServiceTests
         _slotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _zoneRepositoryMock = Substitute.For<IRepository<Zone>>();
         _vehicleTypeRepositoryMock = Substitute.For<IRepository<VehicleType>>();
+        _bookingRepositoryMock = Substitute.For<IRepository<Booking>>();
         _mapperMock = Substitute.For<IMapper>();
 
         _slotService = new ParkingSlotService(
             _slotRepositoryMock,
             _zoneRepositoryMock,
             _vehicleTypeRepositoryMock,
+            _bookingRepositoryMock,
             _mapperMock);
     }
 

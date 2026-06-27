@@ -88,4 +88,29 @@ public static class DependencyInjection
 
         return services;
     }
+
+    /// <summary>
+    /// Thực hiện chạy migration và seeding dữ liệu cho bãi xe một cách tự động (chỉ dùng cho môi trường Dev).
+    /// </summary>
+    public static async System.Threading.Tasks.Task MigrateAndSeedDatabaseAsync(this IServiceProvider serviceProvider, IConfiguration configuration)
+    {
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var context = services.GetRequiredService<AppDbContext>();
+            
+            var resetDb = configuration.GetValue<bool>("Db:ResetOnStartup", false);
+            if (resetDb)
+            {
+                context.Database.EnsureDeleted();
+                Console.WriteLine("--> Existing database deleted successfully.");
+            }
+            
+            context.Database.Migrate();
+            Console.WriteLine("--> Database migration completed successfully.");
+
+            await DbInitializer.SeedAsync(context);
+            Console.WriteLine("--> Database seeding completed successfully.");
+        }
+    }
 }

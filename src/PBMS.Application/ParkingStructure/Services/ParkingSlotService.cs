@@ -6,6 +6,7 @@ using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
+using BookingEntity = PBMS.Domain.Entities.Booking;
 
 namespace PBMS.Application.ParkingStructure.Services;
 
@@ -17,17 +18,20 @@ public class ParkingSlotService : IParkingSlotService
     private readonly IParkingSlotRepository _slotRepository;
     private readonly IRepository<Zone> _zoneRepository;
     private readonly IRepository<VehicleType> _vehicleTypeRepository;
+    private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMapper _mapper;
 
     public ParkingSlotService(
         IParkingSlotRepository slotRepository,
         IRepository<Zone> zoneRepository,
         IRepository<VehicleType> vehicleTypeRepository,
+        IRepository<BookingEntity> bookingRepository,
         IMapper mapper)
     {
         _slotRepository = slotRepository;
         _zoneRepository = zoneRepository;
         _vehicleTypeRepository = vehicleTypeRepository;
+        _bookingRepository = bookingRepository;
         _mapper = mapper;
     }
 
@@ -107,7 +111,9 @@ public class ParkingSlotService : IParkingSlotService
         int zoneId, 
         List<SlotStatus>? statuses = null, 
         List<int>? vehicleTypeIds = null, 
-        string? search = null)
+        string? search = null,
+        DateTime? plannedCheckinTime = null,
+        DateTime? plannedCheckoutTime = null)
     {
         var zone = await _zoneRepository.GetByIdAsync(zoneId);
         if (zone == null)
@@ -134,7 +140,41 @@ public class ParkingSlotService : IParkingSlotService
                 (s.Name != null && s.Name.Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
 
-        return _mapper.Map<IEnumerable<ParkingSlotDto>>(slots);
+        HashSet<int> reservedSlotIds = new();
+
+        if (plannedCheckinTime.HasValue && plannedCheckoutTime.HasValue)
+        {
+            var now = DateTime.UtcNow;
+            var start = plannedCheckinTime.Value.Kind == DateTimeKind.Utc ? plannedCheckinTime.Value : plannedCheckinTime.Value.ToUniversalTime();
+            var end = plannedCheckoutTime.Value.Kind == DateTimeKind.Utc ? plannedCheckoutTime.Value : plannedCheckoutTime.Value.ToUniversalTime();
+
+            // Lấy danh sách Booking bị trùng lịch đặt chỗ
+            var activeBookings = await _bookingRepository.FindAsync(b =>
+                b.SlotId != null &&
+                (b.BookingStatus == BookingStatus.Confirmed ||
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.PlannedCheckinTime < end &&
+                b.PlannedCheckoutTime > start);
+
+            reservedSlotIds = activeBookings
+                .Select(b => b.SlotId!.Value)
+                .ToHashSet();
+        }
+
+        var slotDtos = _mapper.Map<IEnumerable<ParkingSlotDto>>(slots).ToList();
+
+        if (reservedSlotIds.Any())
+        {
+            foreach (var dto in slotDtos)
+            {
+                if (reservedSlotIds.Contains(dto.Id))
+                {
+                    dto.IsReserved = true;
+                }
+            }
+        }
+
+        return slotDtos;
     }
 
     public async Task<PagedResult<ParkingSlotDto>> GetSlotsPagedAsync(int pageIndex, int pageSize)

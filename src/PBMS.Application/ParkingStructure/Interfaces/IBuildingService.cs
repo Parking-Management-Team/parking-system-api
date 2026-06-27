@@ -15,4 +15,5 @@ public interface IBuildingService
     Task<BuildingDto> UpdateBuildingAsync(int id, BuildingUpdateRequest request);
     Task DeleteBuildingAsync(int id);
     Task<CapacityDto> GetBuildingCapacityAsync(int id);
+    Task<BuildingAvailableCapacityDto> GetAvailableCapacityByTimeframeAsync(int buildingId, DateTime plannedCheckinTime, DateTime? plannedCheckoutTime);
 }

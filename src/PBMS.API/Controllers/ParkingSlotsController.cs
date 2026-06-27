@@ -59,9 +59,11 @@ public class ParkingSlotsController : ControllerBase
         int zoneId, 
         [FromQuery] List<SlotStatus>? statuses = null,
         [FromQuery] List<int>? vehicleTypeIds = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? plannedCheckinTime = null,
+        [FromQuery] DateTime? plannedCheckoutTime = null)
     {
-        var slots = await _slotService.GetSlotsByZoneAsync(zoneId, statuses, vehicleTypeIds, search);
+        var slots = await _slotService.GetSlotsByZoneAsync(zoneId, statuses, vehicleTypeIds, search, plannedCheckinTime, plannedCheckoutTime);
         return Ok(BaseResponse<IEnumerable<ParkingSlotDto>>.Ok(slots));
     }
 

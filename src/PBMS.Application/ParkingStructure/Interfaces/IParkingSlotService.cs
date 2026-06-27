@@ -16,7 +16,9 @@ public interface IParkingSlotService
         int zoneId, 
         List<SlotStatus>? statuses = null, 
         List<int>? vehicleTypeIds = null, 
-        string? search = null);
+        string? search = null,
+        DateTime? plannedCheckinTime = null,
+        DateTime? plannedCheckoutTime = null);
     Task<PagedResult<ParkingSlotDto>> GetSlotsPagedAsync(int pageIndex, int pageSize);
     Task<ParkingSlotDto> UpdateSlotAsync(int id, ParkingSlotUpdateRequest request);
     Task DeleteSlotAsync(int id);

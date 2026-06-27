@@ -88,6 +88,9 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
     {
+        var now = DateTime.UtcNow;
+        var startGrace = now.AddMinutes(30);
+
         var zones = _context.Zones
             .Include(z => z.Floor)
             .Where(z =>
@@ -106,10 +109,17 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 Zone = z,
                 ActiveSessions = _context.ParkingSessions.Count(ps =>
                     ps.ZoneId == z.Id &&
-                    ps.SessionStatus.ToUpper() == "ACTIVE")
+                    ps.SessionStatus.ToUpper() == "ACTIVE"),
+                ReservedBookings = _context.Set<Booking>().Count(b =>
+                    b.SlotId != null &&
+                    b.Slot.ZoneId == z.Id &&
+                    (b.BookingStatus == BookingStatus.Confirmed ||
+                     (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                    b.PlannedCheckinTime <= startGrace &&
+                    b.PlannedCheckoutTime > now)
             })
-            .Where(x => x.ActiveSessions < x.Zone.Capacity)
-            .OrderBy(x => x.ActiveSessions)
+            .Where(x => (x.ActiveSessions + x.ReservedBookings) < x.Zone.Capacity)
+            .OrderBy(x => x.ActiveSessions + x.ReservedBookings)
             .ThenBy(x => x.Zone.Id)
             .Select(x => x.Zone)
             .FirstOrDefaultAsync();
@@ -117,7 +127,10 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<ParkingSlot?> FindAvailableGeneralSlotAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var slots = _context.ParkingSlots
+        var now = DateTime.UtcNow;
+        var startGrace = now.AddMinutes(30);
+
+        var query = _context.ParkingSlots
             .Include(s => s.Zone)
             .ThenInclude(z => z.Floor)
             .Where(s =>
@@ -128,10 +141,26 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
         if (buildingId.HasValue)
         {
-            slots = slots.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
+            query = query.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
         }
 
-        return await slots
+        // Loại trừ các Slot đang bị giữ chỗ bởi Booking đang hoạt động hoặc chuẩn bị check-in (trong vòng 30 phút tới)
+        var reservedSlotIds = await _context.Set<Booking>()
+            .Where(b =>
+                b.SlotId != null &&
+                (b.BookingStatus == BookingStatus.Confirmed ||
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.PlannedCheckinTime <= startGrace &&
+                b.PlannedCheckoutTime > now)
+            .Select(b => b.SlotId!.Value)
+            .ToListAsync();
+
+        if (reservedSlotIds.Any())
+        {
+            query = query.Where(s => !reservedSlotIds.Contains(s.Id));
+        }
+
+        return await query
             .OrderBy(s => s.ZoneId)
             .ThenBy(s => s.Id)
             .FirstOrDefaultAsync();
