@@ -23,5 +23,26 @@ namespace PBMS.Application.Auth.Interfaces
         /// <param name="request">Yêu cầu đăng nhập chứa Google ID Token.</param>
         /// <returns>Đối tượng LoginResponseDto chứa mã JWT Token của hệ thống và thông tin định danh.</returns>
         Task<LoginResponseDto> LoginWithGoogleAsync(GoogleLoginRequest request);
+
+        /// <summary>
+        /// Gửi yêu cầu sinh mã OTP tới email của người dùng.
+        /// </summary>
+        Task SendOtpForRegisterAsync(string email);
+
+        /// <summary>
+        /// Xác thực mã OTP vừa được gửi.
+        /// </summary>
+        /// <returns>Trả về VerificationToken để dùng cho bước đăng ký.</returns>
+        Task<string> VerifyOtpForRegisterAsync(string email, string otp);
+
+        /// <summary>
+        /// Hoàn tất quá trình đăng ký tài khoản sau khi đã xác thực OTP thành công.
+        /// </summary>
+        Task RegisterVerifiedUserAsync(RegisterVerifiedRequest request);
+
+        /// <summary>
+        /// Xác thực mã OTP và hoàn tất đăng ký tài khoản cho liên kết Google OAuth2.
+        /// </summary>
+        Task<LoginResponseDto> VerifyGoogleOtpAndRegisterAsync(GoogleVerifyOtpRequest request);
     }
 }
