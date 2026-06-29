@@ -371,7 +371,18 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
 
         subscription.MonthlySubscriptionStatus = MonthlySubscriptionStatus.Active;
         subscription.ActivatedAt = DateTime.UtcNow;
-        subscription.ExpiredAt = subscription.ActivatedAt.Value.AddDays(30);
+
+        int durationDays = 30;
+        if (subscription.SubscriptionPriceConfigId.HasValue)
+        {
+            var priceConfig = await _priceConfigRepository.GetByIdAsync(subscription.SubscriptionPriceConfigId.Value);
+            if (priceConfig != null)
+            {
+                durationDays = priceConfig.DurationDays;
+            }
+        }
+        subscription.ExpiredAt = subscription.ActivatedAt.Value.AddDays(durationDays);
+
 
         if (subscription.AssignedCardId.HasValue)
         {
@@ -527,15 +538,16 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
         }
 
         // Extend ExpirationDate: 
-        // If current subscription is ACTIVE and not yet expired, new expiration = ExpiredAt + 30 days.
-        // If it is EXPIRED, new expiration = DateTime.UtcNow + 30 days.
+        // If current subscription is ACTIVE and not yet expired, new expiration = ExpiredAt + DurationDays.
+        // If it is EXPIRED, new expiration = DateTime.UtcNow + DurationDays.
         var baseDate = (subscription.MonthlySubscriptionStatus == "Active" && subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value > DateTime.UtcNow) 
             ? subscription.ExpiredAt.Value 
             : DateTime.UtcNow;
 
-        subscription.ExpiredAt = baseDate.AddDays(30);
+        subscription.ExpiredAt = baseDate.AddDays(priceConfig.DurationDays);
         subscription.MonthlyPrice = priceConfig.Price;
         subscription.MonthlySubscriptionStatus = "Active"; // Ensure it is active
+
 
         _subscriptionRepository.Update(subscription);
         await _subscriptionRepository.SaveChangesAsync();

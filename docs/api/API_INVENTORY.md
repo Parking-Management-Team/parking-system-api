@@ -110,11 +110,11 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/pricing-policies/cleanup` | `POST` | Chính sách giá | `PricingPoliciesController` | ❌ Chưa | Dọn dẹp các chính sách giá Active quá hạn sang Expired |
 | `/api/revenue` | `GET` | Báo cáo doanh thu | `RevenueController` | ✅ Có | Xem thống kê doanh thu theo bộ lọc, phân trang |
 | `/api/revenue/{id}` | `GET` | Báo cáo doanh thu | `RevenueController` | ✅ Có | Xem chi tiết doanh thu và danh sách hóa đơn |
-| `/api/subscription-price-configs` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ❌ Chưa | Lấy danh sách cấu hình giá vé tháng |
-| `/api/subscription-price-configs/active/{vehicleTypeId}` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ❌ Chưa | Lấy cấu hình giá vé tháng đang hoạt động |
-| `/api/subscription-price-configs` | `POST` | Vé tháng | `SubscriptionPriceConfigsController` | ❌ Chưa | Tạo cấu hình giá vé tháng mới |
-| `/api/subscription-price-configs/{id}/deactivate` | `PUT` | Vé tháng | `SubscriptionPriceConfigsController` | ❌ Chưa | Vô hiệu hóa cấu hình giá vé tháng |
-| `/api/subscription-price-configs/{id}` | `DELETE` | Vé tháng | `SubscriptionPriceConfigsController` | ❌ Chưa | Xóa mềm cấu hình giá vé tháng |
+| `/api/subscription-price-configs` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#1-get-apisubscription-price-configs---danh-sach-cau-hinh-gia) | Lấy danh sách cấu hình giá vé tháng |
+| `/api/subscription-price-configs/active/{vehicleTypeId}` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#2-get-apisubscription-price-configsactivevehicletypeid---cau-hinh-gia-dang-hoat-dong) | Lấy cấu hình giá vé tháng đang hoạt động |
+| `/api/subscription-price-configs` | `POST` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#3-post-apisubscription-price-configs---tao-cau-hinh-gia--thoi-han-moi-adminmanager) | Tạo cấu hình giá vé tháng mới |
+| `/api/subscription-price-configs/{id}/deactivate` | `PUT` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#4-put-apisubscription-price-configsiddeactivate---vo-hieu-hoa-cau-hinh-gia-adminmanager) | Vô hiệu hóa cấu hình giá vé tháng |
+| `/api/subscription-price-configs/{id}` | `DELETE` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#5-delete-apisubscription-price-configsid---xoa-mem-cau-hinh-gia-adminmanager) | Xóa mềm cấu hình giá vé tháng |
 | `/api/vehicle-types` | `GET` | Phương tiện | `VehicleTypeController` | ✅ [Tài liệu](vehicle-types-api.md#1-get-apivehicle-types---list-all-vehicle-types) | Lấy danh sách tất cả các loại xe |
 | `/api/vehicle-types/{id}` | `GET` | Phương tiện | `VehicleTypeController` | ✅ [Tài liệu](vehicle-types-api.md#2-get-apivehicle-typesid---vehicle-type-detail) | Xem chi tiết loại xe theo ID |
 | `/api/vehicle-types` | `POST` | Phương tiện | `VehicleTypeController` | ✅ [Tài liệu](vehicle-types-api.md#3-post-apivehicle-types---create-vehicle-type) | Tạo mới loại xe |
