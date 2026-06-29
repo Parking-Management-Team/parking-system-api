@@ -48,7 +48,7 @@ public static class DependencyInjection
 
         //Google OauthServiceDI
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
-        
+
         // Cung cấp HttpContext cho CurrentUserService
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -84,6 +84,13 @@ public static class DependencyInjection
         // VNPay Gateway
         services.AddScoped<IVNPayGateway, VNPayGateway>();
 
+        // Đăng ký Memory Cache mặc định của .NET
+        services.AddMemoryCache();
+
+        // Đăng ký các dịch vụ Email & OTP mới tạo
+        services.AddTransient<IEmailService, EmailService>();
+        services.AddTransient<IOtpService, OtpService>();
+
 
 
         return services;
@@ -98,14 +105,14 @@ public static class DependencyInjection
         {
             var services = scope.ServiceProvider;
             var context = services.GetRequiredService<AppDbContext>();
-            
+
             var resetDb = configuration.GetValue<bool>("Db:ResetOnStartup", false);
             if (resetDb)
             {
                 context.Database.EnsureDeleted();
                 Console.WriteLine("--> Existing database deleted successfully.");
             }
-            
+
             context.Database.Migrate();
             Console.WriteLine("--> Database migration completed successfully.");
 

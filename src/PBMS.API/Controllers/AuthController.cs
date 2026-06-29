@@ -54,5 +54,48 @@ namespace PBMS.API.Controllers
             // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
             return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
         }
+        [HttpPost("send-otp")]
+        public async Task<ActionResult<BaseResponse<string>>> SendOtp([FromBody] SendOtpRequest request)
+        {
+            try
+            {
+                await _authService.SendOtpForRegisterAsync(request.Email);
+                return Ok(BaseResponse<string>.Ok(null, "OTP code has been sent to your email successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        [HttpPost("verify-otp")]
+        public async Task<ActionResult<BaseResponse<string>>> VerifyOtp([FromBody] VerifyOtpRequest request)
+        {
+            try
+            {
+                var verificationToken = await _authService.VerifyOtpForRegisterAsync(request.Email, request.Otp);
+                return Ok(BaseResponse<string>.Ok(verificationToken, "OTP verified successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        [HttpPost("register-verified")]
+        public async Task<ActionResult<BaseResponse<string>>> RegisterVerified([FromBody] RegisterVerifiedRequest request)
+        {
+            try
+            {
+                await _authService.RegisterVerifiedUserAsync(request);
+                return Ok(BaseResponse<string>.Ok(null, "Account registered successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+
     }
 }
