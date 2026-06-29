@@ -14,6 +14,4 @@ public class ParkingSlotDto
     public string? Name { get; set; }
     public SlotStatus Status { get; set; }
     public string? OccupiedLicensePlate { get; set; }
-    public SlotSubscriptionInfoDto? Subscription { get; set; }
-    public bool IsReserved { get; set; }
 }

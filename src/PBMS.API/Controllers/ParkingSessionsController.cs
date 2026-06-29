@@ -30,13 +30,6 @@ public class ParkingSessionsController : ControllerBase
             : ToErrorResult(result.ErrorCode, result);
     }
 
-    [HttpGet("check-in/booking")]
-    public async Task<IActionResult> GetCheckInBooking([FromQuery] string licensePlate, [FromQuery] int? buildingId)
-    {
-        var result = await _service.GetCheckInBookingByLicensePlateAsync(licensePlate, buildingId);
-        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
-    }
-
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateParkingSessionRequest request)
     {
@@ -104,7 +97,7 @@ public class ParkingSessionsController : ControllerBase
     {
         return errorCode switch
         {
-            "NOT_FOUND" or "BOOKING_NOT_FOUND" => NotFound(result),
+            "NOT_FOUND" => NotFound(result),
             "VEHICLE_IN_ACTIVE_SESSION" or "CARD_IN_ACTIVE_SESSION" or "SLOT_IN_ACTIVE_SESSION" => Conflict(result),
             _ => BadRequest(result)
         };

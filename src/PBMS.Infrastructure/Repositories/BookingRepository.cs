@@ -74,19 +74,17 @@ public class BookingRepository : BaseRepository<BookingEntity>, IBookingReposito
     }
 
     /// <summary>
-    /// Đếm số Booking đang chiếm chỗ tại Building cho loại xe trong khoảng thời gian chồng lấn với [start, end].
+    /// Đếm số Booking đang chiếm chỗ tại Building cho loại xe.
+    /// Tính Booking có Status = Pending hoặc Confirmed.
     /// </summary>
-    public async Task<int> GetActiveBookingsCountAsync(int buildingId, int vehicleTypeId, DateTime start, DateTime end)
+    public async Task<int> GetActiveBookingsCountAsync(int buildingId, int vehicleTypeId)
     {
-        var now = DateTime.UtcNow;
         return await _dbContext.Set<BookingEntity>()
             .Include(b => b.Vehicle)
             .CountAsync(b =>
                 b.BuildingId == buildingId &&
                 b.Vehicle.VehicleTypeId == vehicleTypeId &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                b.PlannedCheckinTime < end &&
-                b.PlannedCheckoutTime > start);
+                (b.BookingStatus == BookingStatus.Pending ||
+                 b.BookingStatus == BookingStatus.Confirmed));
     }
 }

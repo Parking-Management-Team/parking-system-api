@@ -69,14 +69,13 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Lấy danh sách toàn bộ Booking trong hệ thống (dành cho Admin/Staff).
     ///
-    /// Route  : GET /api/bookings?status=Pending
+    /// Route  : GET /api/bookings
     /// Returns: 200 OK + Danh sách BookingDto
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetAllBookings(
-        [FromQuery] string? status = null)
+    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetAllBookings()
     {
-        var bookings = await _bookingService.GetAllBookingsAsync(status);
+        var bookings = await _bookingService.GetAllBookingsAsync();
         return Ok(BaseResponse<List<BookingDto>>.Ok(bookings));
     }
 
@@ -105,15 +104,13 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Lấy danh sách Booking của một Driver cụ thể.
     ///
-    /// Route  : GET /api/bookings/by-account/{accountId}?status=Pending
+    /// Route  : GET /api/bookings/by-account/{accountId}
     /// Returns: 200 OK + Danh sách BookingDto của Account đó
     /// </summary>
     [HttpGet("by-account/{accountId:int}")]
-    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByAccount(
-        int accountId,
-        [FromQuery] string? status = null)
+    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByAccount(int accountId)
     {
-        var bookings = await _bookingService.GetBookingsByAccountIdAsync(accountId, status);
+        var bookings = await _bookingService.GetBookingsByAccountIdAsync(accountId);
         return Ok(BaseResponse<List<BookingDto>>.Ok(bookings));
     }
 
@@ -124,15 +121,13 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Lấy danh sách Booking tại một Tòa nhà cụ thể (dành cho Staff quản lý bãi).
     ///
-    /// Route  : GET /api/bookings/by-building/{buildingId}?status=Pending
+    /// Route  : GET /api/bookings/by-building/{buildingId}
     /// Returns: 200 OK + Danh sách BookingDto của Building đó
     /// </summary>
     [HttpGet("by-building/{buildingId:int}")]
-    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByBuilding(
-        int buildingId,
-        [FromQuery] string? status = null)
+    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByBuilding(int buildingId)
     {
-        var bookings = await _bookingService.GetBookingsByBuildingIdAsync(buildingId, status);
+        var bookings = await _bookingService.GetBookingsByBuildingIdAsync(buildingId);
         return Ok(BaseResponse<List<BookingDto>>.Ok(bookings));
     }
 

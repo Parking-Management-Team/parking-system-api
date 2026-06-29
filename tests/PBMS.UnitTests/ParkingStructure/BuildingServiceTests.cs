@@ -11,18 +11,12 @@ using Xunit;
 
 namespace PBMS.UnitTests.ParkingStructure;
 
-using BookingEntity = PBMS.Domain.Entities.Booking;
-using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
-
 public class BuildingServiceTests
 {
     private readonly IBuildingRepository _buildingRepositoryMock;
     private readonly IRepository<Floor> _floorRepositoryMock;
     private readonly IZoneRepository _zoneRepositoryMock;
     private readonly IParkingSlotRepository _slotRepositoryMock;
-    private readonly IRepository<VehicleType> _vehicleTypeRepositoryMock;
-    private readonly IBookingRepository _bookingRepositoryMock;
-    private readonly IRepository<ParkingSessionEntity> _sessionRepositoryMock;
     private readonly IMapper _mapperMock;
     private readonly BuildingService _buildingService;
 
@@ -32,9 +26,6 @@ public class BuildingServiceTests
         _floorRepositoryMock = Substitute.For<IRepository<Floor>>();
         _zoneRepositoryMock = Substitute.For<IZoneRepository>();
         _slotRepositoryMock = Substitute.For<IParkingSlotRepository>();
-        _vehicleTypeRepositoryMock = Substitute.For<IRepository<VehicleType>>();
-        _bookingRepositoryMock = Substitute.For<IBookingRepository>();
-        _sessionRepositoryMock = Substitute.For<IRepository<ParkingSessionEntity>>();
         _mapperMock = Substitute.For<IMapper>();
 
         _buildingService = new BuildingService(
@@ -42,9 +33,6 @@ public class BuildingServiceTests
             _floorRepositoryMock, 
             _zoneRepositoryMock, 
             _slotRepositoryMock, 
-            _vehicleTypeRepositoryMock,
-            _bookingRepositoryMock,
-            _sessionRepositoryMock,
             _mapperMock);
     }
 
@@ -207,42 +195,5 @@ public class BuildingServiceTests
         var exception = await Assert.ThrowsAsync<ValidationException>(() => _buildingService.DeleteBuildingAsync(id));
         Assert.Contains("contains floors", exception.Message);
         await _buildingRepositoryMock.DidNotReceive().RemoveAsync(Arg.Any<Building>());
-    }
-
-    [Fact]
-    public async Task GetAvailableCapacityByTimeframeAsync_ShouldCalculateCorrectly()
-    {
-        // Arrange
-        int id = 1;
-        var building = new Building { Id = id, Code = "BLD-01" };
-        _buildingRepositoryMock.GetByIdAsync(id).Returns(building);
-
-        var vehicleType = new VehicleType { Id = 1, TypeName = "Car", BufferRatio = 10 };
-        _vehicleTypeRepositoryMock.GetAllAsync().Returns(new List<VehicleType> { vehicleType });
-
-        _buildingRepositoryMock.GetTotalGeneralCapacityAsync(id, 1).Returns(10);
-        _sessionRepositoryMock.CountAsync(Arg.Any<System.Linq.Expressions.Expression<System.Func<ParkingSessionEntity, bool>>>()).Returns(2);
-        _bookingRepositoryMock.GetActiveBookingsCountAsync(id, 1, Arg.Any<DateTime>(), Arg.Any<DateTime>()).Returns(1);
-
-        var start = DateTime.UtcNow;
-        var end = start.AddHours(4);
-
-        // Act
-        var result = await _buildingService.GetAvailableCapacityByTimeframeAsync(id, start, end);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(id, result.BuildingId);
-        Assert.Single(result.VehicleTypeCapacities);
-        
-        var cap = result.VehicleTypeCapacities[0];
-        Assert.Equal(1, cap.VehicleTypeId);
-        Assert.Equal("Car", cap.VehicleTypeName);
-        Assert.Equal(10, cap.TotalCapacity);
-        Assert.Equal(1, cap.BufferSlots); // 10 * 0.1 = 1
-        Assert.Equal(9, cap.EffectiveCapacity); // 10 - 1 = 9
-        Assert.Equal(2, cap.ActiveSessions);
-        Assert.Equal(1, cap.ReservedBookings);
-        Assert.Equal(6, cap.AvailableCapacity); // 9 - (2 + 1) = 6
     }
 }

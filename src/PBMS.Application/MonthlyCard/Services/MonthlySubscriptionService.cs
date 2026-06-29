@@ -1,5 +1,3 @@
-using PBMS.Application.AuditLog.Interfaces;
-using PBMS.Application.Common;
 using PBMS.Application.Contracts;
 using PBMS.Application.MonthlyCard.DTOs;
 using PBMS.Application.MonthlyCard.Interfaces;
@@ -17,7 +15,7 @@ using CardEntity = PBMS.Domain.Entities.Card;
 namespace PBMS.Application.MonthlyCard.Services;
 
 /// <summary>
-/// Implementation of monthly subscription service (IMonthlySubscriptionService).
+/// Triển khai dịch vụ nghiệp vụ đăng ký và quản lý vé tháng (IMonthlySubscriptionService).
 /// </summary>
 public class MonthlySubscriptionService : IMonthlySubscriptionService
 {
@@ -28,8 +26,6 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
     private readonly IRepository<VehicleType> _vehicleTypeRepository;
     private readonly IParkingSlotRepository _parkingSlotRepository;
     private readonly IRepository<Account> _accountRepository;
-    private readonly ISubscriptionPriceConfigRepository _priceConfigRepository;
-    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
 
     public MonthlySubscriptionService(
@@ -40,8 +36,6 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
         IRepository<VehicleType> vehicleTypeRepository,
         IParkingSlotRepository parkingSlotRepository,
         IRepository<Account> accountRepository,
-        ISubscriptionPriceConfigRepository priceConfigRepository,
-        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork)
     {
         _subscriptionRepository = subscriptionRepository;
@@ -51,103 +45,106 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
         _vehicleTypeRepository = vehicleTypeRepository;
         _parkingSlotRepository = parkingSlotRepository;
         _accountRepository = accountRepository;
-        _priceConfigRepository = priceConfigRepository;
-        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
     }
 
 
     /// <summary>
-    /// Register a new monthly subscription (default status: PENDING).
+    /// Đăng ký vé tháng mới (Trạng thái mặc định: PENDING).
     /// </summary>
     public async Task<MonthlySubscriptionDto> RegisterSubscriptionAsync(CreateSubscriptionRequest request)
     {
+        // 1. Kiểm tra Account tồn tại
         var account = await _accountRepository.GetByIdAsync(request.AccountId);
         if (account == null)
         {
-            throw new DomainException("ACCOUNT_NOT_FOUND", $"Account with ID {request.AccountId} not found.");
+            throw new DomainException("ACCOUNT_NOT_FOUND", $"Tài khoản với ID {request.AccountId} không tồn tại.");
         }
 
+        // 2. Kiểm tra Xe tồn tại
         var vehicle = await _vehicleRepository.GetByIdAsync(request.VehicleId);
         if (vehicle == null)
         {
-            throw new DomainException("VEHICLE_NOT_FOUND", $"Vehicle with ID {request.VehicleId} not found.");
+            throw new DomainException("VEHICLE_NOT_FOUND", $"Phương tiện với ID {request.VehicleId} không tồn tại.");
         }
 
+        // 3. Kiểm tra Tòa nhà tồn tại
         var building = await _buildingRepository.GetByIdAsync(request.BuildingId);
         if (building == null)
         {
-            throw new DomainException("BUILDING_NOT_FOUND", $"Building with ID {request.BuildingId} not found.");
+            throw new DomainException("BUILDING_NOT_FOUND", $"Tòa nhà với ID {request.BuildingId} không tồn tại.");
         }
 
+        // 4. Lấy loại xe
         var vehicleType = await _vehicleTypeRepository.GetByIdAsync(vehicle.VehicleTypeId);
         if (vehicleType == null)
         {
-            throw new DomainException("VEHICLE_TYPE_NOT_FOUND", $"Vehicle type with ID {vehicle.VehicleTypeId} not found.");
+            throw new DomainException("VEHICLE_TYPE_NOT_FOUND", $"Loại xe với ID {vehicle.VehicleTypeId} không tồn tại.");
         }
 
+        // 5. Kiểm tra đăng ký chồng lấn (chỉ cho phép 1 ACTIVE hoặc PENDING cho cùng 1 xe)
         var hasOverlap = await _subscriptionRepository.HasOverlapSubscriptionAsync(request.VehicleId);
         if (hasOverlap)
         {
-            throw new DomainException("OVERLAP_SUBSCRIPTION", $"Vehicle '{vehicle.LicensePlate}' already has an active or pending subscription.");
+            throw new DomainException("OVERLAP_SUBSCRIPTION", $"Xe có biển số '{vehicle.LicensePlate}' đã có đăng ký tháng đang hoạt động hoặc đang chờ thanh toán.");
         }
 
+        // 6. Kiểm tra thẻ đỗ xe nếu được truyền vào
         CardEntity? assignedCard = null;
         if (request.AssignedCardId.HasValue)
         {
             assignedCard = await _cardRepository.GetByIdAsync(request.AssignedCardId.Value);
             if (assignedCard == null)
             {
-                throw new DomainException("CARD_NOT_FOUND", $"Card with ID {request.AssignedCardId.Value} not found.");
+                throw new DomainException("CARD_NOT_FOUND", $"Thẻ gửi xe với ID {request.AssignedCardId.Value} không tồn tại.");
             }
 
             if (assignedCard.CardType.ToUpper() != "MONTHLY")
             {
-                throw new DomainException("INVALID_CARD_TYPE", $"Card '{assignedCard.CardCode}' is not a MONTHLY card.");
+                throw new DomainException("INVALID_CARD_TYPE", $"Thẻ '{assignedCard.CardCode}' không phải là loại thẻ MONTHLY.");
             }
 
             if (assignedCard.CardStatus != CardStatus.Available.ToString())
             {
-                throw new DomainException("CARD_NOT_AVAILABLE", $"Card '{assignedCard.CardCode}' is not available.");
+                throw new DomainException("CARD_NOT_AVAILABLE", $"Thẻ '{assignedCard.CardCode}' không ở trạng thái Available.");
             }
         }
 
         int? assignedSlotId = null;
         decimal monthlyPrice = 0;
 
-        // Get price from SubscriptionPriceConfig
-        var priceConfig = await _priceConfigRepository.GetActiveConfigByVehicleTypeAsync(vehicleType.Id);
-        if (priceConfig == null)
-        {
-            throw new DomainException("NO_PRICE_CONFIG", $"No active subscription price configuration found for vehicle type '{vehicleType.TypeName}'.");
-        }
-        monthlyPrice = priceConfig.Price;
-
+        // 7. Xử lý logic đỗ xe theo loại xe
         if (vehicleType.TypeName == VehicleType.MotorcycleTypeName)
         {
+            // Xe máy -> Kiểm tra sức chứa động
             var activeAndPendingCount = await _subscriptionRepository.GetActiveAndPendingMotorcycleSubscriptionsCountAsync(request.BuildingId);
             var totalMotorcycleCapacity = await _buildingRepository.GetTotalMotorcycleCapacityAsync(request.BuildingId);
 
             if (activeAndPendingCount >= totalMotorcycleCapacity)
             {
-                throw new DomainException("CAPACITY_FULL", "Building has no available capacity for monthly motorcycle subscriptions.");
+                throw new DomainException("CAPACITY_FULL", "Tòa nhà đã hết sức chứa trống cho đăng ký xe máy tháng.");
             }
+
+            monthlyPrice = 120000m; // Giá vé tháng mặc định cho xe máy
         }
         else if (vehicleType.TypeName == VehicleType.CarTypeName)
         {
+            // Ô tô -> Tìm và giữ một slot đỗ trong Zone MONTHLY
             var availableSlot = await _parkingSlotRepository.FindAvailableMonthlySlotAsync(request.BuildingId, vehicle.VehicleTypeId);
             if (availableSlot == null)
             {
-                throw new DomainException("SLOT_NOT_AVAILABLE", "Building has no available monthly parking slots for cars.");
+                throw new DomainException("SLOT_NOT_AVAILABLE", "Tòa nhà không còn chỗ đỗ trống trong khu vực xe tháng (MONTHLY) cho ô tô.");
             }
 
             assignedSlotId = availableSlot.Id;
+            monthlyPrice = 1500000m; // Giá vé tháng mặc định cho ô tô
         }
         else
         {
-            throw new DomainException("UNSUPPORTED_VEHICLE_TYPE", $"Monthly subscription is not supported for vehicle type '{vehicleType.TypeName}'.");
+            throw new DomainException("UNSUPPORTED_VEHICLE_TYPE", $"Không hỗ trợ đăng ký vé tháng cho loại xe '{vehicleType.TypeName}'.");
         }
 
+        // 8. Tạo mới MonthlySubscription
         var subscription = new MonthlySubscription
         {
             AccountId = request.AccountId,
@@ -156,63 +153,43 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
             AssignedCardId = request.AssignedCardId,
             AssignedSlotId = assignedSlotId,
             MonthlyPrice = monthlyPrice,
-            SubscriptionPriceConfigId = priceConfig.Id,
             MonthlySubscriptionStatus = MonthlySubscriptionStatus.Pending
         };
 
         await _subscriptionRepository.AddAsync(subscription);
         await _unitOfWork.SaveChangesAsync();
 
-        await _auditLogService.LogAsync(
-            request.AccountId,
-            "CREATE",
-            "monthly_subscription",
-            subscription.Id,
-            $"Registered monthly subscription for vehicle '{vehicle.LicensePlate}' with price {monthlyPrice:N0} VND");
-
         return await MapAsync(subscription);
     }
 
     /// <summary>
-    /// Get monthly subscription by ID.
+    /// Lấy thông tin đăng ký vé tháng theo ID.
     /// </summary>
     public async Task<MonthlySubscriptionDto> GetSubscriptionByIdAsync(int id)
     {
         var subscription = await _subscriptionRepository.GetByIdAsync(id);
         if (subscription == null)
         {
-            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Monthly subscription with ID {id} not found.");
+            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Đăng ký vé tháng với ID {id} không tồn tại.");
         }
 
         return await MapAsync(subscription);
     }
 
     /// <summary>
-    /// Cancel monthly subscription.
+    /// Hủy đăng ký vé tháng.
     /// </summary>
     public async Task CancelSubscriptionAsync(int id)
     {
         var subscription = await _subscriptionRepository.GetByIdAsync(id);
         if (subscription == null)
         {
-            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Monthly subscription with ID {id} not found.");
+            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Đăng ký vé tháng với ID {id} không tồn tại.");
         }
 
-        // Block cancel for expired subscriptions
-        if (subscription.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Expired)
-        {
-            throw new DomainException("CANNOT_CANCEL_EXPIRED", "Cannot cancel an expired subscription.");
-        }
-
-        // Block cancel for already cancelled subscriptions
-        if (subscription.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Cancelled)
-        {
-            throw new DomainException("ALREADY_CANCELLED", "Subscription is already cancelled.");
-        }
-
-        var previousStatus = subscription.MonthlySubscriptionStatus;
         subscription.MonthlySubscriptionStatus = MonthlySubscriptionStatus.Cancelled;
 
+        // Trả trạng thái thẻ liên kết về Available nếu có
         if (subscription.AssignedCardId.HasValue)
         {
             var card = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
@@ -225,88 +202,10 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
 
         _subscriptionRepository.Update(subscription);
         await _unitOfWork.SaveChangesAsync();
-
-        await _auditLogService.LogAsync(
-            null,
-            "CANCEL",
-            "monthly_subscription",
-            subscription.Id,
-            $"Cancelled subscription ID {id} from status {previousStatus}");
     }
 
     /// <summary>
-    /// Update a monthly subscription (card only).
-    /// </summary>
-    public async Task<MonthlySubscriptionDto> UpdateSubscriptionAsync(int id, UpdateSubscriptionRequest request)
-    {
-        var subscription = await _subscriptionRepository.GetByIdAsync(id);
-        if (subscription == null)
-        {
-            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Monthly subscription with ID {id} not found.");
-        }
-
-        if (subscription.MonthlySubscriptionStatus != MonthlySubscriptionStatus.Pending &&
-            subscription.MonthlySubscriptionStatus != MonthlySubscriptionStatus.Active)
-        {
-            throw new DomainException("INVALID_STATUS", $"Cannot update subscription with status {subscription.MonthlySubscriptionStatus}.");
-        }
-
-        if (!request.AssignedCardId.HasValue || request.AssignedCardId == subscription.AssignedCardId)
-        {
-            return await MapAsync(subscription);
-        }
-
-        var newCard = await _cardRepository.GetByIdAsync(request.AssignedCardId.Value);
-        if (newCard == null)
-        {
-            throw new DomainException("CARD_NOT_FOUND", $"Card with ID {request.AssignedCardId} not found.");
-        }
-
-        if (newCard.CardType.ToUpper() != "MONTHLY")
-        {
-            throw new DomainException("INVALID_CARD_TYPE", $"Card '{newCard.CardCode}' is not a MONTHLY card.");
-        }
-
-        if (newCard.CardStatus != CardStatus.Available.ToString())
-        {
-            throw new DomainException("CARD_NOT_AVAILABLE", $"Card '{newCard.CardCode}' is not available.");
-        }
-
-        var oldCardId = subscription.AssignedCardId;
-
-        if (subscription.AssignedCardId.HasValue)
-        {
-            var oldCard = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
-            if (oldCard != null && oldCard.CardStatus == CardStatus.Assigned.ToString())
-            {
-                oldCard.CardStatus = CardStatus.Available.ToString();
-                _cardRepository.Update(oldCard);
-            }
-        }
-
-        subscription.AssignedCardId = request.AssignedCardId.Value;
-
-        if (subscription.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Active)
-        {
-            newCard.CardStatus = CardStatus.Assigned.ToString();
-            _cardRepository.Update(newCard);
-        }
-
-        _subscriptionRepository.Update(subscription);
-        await _unitOfWork.SaveChangesAsync();
-
-        await _auditLogService.LogAsync(
-            null,
-            "UPDATE",
-            "monthly_subscription",
-            subscription.Id,
-            $"Updated card from {oldCardId} to {request.AssignedCardId} for subscription ID {id}");
-
-        return await MapAsync(subscription);
-    }
-
-    /// <summary>
-    /// Cleanup expired pending subscriptions.
+    /// Dọn dẹp các hồ sơ PENDING quá hạn thanh toán.
     /// </summary>
     public async Task CleanupExpiredPendingSubscriptionsAsync(int timeoutMinutes)
     {
@@ -331,91 +230,8 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
     }
 
     /// <summary>
-    /// Get list of monthly subscriptions with filtering and pagination.
+    /// Chuyển đổi thực thể MonthlySubscription sang DTO.
     /// </summary>
-    public async Task<PagedResult<MonthlySubscriptionDto>> GetAllSubscriptionsAsync(MonthlySubscriptionFilterRequest filter)
-    {
-        var (items, totalCount) = await _subscriptionRepository.GetPagedAsync(
-            filter.Page,
-            filter.PageSize,
-            filter.Status,
-            filter.BuildingId,
-            filter.AccountId,
-            filter.LicensePlate,
-            filter.CardCode);
-
-        var dtos = new List<MonthlySubscriptionDto>();
-        foreach (var item in items)
-        {
-            dtos.Add(await MapFromEntityAsync(item));
-        }
-
-        return PagedResult<MonthlySubscriptionDto>.Create(dtos, totalCount, filter.Page, filter.PageSize);
-    }
-
-    /// <summary>
-    /// Activate monthly subscription (PENDING -> ACTIVE).
-    /// </summary>
-    public async Task<MonthlySubscriptionDto> ActivateSubscriptionAsync(int id)
-    {
-        var subscription = await _subscriptionRepository.GetByIdAsync(id);
-        if (subscription == null)
-        {
-            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Monthly subscription with ID {id} not found.");
-        }
-
-        if (subscription.MonthlySubscriptionStatus != MonthlySubscriptionStatus.Pending)
-        {
-            throw new DomainException("INVALID_STATUS", $"Only PENDING subscriptions can be activated. Current status: {subscription.MonthlySubscriptionStatus}.");
-        }
-
-        subscription.MonthlySubscriptionStatus = MonthlySubscriptionStatus.Active;
-        subscription.ActivatedAt = DateTime.UtcNow;
-        subscription.ExpiredAt = subscription.ActivatedAt.Value.AddDays(30);
-
-        if (subscription.AssignedCardId.HasValue)
-        {
-            var card = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
-            if (card != null && card.CardStatus == CardStatus.Available.ToString())
-            {
-                card.CardStatus = CardStatus.Assigned.ToString();
-                _cardRepository.Update(card);
-            }
-        }
-
-        _subscriptionRepository.Update(subscription);
-        await _unitOfWork.SaveChangesAsync();
-
-        await _auditLogService.LogAsync(
-            null,
-            "ACTIVATE",
-            "monthly_subscription",
-            subscription.Id,
-            $"Activated subscription ID {id}, expires at {subscription.ExpiredAt:yyyy-MM-dd}");
-
-        return await MapAsync(subscription);
-    }
-
-    private async Task<MonthlySubscriptionDto> MapFromEntityAsync(MonthlySubscription sub)
-    {
-        return new MonthlySubscriptionDto
-        {
-            Id = sub.Id,
-            AccountId = sub.AccountId,
-            VehicleId = sub.VehicleId,
-            AssignedCardId = sub.AssignedCardId,
-            CardCode = sub.AssignedCard?.CardCode,
-            AssignedSlotId = sub.AssignedSlotId,
-            SlotCode = sub.AssignedSlot?.Code,
-            BuildingId = sub.BuildingId,
-            MonthlyPrice = sub.MonthlyPrice,
-            ActivatedAt = sub.ActivatedAt,
-            ExpiredAt = sub.ExpiredAt,
-            MonthlySubscriptionStatus = sub.MonthlySubscriptionStatus,
-            CreatedAt = sub.CreatedAt
-        };
-    }
-
     private async Task<MonthlySubscriptionDto> MapAsync(MonthlySubscription sub)
     {
         string? cardCode = null;

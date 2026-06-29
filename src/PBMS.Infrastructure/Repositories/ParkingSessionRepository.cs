@@ -44,35 +44,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
     {
         return await _context.Bookings
             .Include(b => b.Vehicle)
-            .Include(b => b.VehicleType)
-            .Include(b => b.Building)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
-    }
-
-    public async Task<Booking?> GetActiveBookingForCheckInByLicensePlateAsync(string licensePlate, int? buildingId = null)
-    {
-        var normalized = licensePlate.Trim().ToUpperInvariant();
-        var now = DateTime.UtcNow;
-
-        var query = _context.Bookings
-            .Include(b => b.Vehicle)
-            .Include(b => b.VehicleType)
-            .Include(b => b.Building)
-            .Where(b =>
-                b.Vehicle.LicensePlate.ToUpper() == normalized &&
-                b.BookingStatus.ToUpper() == "CONFIRMED" &&
-                b.CheckinGraceUntil >= now &&
-                !_context.ParkingSessions.Any(ps => ps.BookingId == b.Id));
-
-        if (buildingId.HasValue)
-        {
-            query = query.Where(b => b.BuildingId == buildingId.Value);
-        }
-
-        return await query
-            .OrderBy(b => b.PlannedCheckinTime)
-            .ThenBy(b => b.Id)
-            .FirstOrDefaultAsync();
     }
 
     public async Task<MonthlySubscription?> GetMonthlySubscriptionForCheckInAsync(int monthlySubscriptionId)
@@ -88,9 +60,6 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
-        var startGrace = now.AddMinutes(30);
-
         var zones = _context.Zones
             .Include(z => z.Floor)
             .Where(z =>
@@ -109,17 +78,10 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 Zone = z,
                 ActiveSessions = _context.ParkingSessions.Count(ps =>
                     ps.ZoneId == z.Id &&
-                    ps.SessionStatus.ToUpper() == "ACTIVE"),
-                ReservedBookings = _context.Set<Booking>().Count(b =>
-                    b.SlotId != null &&
-                    b.ParkingSlot.ZoneId == z.Id &&
-                    (b.BookingStatus == BookingStatus.Confirmed ||
-                     (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                    b.PlannedCheckinTime <= startGrace &&
-                    b.PlannedCheckoutTime > now)
+                    ps.SessionStatus.ToUpper() == "ACTIVE")
             })
-            .Where(x => (x.ActiveSessions + x.ReservedBookings) < x.Zone.Capacity)
-            .OrderBy(x => x.ActiveSessions + x.ReservedBookings)
+            .Where(x => x.ActiveSessions < x.Zone.Capacity)
+            .OrderBy(x => x.ActiveSessions)
             .ThenBy(x => x.Zone.Id)
             .Select(x => x.Zone)
             .FirstOrDefaultAsync();
@@ -127,10 +89,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<ParkingSlot?> FindAvailableGeneralSlotAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
-        var startGrace = now.AddMinutes(30);
-
-        var query = _context.ParkingSlots
+        var slots = _context.ParkingSlots
             .Include(s => s.Zone)
             .ThenInclude(z => z.Floor)
             .Where(s =>
@@ -141,54 +100,12 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
         if (buildingId.HasValue)
         {
-            query = query.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
+            slots = slots.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
         }
 
-        // Loại trừ các Slot đang bị giữ chỗ bởi Booking đang hoạt động hoặc chuẩn bị check-in (trong vòng 30 phút tới)
-        var reservedSlotIds = await _context.Set<Booking>()
-            .Where(b =>
-                b.SlotId != null &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                b.PlannedCheckinTime <= startGrace &&
-                b.PlannedCheckoutTime > now)
-            .Select(b => b.SlotId!.Value)
-            .ToListAsync();
-
-        if (reservedSlotIds.Any())
-        {
-            query = query.Where(s => !reservedSlotIds.Contains(s.Id));
-        }
-
-        return await query
+        return await slots
             .OrderBy(s => s.ZoneId)
             .ThenBy(s => s.Id)
             .FirstOrDefaultAsync();
-    }
-
-    public async Task<ParkingSessionEntity?> GetSessionWithDetailsAsync(int id)
-    {
-        return await _context.ParkingSessions
-            .Include(s => s.Vehicle)
-            .Include(s => s.Building)
-            .FirstOrDefaultAsync(s => s.Id == id);
-    }
-
-    public async Task<bool> HasPaidPaymentForSessionAsync(int sessionId)
-    {
-        return await _context.Payments
-            .AnyAsync(p => p.SessionId == sessionId && p.PaymentStatus == "PAID");
-    }
-
-    public async Task<IEnumerable<ParkingSessionEntity>> GetOvertimeWarningSessionsAsync(DateTime warningTimeLimit, DateTime now)
-    {
-        return await _context.ParkingSessions
-            .Include(s => s.Booking)
-            .Include(s => s.Vehicle)
-            .Where(s => s.SessionStatus == "ACTIVE" &&
-                        s.BookingId != null &&
-                        s.Booking!.PlannedCheckoutTime <= warningTimeLimit &&
-                        s.Booking!.PlannedCheckoutTime > now)
-            .ToListAsync();
     }
 }

@@ -18,24 +18,4 @@ public interface IPaymentService
     /// Xử lý dữ liệu phản hồi (IPN) tự động từ cổng thanh toán VNPay gọi về.
     /// </summary>
     Task<BaseResponse<string>> ProcessVNPayIPNAsync(System.Collections.Generic.SortedDictionary<string, string> vnpayData);
-
-    /// <summary>
-    /// Lấy danh sách giao dịch thanh toán phân trang (dành cho Admin/Staff).
-    /// </summary>
-    Task<PagedResult<PaymentResponseDto>> GetPaymentsPagedAsync(
-        int pageIndex,
-        int pageSize,
-        DateTime? fromDate,
-        DateTime? toDate,
-        string? method);
-
-    /// <summary>
-    /// Lấy lịch sử giao dịch thanh toán của một lượt gửi xe (Session).
-    /// </summary>
-    Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsBySessionIdAsync(int sessionId);
-
-    /// <summary>
-    /// Lấy lịch sử giao dịch thanh toán của một tài khoản (Account).
-    /// </summary>
-    Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsByAccountIdAsync(int accountId);
 }

@@ -29,7 +29,7 @@ public static class DbInitializer
             .FirstOrDefaultAsync(v => v.TypeName == "Motorcycle" || v.VehicleTypeCode == "MOTOR");
         if (motorcycleType == null)
         {
-            motorcycleType = new VehicleType { TypeName = "Motorcycle", VehicleTypeCode = "MOTOR", Description = "2-wheel motorcycle", VehicleTypeStatus = "Active", BufferRatio = 5 };
+            motorcycleType = new VehicleType { TypeName = "Motorcycle", VehicleTypeCode = "MOTOR", Description = "2-wheel motorcycle", VehicleTypeStatus = "Active" };
             await context.AddAsync(motorcycleType);
             await context.SaveChangesAsync();
         }
@@ -38,7 +38,7 @@ public static class DbInitializer
             .FirstOrDefaultAsync(v => v.TypeName == "Car" || v.VehicleTypeCode == "CAR");
         if (carType == null)
         {
-            carType = new VehicleType { TypeName = "Car", VehicleTypeCode = "CAR", Description = "4-7 seat passenger car", VehicleTypeStatus = "Active", BufferRatio = 15 };
+            carType = new VehicleType { TypeName = "Car", VehicleTypeCode = "CAR", Description = "4-7 seat passenger car", VehicleTypeStatus = "Active" };
             await context.AddAsync(carType);
             await context.SaveChangesAsync();
         }
@@ -392,14 +392,8 @@ public static class DbInitializer
                 IncidentName = "Đi sai làn đường",
                 Description = "Sự cố đi sai làn đường quy định"
             };
-            var lateCheckoutType = new IncidentType
-            {
-                IncidentCode = "LATE_CHECKOUT",
-                IncidentName = "Đỗ xe quá giờ",
-                Description = "Sự cố đỗ xe quá thời gian đặt chỗ quy định"
-            };
 
-            await context.AddRangeAsync(lostCardType, crashType, wrongLaneType, lateCheckoutType);
+            await context.AddRangeAsync(lostCardType, crashType, wrongLaneType);
             await context.SaveChangesAsync();
         }
 
@@ -422,10 +416,6 @@ public static class DbInitializer
                 else if (it.IncidentCode.Equals("WRONG_LANE", StringComparison.OrdinalIgnoreCase))
                 {
                     fee = 30000; // Phạt đi sai làn: 30k
-                }
-                else if (it.IncidentCode.Equals("LATE_CHECKOUT", StringComparison.OrdinalIgnoreCase))
-                {
-                    fee = 50000; // Phạt quá giờ: 50k
                 }
 
                 penaltyConfigs.Add(new PenaltyConfig

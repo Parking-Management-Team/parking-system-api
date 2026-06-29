@@ -32,10 +32,4 @@ public interface IMonthlySubscriptionRepository : IRepository<MonthlySubscriptio
     /// Lấy danh sách các đăng ký tháng ở trạng thái PENDING quá thời gian chờ thanh toán (timeout).
     /// </summary>
     Task<IEnumerable<MonthlySubscription>> GetTimeoutPendingSubscriptionsAsync(int timeoutMinutes);
-
-    /// <summary>
-    /// Lấy danh sách đăng ký vé tháng với phân trang và bộ lọc.
-    /// </summary>
-    Task<(IEnumerable<MonthlySubscription> Items, int TotalCount)> GetPagedAsync(
-        int pageIndex, int pageSize, string? status, int? buildingId, int? accountId, string? licensePlate, string? cardCode);
 }

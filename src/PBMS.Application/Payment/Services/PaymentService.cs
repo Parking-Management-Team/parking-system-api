@@ -20,7 +20,7 @@ namespace PBMS.Application.Payment.Services;
 /// </summary>
 public class PaymentService : IPaymentService
 {
-    private readonly IPaymentRepository _paymentRepository;
+    private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
     private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
@@ -35,7 +35,7 @@ public class PaymentService : IPaymentService
 
 
     public PaymentService(
-        IPaymentRepository paymentRepository,
+        IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
         IRepository<BookingEntity> bookingRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
@@ -78,35 +78,6 @@ public class PaymentService : IPaymentService
             return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId, BookingId, or MonthlySubscriptionId.");
         }
 
-        // Hủy (chuyển sang FAILED) toàn bộ các giao dịch PENDING cũ liên quan đến nguồn thanh toán này
-        if (request.SessionId.HasValue)
-        {
-            var pendingPayments = await _paymentRepository.FindAsync(p => p.SessionId == request.SessionId.Value && p.PaymentStatus == "PENDING");
-            foreach (var pendingPayment in pendingPayments)
-            {
-                pendingPayment.PaymentStatus = "FAILED";
-                _paymentRepository.Update(pendingPayment);
-            }
-        }
-        else if (request.BookingId.HasValue)
-        {
-            var pendingPayments = await _paymentRepository.FindAsync(p => p.BookingId == request.BookingId.Value && p.PaymentStatus == "PENDING");
-            foreach (var pendingPayment in pendingPayments)
-            {
-                pendingPayment.PaymentStatus = "FAILED";
-                _paymentRepository.Update(pendingPayment);
-            }
-        }
-        else if (request.MonthlySubscriptionId.HasValue)
-        {
-            var pendingPayments = await _paymentRepository.FindAsync(p => p.MonthlySubscriptionId == request.MonthlySubscriptionId.Value && p.PaymentStatus == "PENDING");
-            foreach (var pendingPayment in pendingPayments)
-            {
-                pendingPayment.PaymentStatus = "FAILED";
-                _paymentRepository.Update(pendingPayment);
-            }
-        }
-
         decimal originalAmount = 0;
         string description = "Transaction payment";
 
@@ -126,7 +97,7 @@ public class PaymentService : IPaymentService
                 return BaseResponse<PaymentResponseDto>.Fail("VEHICLE_NOT_FOUND", "Vehicle information not found.");
 
             // Tính toán tiền đỗ xe thực tế dựa vào thời điểm check-in & check-out
-            var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow.AddHours(7);
+            var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
             var calculationStartTime = session.CheckInTime;
 
             if (session.MonthlySubscriptionId.HasValue)
@@ -208,7 +179,7 @@ public class PaymentService : IPaymentService
                 Amount = roundedAmount,
                 PaymentMethod = "CASH",
                 PaymentStatus = "PAID",
-                PaymentTime = DateTime.UtcNow.AddHours(7)
+                PaymentTime = DateTime.UtcNow
             };
 
             await _paymentRepository.AddAsync(payment);
@@ -297,15 +268,6 @@ public class PaymentService : IPaymentService
 
         if (payment.PaymentStatus == "PENDING")
         {
-            // Kiểm tra thời gian hết hạn của giao dịch thanh toán online (15 phút)
-            if (payment.CreatedAt.AddMinutes(15) < DateTime.UtcNow)
-            {
-                payment.PaymentStatus = "FAILED";
-                _paymentRepository.Update(payment);
-                await _paymentRepository.SaveChangesAsync();
-                return BaseResponse<string>.Fail("PAYMENT_EXPIRED", "Payment transaction has expired. Please check out again.");
-            }
-
             vnpayData.TryGetValue("vnp_ResponseCode", out string? responseCode);
             vnpayData.TryGetValue("vnp_TransactionStatus", out string? transactionStatus);
 
@@ -313,7 +275,7 @@ public class PaymentService : IPaymentService
             if (responseCode == "00" && transactionStatus == "00")
             {
                 payment.PaymentStatus = "PAID";
-                payment.PaymentTime = DateTime.UtcNow.AddHours(7);
+                payment.PaymentTime = DateTime.UtcNow;
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
@@ -352,7 +314,7 @@ public class PaymentService : IPaymentService
             if (booking != null)
             {
                 booking.BookingStatus = "Confirmed";
-                booking.ConfirmedAt = DateTime.UtcNow.AddHours(7);
+                booking.ConfirmedAt = DateTime.UtcNow;
                 _bookingRepository.Update(booking);
                 await _bookingRepository.SaveChangesAsync();
             }
@@ -365,7 +327,7 @@ public class PaymentService : IPaymentService
             {
                 subscription.MonthlySubscriptionStatus = PBMS.Domain.Enums.MonthlySubscriptionStatus.Active;
                 
-                var now = DateTime.UtcNow.AddHours(7);
+                var now = DateTime.UtcNow;
                 if (subscription.ActivatedAt == null)
                 {
                     subscription.ActivatedAt = now;
@@ -399,30 +361,6 @@ public class PaymentService : IPaymentService
         }
 
         await _revenueService.UpdateRevenueAfterPaymentAsync(payment.Id);
-    }
-
-    public async Task<PagedResult<PaymentResponseDto>> GetPaymentsPagedAsync(
-        int pageIndex,
-        int pageSize,
-        DateTime? fromDate,
-        DateTime? toDate,
-        string? method)
-    {
-        var (items, totalCount) = await _paymentRepository.GetPagedAsync(pageIndex, pageSize, fromDate, toDate, method);
-        var dtos = items.Select(MapToDto).ToList();
-        return PagedResult<PaymentResponseDto>.Create(dtos, totalCount, pageIndex, pageSize);
-    }
-
-    public async Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsBySessionIdAsync(int sessionId)
-    {
-        var items = await _paymentRepository.GetBySessionIdAsync(sessionId);
-        return items.Select(MapToDto).ToList();
-    }
-
-    public async Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsByAccountIdAsync(int accountId)
-    {
-        var items = await _paymentRepository.GetByAccountIdAsync(accountId);
-        return items.Select(MapToDto).ToList();
     }
 
     private static PaymentResponseDto MapToDto(PBMS.Domain.Entities.Payment payment) => new()

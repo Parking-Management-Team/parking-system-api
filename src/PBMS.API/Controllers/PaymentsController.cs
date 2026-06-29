@@ -16,14 +16,10 @@ namespace PBMS.API.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
-        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public PaymentsController(
-            IPaymentService paymentService, 
-            Microsoft.Extensions.Configuration.IConfiguration configuration)
+        public PaymentsController(IPaymentService paymentService)
         {
             _paymentService = paymentService ?? throw new ArgumentNullException(nameof(paymentService));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         /// <summary>
@@ -79,79 +75,6 @@ namespace PBMS.API.Controllers
             };
 
             return Ok(new { RspCode = rspCode, Message = response.Message ?? "Error occurred" });
-        }
-
-        /// <summary>
-        /// API Endpoint nhận chuyển hướng (Return) trình duyệt khách hàng sau thanh toán VNPay.
-        /// Route: GET /api/payments/vnpay-return
-        /// </summary>
-        [HttpGet("vnpay-return")]
-        public async Task<IActionResult> VNPayReturnCallback()
-        {
-            var collections = Request.Query;
-            var vnpayData = new SortedDictionary<string, string>(StringComparer.Ordinal);
-            
-            foreach (var key in collections.Keys)
-            {
-                if (!string.IsNullOrEmpty(key) && key.StartsWith("vnp_"))
-                {
-                    vnpayData.Add(key, collections[key]!);
-                }
-            }
-
-            // Xử lý ghi nhận thanh toán (nếu luồng IPN Server-to-Server chưa xử lý xong)
-            var response = await _paymentService.ProcessVNPayIPNAsync(vnpayData);
-
-            // Đọc Frontend Return URL từ cấu hình appsettings.json
-            var feReturnUrl = _configuration["VNPay:FrontendReturnUrl"] ?? "http://localhost:3000/payment-result";
-
-            // Tạo các tham số truy vấn trả về Frontend
-            var status = response.Success ? "success" : "failed";
-            var message = Uri.EscapeDataString(response.Message ?? "");
-            var bookingId = collections.ContainsKey("vnp_TxnRef") ? collections["vnp_TxnRef"].ToString() : "";
-            var paymentId = collections.ContainsKey("vnp_TransactionNo") ? collections["vnp_TransactionNo"].ToString() : "";
-
-            var redirectUrl = $"{feReturnUrl}?status={status}&bookingId={bookingId}&paymentId={paymentId}&message={message}";
-            
-            return Redirect(redirectUrl);
-        }
-
-        /// <summary>
-        /// GET /api/payments
-        /// Lấy danh sách tất cả giao dịch thanh toán phân trang (dành cho Admin/Staff).
-        /// </summary>
-        [HttpGet]
-        public async Task<ActionResult<BaseResponse<PagedResult<PaymentResponseDto>>>> GetPaymentsPaged(
-            [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate,
-            [FromQuery] string? method,
-            [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var result = await _paymentService.GetPaymentsPagedAsync(pageIndex, pageSize, fromDate, toDate, method);
-            return Ok(BaseResponse<PagedResult<PaymentResponseDto>>.Ok(result));
-        }
-
-        /// <summary>
-        /// GET /api/payments/by-session/{sessionId}
-        /// Lấy danh sách giao dịch thanh toán theo sessionId.
-        /// </summary>
-        [HttpGet("by-session/{sessionId:int}")]
-        public async Task<ActionResult<BaseResponse<System.Collections.Generic.IEnumerable<PaymentResponseDto>>>> GetPaymentsBySession(int sessionId)
-        {
-            var result = await _paymentService.GetPaymentsBySessionIdAsync(sessionId);
-            return Ok(BaseResponse<System.Collections.Generic.IEnumerable<PaymentResponseDto>>.Ok(result));
-        }
-
-        /// <summary>
-        /// GET /api/payments/by-account/{accountId}
-        /// Lấy danh sách giao dịch thanh toán theo accountId.
-        /// </summary>
-        [HttpGet("by-account/{accountId:int}")]
-        public async Task<ActionResult<BaseResponse<System.Collections.Generic.IEnumerable<PaymentResponseDto>>>> GetPaymentsByAccount(int accountId)
-        {
-            var result = await _paymentService.GetPaymentsByAccountIdAsync(accountId);
-            return Ok(BaseResponse<System.Collections.Generic.IEnumerable<PaymentResponseDto>>.Ok(result));
         }
     }
 }

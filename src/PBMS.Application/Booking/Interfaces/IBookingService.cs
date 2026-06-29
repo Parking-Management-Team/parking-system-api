@@ -21,7 +21,7 @@ public interface IBookingService
     /// Tạo Booking mới với trạng thái PENDING.
     ///
     /// Business Rules:
-    ///   - PlannedCheckinTime phải cách Now ít nhất 15 phút (UTC).
+    ///   - PlannedCheckinTime phải từ 1 đến 8 tiếng tính từ Now (UTC).
     ///   - Building phải còn General Capacity cho loại xe tương ứng.
     ///   - Deposit Fee = BasePrice của PricingWindow tại giờ PlannedCheckinTime.
     ///   - PaymentDeadline = Now + 15 phút.
@@ -36,7 +36,7 @@ public interface IBookingService
     /// <summary>
     /// Lấy danh sách toàn bộ Booking (dùng cho Admin/Staff quản lý).
     /// </summary>
-    Task<List<BookingDto>> GetAllBookingsAsync(string? status = null);
+    Task<List<BookingDto>> GetAllBookingsAsync();
 
     /// <summary>
     /// Lấy thông tin chi tiết Booking theo ID.
@@ -47,12 +47,12 @@ public interface IBookingService
     /// <summary>
     /// Lấy danh sách Booking của một Account cụ thể.
     /// </summary>
-    Task<List<BookingDto>> GetBookingsByAccountIdAsync(int accountId, string? status = null);
+    Task<List<BookingDto>> GetBookingsByAccountIdAsync(int accountId);
 
     /// <summary>
     /// Lấy danh sách Booking của một Building cụ thể.
     /// </summary>
-    Task<List<BookingDto>> GetBookingsByBuildingIdAsync(int buildingId, string? status = null);
+    Task<List<BookingDto>> GetBookingsByBuildingIdAsync(int buildingId);
 
     // -----------------------------------------------------------------------
     // UPDATE
