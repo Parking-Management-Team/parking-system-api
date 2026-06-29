@@ -449,4 +449,97 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
             CreatedAt = sub.CreatedAt
         };
     }
+
+    public async Task<MonthlySubscriptionDto> ReplaceSubscriptionCardAsync(int subscriptionId, string newCardCode)
+    {
+        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId);
+        if (subscription == null)
+        {
+            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Monthly subscription with ID {subscriptionId} not found.");
+        }
+
+        if (subscription.MonthlySubscriptionStatus != "Active")
+        {
+            throw new DomainException("SUBSCRIPTION_NOT_ACTIVE", $"Only ACTIVE subscriptions can replace card. Current status: {subscription.MonthlySubscriptionStatus}.");
+        }
+
+        var normalizedCardCode = newCardCode.Trim().ToUpper();
+        var newCard = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
+        if (newCard == null)
+        {
+            throw new DomainException("CARD_NOT_FOUND", $"Card with code '{newCardCode}' not found.");
+        }
+
+        if (newCard.CardStatus != CardStatus.Available.ToString())
+        {
+            throw new DomainException("CARD_NOT_AVAILABLE", $"Card '{newCard.CardCode}' is not available (Status: {newCard.CardStatus}).");
+        }
+
+        // 1. Cập nhật thẻ cũ sang trạng thái LOST và đặt LostAt
+        if (subscription.AssignedCardId.HasValue)
+        {
+            var oldCard = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
+            if (oldCard != null)
+            {
+                oldCard.CardStatus = CardStatus.Lost.ToString();
+                oldCard.LostAt = DateTime.UtcNow.AddHours(7);
+                _cardRepository.Update(oldCard);
+            }
+        }
+
+        // 2. Cập nhật thẻ mới sang trạng thái ACTIVE
+        newCard.CardStatus = CardStatus.Active.ToString();
+        _cardRepository.Update(newCard);
+
+        // 3. Cập nhật subscription liên kết với thẻ mới
+        subscription.AssignedCardId = newCard.Id;
+        _subscriptionRepository.Update(subscription);
+
+        await _subscriptionRepository.SaveChangesAsync();
+
+        return await MapAsync(subscription);
+    }
+
+    public async Task<MonthlySubscriptionDto> RenewSubscriptionAsync(int id)
+    {
+        var subscription = await _subscriptionRepository.GetByIdAsync(id);
+        if (subscription == null)
+        {
+            throw new DomainException("SUBSCRIPTION_NOT_FOUND", $"Monthly subscription with ID {id} not found.");
+        }
+
+        if (subscription.MonthlySubscriptionStatus != "Active" && subscription.MonthlySubscriptionStatus != "Expired")
+        {
+            throw new DomainException("INVALID_STATUS", $"Only ACTIVE or EXPIRED subscriptions can be renewed. Current status: {subscription.MonthlySubscriptionStatus}.");
+        }
+
+        // Get the vehicle and vehicle type to check current pricing config
+        var vehicle = await _vehicleRepository.GetByIdAsync(subscription.VehicleId);
+        if (vehicle == null)
+        {
+            throw new DomainException("VEHICLE_NOT_FOUND", $"Vehicle with ID {subscription.VehicleId} not found.");
+        }
+
+        var priceConfig = await _priceConfigRepository.GetActiveConfigByVehicleTypeAsync(vehicle.VehicleTypeId);
+        if (priceConfig == null)
+        {
+            throw new DomainException("NO_PRICE_CONFIG", "No active subscription price configuration found for renewal.");
+        }
+
+        // Extend ExpirationDate: 
+        // If current subscription is ACTIVE and not yet expired, new expiration = ExpiredAt + 30 days.
+        // If it is EXPIRED, new expiration = DateTime.UtcNow + 30 days.
+        var baseDate = (subscription.MonthlySubscriptionStatus == "Active" && subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value > DateTime.UtcNow) 
+            ? subscription.ExpiredAt.Value 
+            : DateTime.UtcNow;
+
+        subscription.ExpiredAt = baseDate.AddDays(30);
+        subscription.MonthlyPrice = priceConfig.Price;
+        subscription.MonthlySubscriptionStatus = "Active"; // Ensure it is active
+
+        _subscriptionRepository.Update(subscription);
+        await _subscriptionRepository.SaveChangesAsync();
+
+        return await MapAsync(subscription);
+    }
 }

@@ -425,6 +425,29 @@ public class PaymentService : IPaymentService
         return items.Select(MapToDto).ToList();
     }
 
+    public async Task<BaseResponse<PaymentResponseDto>> ProcessRefundAsync(int paymentId)
+    {
+        var payment = await _paymentRepository.GetByIdAsync(paymentId);
+        if (payment == null)
+        {
+            return BaseResponse<PaymentResponseDto>.Fail("NOT_FOUND", $"Payment with ID {paymentId} not found.");
+        }
+
+        if (payment.PaymentStatus != "REFUND_PENDING")
+        {
+            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_STATUS", $"Only REFUND_PENDING payments can be refunded. Current status: {payment.PaymentStatus}.");
+        }
+
+        // Thực hiện hoàn cọc thực tế (Giả lập chuyển khoản/hoàn trả qua VNPay thành công)
+        payment.PaymentStatus = "REFUNDED";
+        payment.PaymentTime = DateTime.UtcNow.AddHours(7);
+        
+        _paymentRepository.Update(payment);
+        await _paymentRepository.SaveChangesAsync();
+
+        return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Payment refunded successfully.");
+    }
+
     private static PaymentResponseDto MapToDto(PBMS.Domain.Entities.Payment payment) => new()
     {
         Id = payment.Id,

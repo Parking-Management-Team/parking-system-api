@@ -157,5 +157,66 @@ namespace PBMS.UnitTests
             Assert.Equal("FAILED", expiredPayment.PaymentStatus); // Phải đánh dấu FAILED
             _paymentRepositoryMock.Received(1).Update(expiredPayment);
         }
+
+        [Fact]
+        public async Task ProcessRefundAsync_ShouldRefundSuccessfully_WhenStatusIsRefundPending()
+        {
+            // Arrange
+            var payment = new Payment
+            {
+                Id = 1,
+                Amount = 50000,
+                PaymentStatus = "REFUND_PENDING",
+                PaymentMethod = "ONLINE_BANKING"
+            };
+            _paymentRepositoryMock.GetByIdAsync(1).Returns(payment);
+
+            // Act
+            var result = await _paymentService.ProcessRefundAsync(1);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.Success);
+            Assert.Equal("REFUNDED", payment.PaymentStatus);
+            Assert.NotNull(payment.PaymentTime);
+            _paymentRepositoryMock.Received(1).Update(payment);
+            await _paymentRepositoryMock.Received(1).SaveChangesAsync();
+        }
+
+        [Fact]
+        public async Task ProcessRefundAsync_ShouldReturnFail_WhenPaymentNotFound()
+        {
+            // Arrange
+            _paymentRepositoryMock.GetByIdAsync(99).Returns((Payment)null);
+
+            // Act
+            var result = await _paymentService.ProcessRefundAsync(99);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
+            Assert.Equal("NOT_FOUND", result.ErrorCode);
+        }
+
+        [Fact]
+        public async Task ProcessRefundAsync_ShouldReturnFail_WhenStatusIsNotRefundPending()
+        {
+            // Arrange
+            var payment = new Payment
+            {
+                Id = 1,
+                Amount = 50000,
+                PaymentStatus = "PAID"
+            };
+            _paymentRepositoryMock.GetByIdAsync(1).Returns(payment);
+
+            // Act
+            var result = await _paymentService.ProcessRefundAsync(1);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
+            Assert.Equal("INVALID_PAYMENT_STATUS", result.ErrorCode);
+        }
     }
 }

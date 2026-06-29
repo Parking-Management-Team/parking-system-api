@@ -215,6 +215,28 @@ public class InMemoryParkingSessionService : IParkingSessionService
         return Task.CompletedTask;
     }
 
+    public Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode)
+    {
+        lock (_sync)
+        {
+            var session = Find(sessionId);
+            if (session == null)
+            {
+                return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {sessionId} not found."));
+            }
+
+            if (!IsActive(session))
+            {
+                return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can replace card."));
+            }
+
+            // Simulate card replacement
+            session.CardId = 999; // Dummy new card id
+            session.CardCode = newCardCode.Trim().ToUpperInvariant();
+            return Task.FromResult(BaseResponse<ParkingSessionDto>.Ok(session, "Replaced session card successfully."));
+        }
+    }
+
     private ParkingSessionDto? Find(int id) => _sessions.FirstOrDefault(s => s.Id == id);
 
     private bool HasActive(Func<ParkingSessionDto, bool> predicate) => _sessions.Any(s => IsActive(s) && predicate(s));
