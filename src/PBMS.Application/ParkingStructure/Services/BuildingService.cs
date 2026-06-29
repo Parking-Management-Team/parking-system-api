@@ -6,6 +6,8 @@ using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
+using BookingEntity = PBMS.Domain.Entities.Booking;
+using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
 
 namespace PBMS.Application.ParkingStructure.Services;
 
@@ -18,6 +20,9 @@ public class BuildingService : IBuildingService
     private readonly IRepository<Floor> _floorRepository;
     private readonly IZoneRepository _zoneRepository;
     private readonly IParkingSlotRepository _slotRepository;
+    private readonly IRepository<VehicleType> _vehicleTypeRepository;
+    private readonly IBookingRepository _bookingRepository;
+    private readonly IRepository<ParkingSessionEntity> _sessionRepository;
     private readonly IMapper _mapper;
 
     public BuildingService(
@@ -25,12 +30,18 @@ public class BuildingService : IBuildingService
         IRepository<Floor> floorRepository,
         IZoneRepository zoneRepository,
         IParkingSlotRepository slotRepository,
+        IRepository<VehicleType> vehicleTypeRepository,
+        IBookingRepository bookingRepository,
+        IRepository<ParkingSessionEntity> sessionRepository,
         IMapper mapper)
     {
         _buildingRepository = buildingRepository;
         _floorRepository = floorRepository;
         _zoneRepository = zoneRepository;
         _slotRepository = slotRepository;
+        _vehicleTypeRepository = vehicleTypeRepository;
+        _bookingRepository = bookingRepository;
+        _sessionRepository = sessionRepository;
         _mapper = mapper;
     }
 
@@ -197,5 +208,70 @@ public class BuildingService : IBuildingService
             TotalSlots = totalSlots,
             OccupiedSlots = occupiedSlots
         };
+    }
+
+    public async Task<BuildingAvailableCapacityDto> GetAvailableCapacityByTimeframeAsync(
+        int buildingId, 
+        DateTime plannedCheckinTime, 
+        DateTime? plannedCheckoutTime)
+    {
+        var building = await _buildingRepository.GetByIdAsync(buildingId);
+        if (building == null)
+        {
+            throw new NotFoundException("Building", buildingId);
+        }
+
+        var start = plannedCheckinTime.Kind == DateTimeKind.Utc ? plannedCheckinTime : plannedCheckinTime.ToUniversalTime();
+        // Mặc định 4 tiếng nếu không truyền checkout
+        var end = plannedCheckoutTime.HasValue 
+            ? (plannedCheckoutTime.Value.Kind == DateTimeKind.Utc ? plannedCheckoutTime.Value : plannedCheckoutTime.Value.ToUniversalTime())
+            : start.AddHours(4);
+
+        if (end <= start)
+        {
+            throw new ValidationException("Planned checkout time must be greater than planned checkin time.");
+        }
+
+        var vehicleTypes = await _vehicleTypeRepository.GetAllAsync();
+        var result = new BuildingAvailableCapacityDto
+        {
+            BuildingId = buildingId
+        };
+
+        foreach (var vt in vehicleTypes)
+        {
+            // 1. Tổng chỗ General = Tổng capacity Zone General của loại xe trong tòa nhà
+            var totalCapacity = await _buildingRepository.GetTotalGeneralCapacityAsync(buildingId, vt.Id);
+
+            // 2. Tính toán Sức chứa hiệu dụng sau khi trừ đi chỗ đỗ dự phòng (Buffer Slots)
+            var bufferSlots = (int)Math.Ceiling(totalCapacity * (vt.BufferRatio / 100.0));
+            var effectiveCapacity = totalCapacity - bufferSlots;
+
+            // 3. Đã sử dụng = Active ParkingSession + Active Booking (Pending | Confirmed)
+            var activeSessions = await _sessionRepository.CountAsync(s =>
+                s.BuildingId == buildingId &&
+                s.Vehicle.VehicleTypeId == vt.Id &&
+                s.SessionStatus == SessionStatus.Active);
+
+            var activeBookings = await _bookingRepository.GetActiveBookingsCountAsync(
+                buildingId, vt.Id, start, end);
+
+            var usedCapacity = activeSessions + activeBookings;
+            var availableCapacity = Math.Max(0, effectiveCapacity - usedCapacity);
+
+            result.VehicleTypeCapacities.Add(new VehicleTypeCapacityDetailDto
+            {
+                VehicleTypeId = vt.Id,
+                VehicleTypeName = vt.TypeName,
+                TotalCapacity = totalCapacity,
+                BufferSlots = bufferSlots,
+                EffectiveCapacity = effectiveCapacity,
+                ActiveSessions = activeSessions,
+                ReservedBookings = activeBookings,
+                AvailableCapacity = availableCapacity
+            });
+        }
+
+        return result;
     }
 }

@@ -37,6 +37,9 @@ public static class DependencyInjection
         // Card Management — Repository
         services.AddScoped<ICardRepository, CardRepository>();
 
+        // Payment Management — Repository
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+
         // Blacklist Management — Repository
         services.AddScoped<IBlacklistRepository, BlacklistRepository>();
 
@@ -45,7 +48,7 @@ public static class DependencyInjection
 
         //Google OauthServiceDI
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
-        
+
         // Cung cấp HttpContext cho CurrentUserService
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -81,8 +84,40 @@ public static class DependencyInjection
         // VNPay Gateway
         services.AddScoped<IVNPayGateway, VNPayGateway>();
 
+        // Đăng ký Memory Cache mặc định của .NET
+        services.AddMemoryCache();
+
+        // Đăng ký các dịch vụ Email & OTP mới tạo
+        services.AddTransient<IEmailService, EmailService>();
+        services.AddTransient<IOtpService, OtpService>();
+
 
 
         return services;
+    }
+
+    /// <summary>
+    /// Thực hiện chạy migration và seeding dữ liệu cho bãi xe một cách tự động (chỉ dùng cho môi trường Dev).
+    /// </summary>
+    public static async System.Threading.Tasks.Task MigrateAndSeedDatabaseAsync(this IServiceProvider serviceProvider, IConfiguration configuration)
+    {
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var context = services.GetRequiredService<AppDbContext>();
+
+            var resetDb = configuration.GetValue<bool>("Db:ResetOnStartup", false);
+            if (resetDb)
+            {
+                context.Database.EnsureDeleted();
+                Console.WriteLine("--> Existing database deleted successfully.");
+            }
+
+            context.Database.Migrate();
+            Console.WriteLine("--> Database migration completed successfully.");
+
+            await DbInitializer.SeedAsync(context);
+            Console.WriteLine("--> Database seeding completed successfully.");
+        }
     }
 }

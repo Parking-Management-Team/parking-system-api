@@ -6,7 +6,7 @@ using PBMS.API;
 using PBMS.API.Middlewares;
 using PBMS.Application;
 using PBMS.Infrastructure;
-using PBMS.Infrastructure.Data;
+using PBMS.API.Workers;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,7 +22,12 @@ if (builder.Environment.IsDevelopment())
 // =========================================================================
 
 // Đăng ký các Controller vào DI Container để ASP.NET Core nhận diện các API endpoints
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new PBMS.API.Converters.DateTimeUtcJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new PBMS.API.Converters.TimeSpanJsonConverter());
+    });
 
 if (builder.Environment.IsDevelopment())
 {
@@ -34,13 +39,17 @@ if (builder.Environment.IsDevelopment())
 // Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
-builder.Services.AddControllers();
 
 // Đăng ký các dịch vụ của tầng Application và Infrastructure
 var useInMemoryParkingSession = builder.Configuration.GetValue<bool>("ParkingSession:UseInMemoryStore");
 var useHttpsRedirection = builder.Configuration.GetValue("Api:UseHttpsRedirection", !builder.Environment.IsDevelopment());
 builder.Services.AddApplicationServices(useInMemoryParkingSession);
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Đăng ký các hosted services chạy nền (Workers)
+builder.Services.AddHostedService<ExpiredBookingCleanupWorker>();
+builder.Services.AddHostedService<OvertimeWarningWorker>();
+builder.Services.AddHostedService<ExpiredPricingPolicyCleanupWorker>();
 
 // Cấu hình CORS (Cross-Origin Resource Sharing)
 // Cho phép Web Frontend (chạy trên localhost:3000 hoặc localhost:5173) gọi API
@@ -86,36 +95,19 @@ var app = builder.Build();
 // Tự động chạy Migration khi ứng dụng khởi động ở môi trường Development
 if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
 {
-    using (var scope = app.Services.CreateScope())
+    try
     {
-        var services = scope.ServiceProvider;
-        try
+        await app.Services.MigrateAndSeedDatabaseAsync(builder.Configuration);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"--> Error applying database migrations: {ex.Message}");
+        if (ex.InnerException != null)
         {
-            var context = services.GetRequiredService<AppDbContext>();
-            
-            // Tự động xóa database cũ để tạo và seed lại từ đầu (chỉ nên dùng ở môi trường Development)
-            context.Database.EnsureDeleted();
-            Console.WriteLine("--> Existing database deleted successfully.");
-            
-            context.Database.Migrate();
-            Console.WriteLine("--> Database migration completed successfully.");
-
-
-
-            // Seed dữ liệu mẫu
-            await DbInitializer.SeedAsync(context);
-            Console.WriteLine("--> Database seeding completed successfully.");
+            Console.WriteLine($"--> Inner Exception: {ex.InnerException.Message}");
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"--> Error applying database migrations: {ex.Message}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"--> Inner Exception: {ex.InnerException.Message}");
-            }
-            // Log full stack trace for better debugging
-            Console.WriteLine(ex.StackTrace);
-        }
+        // Log full stack trace for better debugging
+        Console.WriteLine(ex.StackTrace);
     }
 }
 else if (app.Environment.IsDevelopment())

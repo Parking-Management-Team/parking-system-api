@@ -15,6 +15,8 @@ public class VehicleType : BaseEntity
 
     public string VehicleTypeStatus { get; set; } = StatusActive;
 
+    public int BufferRatio { get; set; } = 10;
+
     public virtual ICollection<ParkingSlot> ParkingSlots { get; set; } = new List<ParkingSlot>();
 
     public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();

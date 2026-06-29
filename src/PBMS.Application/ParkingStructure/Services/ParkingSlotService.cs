@@ -6,6 +6,7 @@ using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
+using BookingEntity = PBMS.Domain.Entities.Booking;
 
 namespace PBMS.Application.ParkingStructure.Services;
 
@@ -17,17 +18,20 @@ public class ParkingSlotService : IParkingSlotService
     private readonly IParkingSlotRepository _slotRepository;
     private readonly IRepository<Zone> _zoneRepository;
     private readonly IRepository<VehicleType> _vehicleTypeRepository;
+    private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMapper _mapper;
 
     public ParkingSlotService(
         IParkingSlotRepository slotRepository,
         IRepository<Zone> zoneRepository,
         IRepository<VehicleType> vehicleTypeRepository,
+        IRepository<BookingEntity> bookingRepository,
         IMapper mapper)
     {
         _slotRepository = slotRepository;
         _zoneRepository = zoneRepository;
         _vehicleTypeRepository = vehicleTypeRepository;
+        _bookingRepository = bookingRepository;
         _mapper = mapper;
     }
 
@@ -57,6 +61,13 @@ public class ParkingSlotService : IParkingSlotService
             throw new ValidationException("Parking slots can only be created manually for Car zones.");
         }
 
+        // Check capacity limit
+        var currentSlots = await _slotRepository.FindAsync(s => s.ZoneId == request.ZoneId);
+        if (currentSlots.Count() >= zone.Capacity)
+        {
+            throw new ValidationException($"Cannot create more slots. Zone '{zone.Name}' has reached its maximum capacity of {zone.Capacity} slots.");
+        }
+
         // 3. Kiểm tra SlotCode duy nhất
         var codeExists = await _slotRepository.SlotCodeExistsAsync(request.Code);
         if (codeExists)
@@ -75,6 +86,7 @@ public class ParkingSlotService : IParkingSlotService
         };
 
         await _slotRepository.AddAsync(slot);
+        await _slotRepository.SaveChangesAsync();
         return _mapper.Map<ParkingSlotDto>(slot);
     }
 
@@ -99,7 +111,9 @@ public class ParkingSlotService : IParkingSlotService
         int zoneId, 
         List<SlotStatus>? statuses = null, 
         List<int>? vehicleTypeIds = null, 
-        string? search = null)
+        string? search = null,
+        DateTime? plannedCheckinTime = null,
+        DateTime? plannedCheckoutTime = null)
     {
         var zone = await _zoneRepository.GetByIdAsync(zoneId);
         if (zone == null)
@@ -126,7 +140,41 @@ public class ParkingSlotService : IParkingSlotService
                 (s.Name != null && s.Name.Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
 
-        return _mapper.Map<IEnumerable<ParkingSlotDto>>(slots);
+        HashSet<int> reservedSlotIds = new();
+
+        if (plannedCheckinTime.HasValue && plannedCheckoutTime.HasValue)
+        {
+            var now = DateTime.UtcNow;
+            var start = plannedCheckinTime.Value.Kind == DateTimeKind.Utc ? plannedCheckinTime.Value : plannedCheckinTime.Value.ToUniversalTime();
+            var end = plannedCheckoutTime.Value.Kind == DateTimeKind.Utc ? plannedCheckoutTime.Value : plannedCheckoutTime.Value.ToUniversalTime();
+
+            // Lấy danh sách Booking bị trùng lịch đặt chỗ
+            var activeBookings = await _bookingRepository.FindAsync(b =>
+                b.SlotId != null &&
+                (b.BookingStatus == BookingStatus.Confirmed ||
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.PlannedCheckinTime < end &&
+                b.PlannedCheckoutTime > start);
+
+            reservedSlotIds = activeBookings
+                .Select(b => b.SlotId!.Value)
+                .ToHashSet();
+        }
+
+        var slotDtos = _mapper.Map<IEnumerable<ParkingSlotDto>>(slots).ToList();
+
+        if (reservedSlotIds.Any())
+        {
+            foreach (var dto in slotDtos)
+            {
+                if (reservedSlotIds.Contains(dto.Id))
+                {
+                    dto.IsReserved = true;
+                }
+            }
+        }
+
+        return slotDtos;
     }
 
     public async Task<PagedResult<ParkingSlotDto>> GetSlotsPagedAsync(int pageIndex, int pageSize)
@@ -167,6 +215,18 @@ public class ParkingSlotService : IParkingSlotService
             throw new NotFoundException("VehicleType", request.VehicleTypeId);
         }
 
+        // Kiểm tra Zone tồn tại và VehicleTypeId khớp với VehicleTypeId của Zone
+        var zone = await _zoneRepository.GetByIdAsync(slot.ZoneId);
+        if (zone == null)
+        {
+            throw new NotFoundException("Zone", slot.ZoneId);
+        }
+
+        if (zone.VehicleTypeId != request.VehicleTypeId)
+        {
+            throw new ValidationException("The specified VehicleTypeId does not match the Zone's VehicleTypeId.");
+        }
+
         // Kiểm tra SlotCode mới nếu thay đổi
         var newCode = request.Code.Trim().ToUpper();
         if (slot.Code != newCode)
@@ -184,6 +244,7 @@ public class ParkingSlotService : IParkingSlotService
         slot.Status = request.Status;
 
         _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
         return _mapper.Map<ParkingSlotDto>(slot);
     }
 
@@ -208,10 +269,85 @@ public class ParkingSlotService : IParkingSlotService
         }
 
         await _slotRepository.RemoveAsync(slot);
+        await _slotRepository.SaveChangesAsync();
+    }
+
+    public async Task<ParkingSlotDto> BlockSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status == SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot block slot '{slot.Code}' because it is currently occupied.");
+        }
+
+        if (slot.Status == SlotStatus.Blocked)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is already blocked.");
+        }
+
+        slot.Status = SlotStatus.Blocked;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
+    }
+
+    public async Task<ParkingSlotDto> UnblockSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status != SlotStatus.Blocked)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is not blocked. Current status: {slot.Status}.");
+        }
+
+        slot.Status = SlotStatus.Available;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
+    }
+
+    public async Task<ParkingSlotDto> SetMaintenanceSlotAsync(int id, SlotStatusChangeRequest request)
+    {
+        var slot = await _slotRepository.GetByIdAsync(id);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", id);
+        }
+
+        if (slot.Status == SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot set slot '{slot.Code}' to maintenance because it is currently occupied.");
+        }
+
+        if (slot.Status == SlotStatus.Maintenance)
+        {
+            throw new ValidationException($"Slot '{slot.Code}' is already in maintenance.");
+        }
+
+        slot.Status = SlotStatus.Maintenance;
+
+        _slotRepository.Update(slot);
+        await _slotRepository.SaveChangesAsync();
+        return _mapper.Map<ParkingSlotDto>(slot);
     }
 
     private static bool IsCarVehicleType(VehicleType vehicleType)
     {
+        if (string.IsNullOrWhiteSpace(vehicleType.TypeName))
+        {
+            return false;
+        }
         return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
