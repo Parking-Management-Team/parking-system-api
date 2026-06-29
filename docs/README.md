@@ -16,6 +16,8 @@ Bộ tài liệu được tổ chức thành các phần chuyên biệt dưới 
 | ⚙️ [CẤU HÌNH HỆ THỐNG](development/CONFIGURATION.md) | Chi tiết các tham số cấu hình, cổng chạy (localhost ports), biến môi trường (Environment Variables), JWT key, tích hợp VNPay và Google OAuth. |
 | 🗄️ [THIẾT KẾ CƠ SỞ DỮ LIỆU](architecture/DATABASE.md) | Lược đồ DB, các Entity chính, quan hệ giữa các bảng, cấu hình migrations, dữ liệu hạt giống (Seed data). |
 | 🔌 [HƯỚNG DẪN API](api/API_GUIDE.md) | Danh sách các controller, quy ước endpoints, cơ chế xác thực JWT, định dạng request/response chuẩn. |
+| 🧪 [KỊCH BẢN TEST FE](api/FRONTEND_TEST_SCENARIOS.md) | Các kịch bản test thực tế phân chia theo Role (Customer, Staff, Admin) giúp kiểm thử luồng trên giao diện. |
+
 | 📦 [HƯỚNG DẪN TRIỂN KHAI](deployment/DEPLOYMENT_GUIDE.md) | Hướng dẫn Dockerize, quy trình CI/CD với GitHub Actions và các lưu ý khi deploy production. |
 | 🔄 [QUY TRÌNH PHÁT TRIỂN](development/DEVELOPMENT_WORKFLOW.md) | Quy chuẩn Git workflow, đặt tên nhánh (branch naming), quy ước commit, quy trình Pull Request và cập nhật DB Migrations. |
 | 🛠️ [XỬ LÝ SỰ CỐ](development/TROUBLESHOOTING.md) | Tổng hợp các lỗi phổ biến thường gặp trong quá trình cài đặt, chạy local và cách xử lý nhanh. |
