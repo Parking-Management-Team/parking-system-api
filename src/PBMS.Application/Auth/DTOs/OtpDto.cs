@@ -38,4 +38,14 @@ namespace PBMS.Application.Auth.DTOs
         [Required]
         public string VerificationToken { get; set; } = null!;
     }
+
+    public class GoogleVerifyOtpRequest
+    {
+        [Required]
+        public string IdToken { get; set; } = null!;
+
+        [Required]
+        [StringLength(6, MinimumLength = 6)]
+        public string Otp { get; set; } = null!;
+    }
 }
