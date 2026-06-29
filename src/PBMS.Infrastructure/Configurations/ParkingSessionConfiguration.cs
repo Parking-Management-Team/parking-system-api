@@ -108,8 +108,5 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
             .IsUnique()
             .HasFilter("booking_id IS NOT NULL")
             .HasDatabaseName("IX_parking_session_booking_id");
-
-        builder.HasIndex(ps => ps.SessionStatus)
-            .HasDatabaseName("IX_parking_session_status");
     }
 }

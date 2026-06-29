@@ -81,19 +81,6 @@ public class BuildingsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy sức chứa khả dụng của tòa nhà theo khung thời gian (phục vụ tìm kiếm bãi đỗ khi đặt chỗ).
-    /// </summary>
-    [HttpGet("{id}/available-capacity")]
-    public async Task<IActionResult> GetBuildingAvailableCapacity(
-        int id, 
-        [FromQuery] DateTime plannedCheckinTime, 
-        [FromQuery] DateTime? plannedCheckoutTime = null)
-    {
-        var result = await _buildingService.GetAvailableCapacityByTimeframeAsync(id, plannedCheckinTime, plannedCheckoutTime);
-        return Ok(BaseResponse<BuildingAvailableCapacityDto>.Ok(result));
-    }
-
-    /// <summary>
     /// Xóa tòa nhà.
     /// </summary>
     [HttpDelete("{id}")]

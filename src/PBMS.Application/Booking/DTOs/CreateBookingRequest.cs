@@ -35,14 +35,4 @@ public class CreateBookingRequest
     /// </summary>
     [Required]
     public DateTime PlannedCheckinTime { get; set; }
-
-    /// <summary>
-    /// Thời gian dự kiến ra bãi (UTC). Nếu không chỉ định, mặc định là PlannedCheckinTime + 2 tiếng.
-    /// </summary>
-    public DateTime? PlannedCheckoutTime { get; set; }
-
-    /// <summary>
-    /// Vị trí đỗ xe mong muốn chọn trước (tùy chọn, chỉ áp dụng cho xe hơi).
-    /// </summary>
-    public int? SlotId { get; set; }
 }

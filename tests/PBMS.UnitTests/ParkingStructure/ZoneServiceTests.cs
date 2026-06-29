@@ -8,7 +8,6 @@ using PBMS.Application.ParkingStructure.Interfaces;
 using PBMS.Application.ParkingStructure.Services;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
-using System.Linq.Expressions;
 using Xunit;
 
 namespace PBMS.UnitTests.ParkingStructure;
@@ -167,8 +166,8 @@ public class ZoneServiceTests
         // Arrange
         int zoneId = 1;
         var request = new ZoneUpdateRequest { Code = "Z-NEW", Name = "New Name", VehicleTypeId = 2, Capacity = 100, AccessType = ZoneAccessType.General };
-        var existingZone = new Zone { Id = zoneId, Code = "Z-OLD", Name = "Old Name", FloorId = 1, VehicleTypeId = 2 }; // Same VehicleTypeId
-        var vehicleType = new VehicleType { Id = 2, TypeName = "Car" };
+        var existingZone = new Zone { Id = zoneId, Code = "Z-OLD", Name = "Old Name", FloorId = 1 };
+        var vehicleType = new VehicleType { Id = 2 };
         var updatedDto = new ZoneDto { Id = zoneId, Code = "Z-NEW", Name = "New Name" };
 
         _zoneRepositoryMock.GetByIdAsync(zoneId).Returns(existingZone);
@@ -183,54 +182,6 @@ public class ZoneServiceTests
         Assert.NotNull(result);
         Assert.Equal(request.Name, result.Name);
         _zoneRepositoryMock.Received(1).Update(existingZone);
-    }
-
-    [Fact]
-    public async Task UpdateZoneAsync_ShouldUpdateSlots_WhenVehicleTypeChangesAndZoneHasSlots()
-    {
-        // Arrange
-        int zoneId = 1;
-        var request = new ZoneUpdateRequest { Code = "Z-OLD", Name = "Old Name", VehicleTypeId = 3, Capacity = 100, AccessType = ZoneAccessType.General }; // VehicleTypeId changes from 2 to 3
-        var existingZone = new Zone { Id = zoneId, Code = "Z-OLD", Name = "Old Name", FloorId = 1, VehicleTypeId = 2 };
-        var oldVehicleType = new VehicleType { Id = 2, TypeName = "Car" };
-        var vehicleType = new VehicleType { Id = 3, TypeName = "VIP-Car" };
-        var updatedDto = new ZoneDto { Id = zoneId, Code = "Z-OLD", Name = "Old Name" };
-        var slots = new List<ParkingSlot> { new ParkingSlot { Id = 10, ZoneId = zoneId, VehicleTypeId = 2 } };
-
-        _zoneRepositoryMock.GetByIdAsync(zoneId).Returns(existingZone);
-        _vehicleTypeRepositoryMock.GetByIdAsync(2).Returns(oldVehicleType);
-        _vehicleTypeRepositoryMock.GetByIdAsync(3).Returns(vehicleType);
-        _slotRepositoryMock.FindAsync(Arg.Any<Expression<Func<ParkingSlot, bool>>>()).Returns(slots);
-        _mapperMock.Map<ZoneDto>(existingZone).Returns(updatedDto);
-
-        // Act
-        await _zoneService.UpdateZoneAsync(zoneId, request);
-
-        // Assert
-        Assert.Equal(3, slots[0].VehicleTypeId);
-        _slotRepositoryMock.Received(1).Update(slots[0]);
-        _zoneRepositoryMock.Received(1).Update(existingZone);
-    }
-
-    [Fact]
-    public async Task UpdateZoneAsync_ShouldThrowValidationException_WhenChangingToNonCarTypeAndZoneHasOccupiedSlots()
-    {
-        // Arrange
-        int zoneId = 1;
-        var request = new ZoneUpdateRequest { Code = "Z-OLD", Name = "Old Name", VehicleTypeId = 1, Capacity = 100, AccessType = ZoneAccessType.General }; // VehicleTypeId changes to 1 (Motorcycle)
-        var existingZone = new Zone { Id = zoneId, Code = "Z-OLD", Name = "Old Name", FloorId = 1, VehicleTypeId = 2 };
-        var oldVehicleType = new VehicleType { Id = 2, TypeName = "Car" };
-        var vehicleType = new VehicleType { Id = 1, TypeName = "Motorcycle" };
-        var slots = new List<ParkingSlot> { new ParkingSlot { Id = 10, ZoneId = zoneId, VehicleTypeId = 2, Status = SlotStatus.Occupied } };
-
-        _zoneRepositoryMock.GetByIdAsync(zoneId).Returns(existingZone);
-        _vehicleTypeRepositoryMock.GetByIdAsync(2).Returns(oldVehicleType);
-        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
-        _slotRepositoryMock.FindAsync(Arg.Any<Expression<Func<ParkingSlot, bool>>>()).Returns(slots);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => _zoneService.UpdateZoneAsync(zoneId, request));
-        Assert.Contains("is currently occupied", exception.Message);
     }
 
     [Fact]

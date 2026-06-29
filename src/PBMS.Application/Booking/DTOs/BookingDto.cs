@@ -69,10 +69,4 @@ public class BookingDto
 
     /// <summary>Thời điểm tạo Booking.</summary>
     public DateTime CreatedAt { get; set; }
-
-    /// <summary>ID vị trí đỗ xe chọn trước (chỉ áp dụng cho xe hơi).</summary>
-    public int? SlotId { get; set; }
-
-    /// <summary>Mã vị trí đỗ xe chọn trước (Ví dụ: "SLOT-A01").</summary>
-    public string? SlotCode { get; set; }
 }

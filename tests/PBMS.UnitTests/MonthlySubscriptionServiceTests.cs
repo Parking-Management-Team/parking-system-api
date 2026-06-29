@@ -1,5 +1,4 @@
 using NSubstitute;
-using PBMS.Application.AuditLog.Interfaces;
 using PBMS.Application.Contracts;
 using PBMS.Application.MonthlyCard.DTOs;
 using PBMS.Application.MonthlyCard.Services;
@@ -22,8 +21,6 @@ public class MonthlySubscriptionServiceTests
     private readonly IRepository<VehicleType> _vehicleTypeRepositoryMock;
     private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
     private readonly IRepository<Account> _accountRepositoryMock;
-    private readonly ISubscriptionPriceConfigRepository _priceConfigRepositoryMock;
-    private readonly IAuditLogService _auditLogServiceMock;
     private readonly IUnitOfWork _unitOfWorkMock;
     private readonly MonthlySubscriptionService _service;
 
@@ -36,8 +33,6 @@ public class MonthlySubscriptionServiceTests
         _vehicleTypeRepositoryMock = Substitute.For<IRepository<VehicleType>>();
         _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _accountRepositoryMock = Substitute.For<IRepository<Account>>();
-        _priceConfigRepositoryMock = Substitute.For<ISubscriptionPriceConfigRepository>();
-        _auditLogServiceMock = Substitute.For<IAuditLogService>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
 
         _service = new MonthlySubscriptionService(
@@ -48,8 +43,6 @@ public class MonthlySubscriptionServiceTests
             _vehicleTypeRepositoryMock,
             _parkingSlotRepositoryMock,
             _accountRepositoryMock,
-            _priceConfigRepositoryMock,
-            _auditLogServiceMock,
             _unitOfWorkMock
         );
     }
@@ -81,9 +74,6 @@ public class MonthlySubscriptionServiceTests
 
         _subscriptionRepositoryMock.GetActiveAndPendingMotorcycleSubscriptionsCountAsync(3).Returns(5);
         _buildingRepositoryMock.GetTotalMotorcycleCapacityAsync(3).Returns(10);
-
-        var priceConfig = new SubscriptionPriceConfig { Id = 1, VehicleTypeId = 10, Price = 120000m, IsActive = true };
-        _priceConfigRepositoryMock.GetActiveConfigByVehicleTypeAsync(10).Returns(priceConfig);
 
         // Act
         var result = await _service.RegisterSubscriptionAsync(request);
@@ -120,9 +110,6 @@ public class MonthlySubscriptionServiceTests
         _vehicleTypeRepositoryMock.GetByIdAsync(10).Returns(vehicleType);
         _subscriptionRepositoryMock.HasOverlapSubscriptionAsync(2).Returns(false);
 
-        var priceConfig = new SubscriptionPriceConfig { Id = 1, VehicleTypeId = 10, Price = 120000m, IsActive = true };
-        _priceConfigRepositoryMock.GetActiveConfigByVehicleTypeAsync(10).Returns(priceConfig);
-
         _subscriptionRepositoryMock.GetActiveAndPendingMotorcycleSubscriptionsCountAsync(3).Returns(10);
         _buildingRepositoryMock.GetTotalMotorcycleCapacityAsync(3).Returns(10);
 
@@ -148,9 +135,6 @@ public class MonthlySubscriptionServiceTests
         _vehicleTypeRepositoryMock.GetByIdAsync(20).Returns(vehicleType);
         _subscriptionRepositoryMock.HasOverlapSubscriptionAsync(2).Returns(false);
         _parkingSlotRepositoryMock.FindAvailableMonthlySlotAsync(3, 20).Returns(slot);
-
-        var priceConfig = new SubscriptionPriceConfig { Id = 2, VehicleTypeId = 20, Price = 1500000m, IsActive = true };
-        _priceConfigRepositoryMock.GetActiveConfigByVehicleTypeAsync(20).Returns(priceConfig);
 
         // Act
         var result = await _service.RegisterSubscriptionAsync(request);

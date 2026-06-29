@@ -37,7 +37,6 @@ public class ParkingSlotRepository : BaseRepository<ParkingSlot>, IParkingSlotRe
     {
         return await _dbContext.Set<ParkingSlot>()
             .Include(s => s.Zone)
-                .ThenInclude(z => z.Floor)
             .Include(s => s.VehicleType)
             .Include(s => s.ParkingSessions)
             .FirstOrDefaultAsync(s => s.Id == id);

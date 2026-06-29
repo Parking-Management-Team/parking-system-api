@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace PBMS.API.Controllers;
 
 /// <summary>
-/// API Controller for Monthly Subscription management.
+/// API Controller quản lý Đăng ký vé tháng (Monthly Subscription).
 /// </summary>
 [ApiController]
 [Route("api/monthly-subscriptions")]
@@ -21,17 +21,7 @@ public class MonthlySubscriptionsController : ControllerBase
     }
 
     /// <summary>
-    /// Get list of monthly subscriptions with filtering and pagination.
-    /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<BaseResponse<PagedResult<MonthlySubscriptionDto>>>> GetAll([FromQuery] MonthlySubscriptionFilterRequest filter)
-    {
-        var result = await _subscriptionService.GetAllSubscriptionsAsync(filter);
-        return Ok(BaseResponse<PagedResult<MonthlySubscriptionDto>>.Ok(result));
-    }
-
-    /// <summary>
-    /// Register a new monthly subscription (default status: PENDING).
+    /// Đăng ký vé tháng mới (Trạng thái mặc định: PENDING).
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<BaseResponse<MonthlySubscriptionDto>>> RegisterSubscription([FromBody] CreateSubscriptionRequest request)
@@ -45,7 +35,7 @@ public class MonthlySubscriptionsController : ControllerBase
     }
 
     /// <summary>
-    /// Get monthly subscription details by ID.
+    /// Lấy thông tin chi tiết đăng ký vé tháng theo ID.
     /// </summary>
     [HttpGet("{id:int}")]
     public async Task<ActionResult<BaseResponse<MonthlySubscriptionDto>>> GetSubscriptionById(int id)
@@ -55,27 +45,7 @@ public class MonthlySubscriptionsController : ControllerBase
     }
 
     /// <summary>
-    /// Update monthly subscription (card only).
-    /// </summary>
-    [HttpPut("{id:int}")]
-    public async Task<ActionResult<BaseResponse<MonthlySubscriptionDto>>> UpdateSubscription(int id, [FromBody] UpdateSubscriptionRequest request)
-    {
-        var subscription = await _subscriptionService.UpdateSubscriptionAsync(id, request);
-        return Ok(BaseResponse<MonthlySubscriptionDto>.Ok(subscription, "Monthly subscription updated successfully."));
-    }
-
-    /// <summary>
-    /// Activate monthly subscription (PENDING -> ACTIVE).
-    /// </summary>
-    [HttpPost("{id:int}/activate")]
-    public async Task<ActionResult<BaseResponse<MonthlySubscriptionDto>>> ActivateSubscription(int id)
-    {
-        var subscription = await _subscriptionService.ActivateSubscriptionAsync(id);
-        return Ok(BaseResponse<MonthlySubscriptionDto>.Ok(subscription, "Monthly subscription activated successfully."));
-    }
-
-    /// <summary>
-    /// Cancel monthly subscription.
+    /// Hủy đăng ký vé tháng.
     /// </summary>
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<BaseResponse<string>>> CancelSubscription(int id)
@@ -85,40 +55,7 @@ public class MonthlySubscriptionsController : ControllerBase
     }
 
     /// <summary>
-    /// Get monthly subscriptions by account ID.
-    /// </summary>
-    [HttpGet("by-account/{accountId:int}")]
-    public async Task<ActionResult<BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>>> GetByAccount(int accountId)
-    {
-        var filter = new MonthlySubscriptionFilterRequest
-        {
-            AccountId = accountId,
-            Page = 1,
-            PageSize = 100
-        };
-        var result = await _subscriptionService.GetAllSubscriptionsAsync(filter);
-        return Ok(BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>.Ok(result.Items.ToList()));
-    }
-
-    /// <summary>
-    /// Get monthly subscriptions by building ID with optional status filter.
-    /// </summary>
-    [HttpGet("by-building/{buildingId:int}")]
-    public async Task<ActionResult<BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>>> GetByBuilding(int buildingId, [FromQuery] string? status)
-    {
-        var filter = new MonthlySubscriptionFilterRequest
-        {
-            BuildingId = buildingId,
-            Status = status,
-            Page = 1,
-            PageSize = 100
-        };
-        var result = await _subscriptionService.GetAllSubscriptionsAsync(filter);
-        return Ok(BaseResponse<System.Collections.Generic.List<MonthlySubscriptionDto>>.Ok(result.Items.ToList()));
-    }
-
-    /// <summary>
-    /// Cleanup expired pending subscriptions.
+    /// Dọn dẹp các hồ sơ PENDING quá hạn thanh toán.
     /// </summary>
     [HttpPost("cleanup")]
     public async Task<ActionResult<BaseResponse<string>>> CleanupExpiredPendingSubscriptions([FromQuery] int timeoutMinutes = 15)

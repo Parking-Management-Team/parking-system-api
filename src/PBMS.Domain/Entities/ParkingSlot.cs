@@ -58,9 +58,4 @@ public class ParkingSlot : BaseEntity
     /// Danh sách các đăng ký vé tháng (MonthlySubscription) được gán vị trí đỗ xe này.
     /// </summary>
     public virtual ICollection<MonthlySubscription> MonthlySubscriptions { get; set; } = new List<MonthlySubscription>();
-
-    /// <summary>
-    /// Danh sách các đặt chỗ (Booking) đã hoặc đang liên kết với slot này.
-    /// </summary>
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }

@@ -24,6 +24,4 @@ public class VehicleTypeDto
     /// Maps to vehicle_type_status.
     /// </summary>
     public string VehicleTypeStatus { get; set; } = "ACTIVE";
-
-    public int BufferRatio { get; set; } = 10;
 }

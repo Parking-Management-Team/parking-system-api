@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Common;
 using PBMS.Application.Pricing.DTOs;
@@ -23,7 +22,6 @@ namespace PBMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/pricing-policies")]
-[Authorize]
 public class PricingPoliciesController : ControllerBase
 {
     private readonly IPricingPolicyService _pricingPolicyService;
@@ -54,7 +52,6 @@ public class PricingPoliciesController : ControllerBase
     ///          422 Unprocessable nếu vi phạm business rule
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<BaseResponse<PricingPolicyDto>>> CreatePricingPolicy(
         [FromBody] CreatePricingPolicyRequest request)
     {
@@ -84,7 +81,6 @@ public class PricingPoliciesController : ControllerBase
     ///          422 Unprocessable nếu vi phạm business rule (overlap, 24h coverage, ...)
     /// </summary>
     [HttpPost("{id:int}/activate")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<BaseResponse<PricingPolicyDto>>> ActivatePricingPolicy(int id)
     {
         var policy = await _pricingPolicyService.ActivatePricingPolicyAsync(id);
@@ -147,7 +143,6 @@ public class PricingPoliciesController : ControllerBase
     ///          400 Bad Request nếu tham số không hợp lệ
     /// </summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<BaseResponse<PricingPolicyDto>>> UpdatePricingPolicy(
         int id,
         [FromBody] UpdatePricingPolicyRequest request)
@@ -171,7 +166,6 @@ public class PricingPoliciesController : ControllerBase
     ///          400 Bad Request nếu tham số không hợp lệ
     /// </summary>
     [HttpPost("{id:int}/windows")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<BaseResponse<PricingWindowDto>>> AddPricingWindow(
         int id,
         [FromBody] CreatePricingWindowRequest request)
@@ -200,7 +194,6 @@ public class PricingPoliciesController : ControllerBase
     ///          400 Bad Request nếu tham số không hợp lệ
     /// </summary>
     [HttpPut("windows/{windowId:int}")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<BaseResponse<PricingWindowDto>>> UpdatePricingWindow(
         int windowId,
         [FromBody] UpdatePricingWindowRequest request)
@@ -224,29 +217,10 @@ public class PricingPoliciesController : ControllerBase
     ///          409 Conflict nếu là khung giờ cuối cùng
     /// </summary>
     [HttpDelete("windows/{windowId:int}")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult> DeletePricingWindow(int windowId)
     {
         await _pricingPolicyService.DeletePricingWindowAsync(windowId);
 
         return NoContent();
-    }
-
-    // -----------------------------------------------------------------------
-    // POST /api/pricing-policies/cleanup — Dọn dẹp chính sách giá hết hạn
-    // -----------------------------------------------------------------------
-
-    /// <summary>
-    /// Dọn dẹp các chính sách giá Active đã hết hạn EffectiveEnd -> chuyển sang Expired.
-    ///
-    /// Route  : POST /api/pricing-policies/cleanup
-    /// Returns: 200 OK + thông báo số lượng chính sách giá đã được xử lý
-    /// </summary>
-    [HttpPost("cleanup")]
-    [Authorize(Roles = "Admin,Manager")]
-    public async Task<ActionResult<BaseResponse<string>>> CleanupExpiredPricingPolicies()
-    {
-        var count = await _pricingPolicyService.CleanupExpiredPricingPoliciesAsync();
-        return Ok(BaseResponse<string>.Ok($"Dọn dẹp thành công. Đã hết hạn {count} chính sách giá."));
     }
 }

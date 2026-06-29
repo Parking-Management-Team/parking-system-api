@@ -289,42 +289,48 @@ public class FloorService : IFloorService
                     VehicleTypeId = vTypeId,
                     VehicleTypeName = vehicleTypeName,
                     TotalSlots = 0,
-                    StatusCounts = new List<SlotStatusCountDto>()
+                    StatusCounts = new Dictionary<string, int>()
                 };
 
+                // Lọc slots và sessions thuộc nhóm này
                 var groupSlots = slots.Where(s => zonesInGroupIds.Contains(s.ZoneId)).ToList();
                 var groupSessions = activeSessions.Where(ps => ps.ZoneId.HasValue && zonesInGroupIds.Contains(ps.ZoneId.Value)).ToList();
 
                 if (groupSlots.Any())
                 {
+                    // Zone có slot vật lý (Car)
                     vTypeSummary.TotalSlots = groupSlots.Count;
 
+                    // Đếm theo trạng thái
                     var statusGroups = groupSlots.GroupBy(s => s.Status);
                     foreach (var sg in statusGroups)
                     {
                         var statusStr = sg.Key.ToString();
                         
+                        // Lọc trạng thái nếu có yêu cầu
                         if (status != null && !statusStr.Equals(status, StringComparison.OrdinalIgnoreCase))
                         {
                             continue;
                         }
 
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = statusStr, Count = sg.Count() });
+                        vTypeSummary.StatusCounts[statusStr] = sg.Count();
                     }
 
-                    if (status != null && !vTypeSummary.StatusCounts.Any(sc => sc.Status.Equals(status, StringComparison.OrdinalIgnoreCase)))
+                    // Nếu lọc trạng thái mà không có slot nào khớp
+                    if (status != null && !vTypeSummary.StatusCounts.ContainsKey(status))
                     {
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = status, Count = 0 });
+                        vTypeSummary.StatusCounts[status] = 0;
                     }
 
+                    // Tổng số slot của nhóm xe sau khi lọc status
                     if (status != null)
                     {
-                        vTypeSummary.TotalSlots = vTypeSummary.StatusCounts
-                            .FirstOrDefault(sc => sc.Status.Equals(status, StringComparison.OrdinalIgnoreCase))?.Count ?? 0;
+                        vTypeSummary.TotalSlots = vTypeSummary.StatusCounts.GetValueOrDefault(status, 0);
                     }
                 }
                 else
                 {
+                    // Zone quản lý theo capacity chung (Motorcycle)
                     var totalCapacity = zonesInGroup.Sum(z => z.Capacity);
                     vTypeSummary.TotalSlots = totalCapacity;
 
@@ -333,22 +339,22 @@ public class FloorService : IFloorService
 
                     if (status == null)
                     {
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = "Available", Count = availableCount });
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = "Occupied", Count = occupiedCount });
+                        vTypeSummary.StatusCounts["Available"] = availableCount;
+                        vTypeSummary.StatusCounts["Occupied"] = occupiedCount;
                     }
                     else if (status.Equals("Available", StringComparison.OrdinalIgnoreCase))
                     {
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = "Available", Count = availableCount });
+                        vTypeSummary.StatusCounts["Available"] = availableCount;
                         vTypeSummary.TotalSlots = availableCount;
                     }
                     else if (status.Equals("Occupied", StringComparison.OrdinalIgnoreCase))
                     {
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = "Occupied", Count = occupiedCount });
+                        vTypeSummary.StatusCounts["Occupied"] = occupiedCount;
                         vTypeSummary.TotalSlots = occupiedCount;
                     }
                     else
                     {
-                        vTypeSummary.StatusCounts.Add(new SlotStatusCountDto { Status = status, Count = 0 });
+                        vTypeSummary.StatusCounts[status] = 0;
                         vTypeSummary.TotalSlots = 0;
                     }
                 }

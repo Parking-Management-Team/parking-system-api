@@ -32,45 +32,17 @@ public class BlacklistService : IBlacklistService
 
     public async Task<BlacklistDto> AddToBlacklistAsync(AddToBlacklistRequest request)
     {
-        int? vehicleId = request.VehicleId;
-        int? cardId = request.CardId;
-
-        // 1. Tìm Vehicle theo LicensePlate nếu không có VehicleId
-        if (!vehicleId.HasValue && !string.IsNullOrWhiteSpace(request.LicensePlate))
+        // 1. Kiểm tra tồn tại của các liên kết nếu được cung cấp
+        if (request.VehicleId.HasValue)
         {
-            var vehicle = await _vehicleRepository.FirstOrDefaultAsync(
-                v => v.LicensePlate.ToUpper() == request.LicensePlate.Trim().ToUpper());
-            if (vehicle == null)
-                throw new NotFoundException("Vehicle", $"LicensePlate '{request.LicensePlate}'");
-            vehicleId = vehicle.Id;
+            var vehicle = await _vehicleRepository.GetByIdAsync(request.VehicleId.Value);
+            if (vehicle == null) throw new NotFoundException("Vehicle", request.VehicleId.Value);
         }
 
-        // 2. Tìm Card theo CardCode nếu không có CardId
-        if (!cardId.HasValue && !string.IsNullOrWhiteSpace(request.CardCode))
+        if (request.CardId.HasValue)
         {
-            var card = await _cardRepository.GetByCardCodeAsync(request.CardCode.Trim());
-            if (card == null)
-                throw new NotFoundException("Card", $"CardCode '{request.CardCode}'");
-            cardId = card.Id;
-        }
-
-        // 3. Validate至少 có 1 đối tượng bị chặn
-        if (!vehicleId.HasValue && !cardId.HasValue && !request.IncidentId.HasValue)
-        {
-            throw new ValidationException("You must provide at least a Vehicle, Card, or Incident to blacklist.");
-        }
-
-        // 4. Kiểm tra tồn tại nếu dùng ID trực tiếp
-        if (vehicleId.HasValue && request.VehicleId.HasValue)
-        {
-            var vehicle = await _vehicleRepository.GetByIdAsync(vehicleId.Value);
-            if (vehicle == null) throw new NotFoundException("Vehicle", vehicleId.Value);
-        }
-
-        if (cardId.HasValue && request.CardId.HasValue)
-        {
-            var card = await _cardRepository.GetByIdAsync(cardId.Value);
-            if (card == null) throw new NotFoundException("Card", cardId.Value);
+            var card = await _cardRepository.GetByIdAsync(request.CardId.Value);
+            if (card == null) throw new NotFoundException("Card", request.CardId.Value);
         }
 
         if (request.IncidentId.HasValue)
@@ -79,11 +51,11 @@ public class BlacklistService : IBlacklistService
             if (incident == null) throw new NotFoundException("Incident", request.IncidentId.Value);
         }
 
-        // 5. Tạo bản ghi Blacklist
+        // 2. Tạo bản ghi Blacklist
         var blacklist = new PBMS.Domain.Entities.Blacklist
         {
-            VehicleId = vehicleId,
-            CardId = cardId,
+            VehicleId = request.VehicleId,
+            CardId = request.CardId,
             IncidentId = request.IncidentId,
             Reason = request.Reason
         };
