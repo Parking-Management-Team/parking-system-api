@@ -119,29 +119,28 @@ namespace PBMS.Application.Auth.Services
                 // 4. Sinh mã OTP & Lưu Cache
                 var otp = _otpService.GenerateAndStoreOtp(googleUser.Email);
 
-                // 5. Gửi Mail qua SMTP mang thương hiệu NexPark (English Version)
+                // 5. Gửi Mail qua SMTP mang thương hiệu NexPark (English Version - Emerald Theme)
                 var subject = "[NexPark] - Google Registration Verification Code";
                 var body = $@"
-<div style=""background-color: #f8fafc; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
-    <div style=""max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;"">
+<div style=""background-color: #f0fdf4; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
+    <div style=""max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06); border: 1px solid #d1fae5;"">
         
-        <!-- Header / Banner - NexPark Theme -->
-        <div style=""background: linear-gradient(135deg, #1e293b, #0f172a); padding: 35px 20px; text-align: center;"">
-            <div style=""display: inline-flex; align-items: center; justify-content: center; background-color: rgba(56, 189, 248, 0.1); border-radius: 10px; width: 44px; height: 44px; margin: 0 auto 12px auto; font-weight: 800; font-size: 22px; color: #38bdf8;"">P</div>
-            <h1 style=""color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.5px;"">NexPark</h1>
-            <p style=""color: #94a3b8; margin: 4px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;"">Smart Parking Solutions</p>
+        <!-- Header / Banner - NexPark Emerald Theme -->
+        <div style=""background: linear-gradient(135deg, #065f46, #047857); padding: 35px 20px; text-align: center;"">
+            <h1 style=""color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;"">NexPark</h1>
+            <p style=""color: #a7f3d0; margin: 6px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;"">Smart Parking Solutions</p>
         </div>
         
         <!-- Body Content -->
         <div style=""padding: 40px 32px;"">
-            <h2 style=""color: #0f172a; margin-top: 0; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: -0.5px;"">Verify Your Google Registration</h2>
+            <h2 style=""color: #064e3b; margin-top: 0; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: -0.5px;"">Verify Your Google Registration</h2>
             <p style=""color: #475569; font-size: 15px; line-height: 1.6; text-align: center; margin-bottom: 30px;"">
                 Thank you for choosing NexPark. Use the verification code below to complete your registration using Google:
             </p>
             
             <!-- OTP Box -->
-            <div style=""background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 30px;"">
-                <span style=""font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb; font-family: 'Courier New', monospace; display: inline-block; padding-left: 8px;"">{otp}</span>
+            <div style=""background-color: #ecfdf5; border: 2px dashed #6ee7b7; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 30px;"">
+                <span style=""font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #059669; font-family: 'Courier New', monospace; display: inline-block; padding-left: 8px;"">{otp}</span>
             </div>
             
             <!-- Security Notice -->
@@ -160,11 +159,11 @@ namespace PBMS.Application.Auth.Services
         </div>
         
         <!-- Footer -->
-        <div style=""background-color: #f8fafc; padding: 24px; border-top: 1px solid #e2e8f0; text-align: center;"">
-            <p style=""color: #94a3b8; font-size: 12px; margin: 0 0 4px 0;"">
+        <div style=""background-color: #f0fdf4; padding: 24px; border-top: 1px solid #d1fae5; text-align: center;"">
+            <p style=""color: #059669; font-size: 12px; margin: 0 0 4px 0; font-weight: 500;"">
                 Connect. Park. Go.
             </p>
-            <p style=""color: #cbd5e1; font-size: 11px; margin: 0;"">
+            <p style=""color: #a7f3d0; font-size: 11px; margin: 0;"">
                 &copy; 2026 NexPark System. All rights reserved.
             </p>
         </div>
@@ -225,29 +224,28 @@ namespace PBMS.Application.Auth.Services
             // 4. Sinh OTP & Lưu Cache
             var otp = _otpService.GenerateAndStoreOtp(email);
 
-            // 5. Gửi Mail qua SMTP mang thương hiệu NexPark (English Version)
+            // 5. Gửi Mail qua SMTP mang thương hiệu NexPark (English Version - Emerald Theme)
             var subject = "[NexPark] - Email Verification Code";
             var body = $@"
-<div style=""background-color: #f8fafc; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
-    <div style=""max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;"">
+<div style=""background-color: #f0fdf4; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
+    <div style=""max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06); border: 1px solid #d1fae5;"">
         
-        <!-- Header / Banner - NexPark Theme -->
-        <div style=""background: linear-gradient(135deg, #1e293b, #0f172a); padding: 35px 20px; text-align: center;"">
-            <div style=""display: inline-flex; align-items: center; justify-content: center; background-color: rgba(56, 189, 248, 0.1); border-radius: 10px; width: 44px; height: 44px; margin: 0 auto 12px auto; font-weight: 800; font-size: 22px; color: #38bdf8;"">P</div>
-            <h1 style=""color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.5px;"">NexPark</h1>
-            <p style=""color: #94a3b8; margin: 4px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;"">Smart Parking Solutions</p>
+        <!-- Header / Banner - NexPark Emerald Theme -->
+        <div style=""background: linear-gradient(135deg, #065f46, #047857); padding: 35px 20px; text-align: center;"">
+            <h1 style=""color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;"">NexPark</h1>
+            <p style=""color: #a7f3d0; margin: 6px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;"">Smart Parking Solutions</p>
         </div>
         
         <!-- Body Content -->
         <div style=""padding: 40px 32px;"">
-            <h2 style=""color: #0f172a; margin-top: 0; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: -0.5px;"">Verify Your Email Address</h2>
+            <h2 style=""color: #064e3b; margin-top: 0; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: -0.5px;"">Verify Your Email Address</h2>
             <p style=""color: #475569; font-size: 15px; line-height: 1.6; text-align: center; margin-bottom: 30px;"">
                 Thank you for choosing NexPark. Use the verification code below to complete your registration process:
             </p>
             
             <!-- OTP Box -->
-            <div style=""background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 30px;"">
-                <span style=""font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb; font-family: 'Courier New', monospace; display: inline-block; padding-left: 8px;"">{otp}</span>
+            <div style=""background-color: #ecfdf5; border: 2px dashed #6ee7b7; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 30px;"">
+                <span style=""font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #059669; font-family: 'Courier New', monospace; display: inline-block; padding-left: 8px;"">{otp}</span>
             </div>
             
             <!-- Security Notice -->
@@ -266,11 +264,11 @@ namespace PBMS.Application.Auth.Services
         </div>
         
         <!-- Footer -->
-        <div style=""background-color: #f8fafc; padding: 24px; border-top: 1px solid #e2e8f0; text-align: center;"">
-            <p style=""color: #94a3b8; font-size: 12px; margin: 0 0 4px 0;"">
+        <div style=""background-color: #f0fdf4; padding: 24px; border-top: 1px solid #d1fae5; text-align: center;"">
+            <p style=""color: #059669; font-size: 12px; margin: 0 0 4px 0; font-weight: 500;"">
                 Connect. Park. Go.
             </p>
-            <p style=""color: #cbd5e1; font-size: 11px; margin: 0;"">
+            <p style=""color: #a7f3d0; font-size: 11px; margin: 0;"">
                 &copy; 2026 NexPark System. All rights reserved.
             </p>
         </div>
