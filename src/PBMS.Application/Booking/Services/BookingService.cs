@@ -33,6 +33,7 @@ public class BookingService : IBookingService
     private readonly IRepository<PaymentEntity> _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
+    private readonly IBlacklistRepository _blacklistRepository;
 
     // Cấu hình nghiệp vụ (lấy từ Configuration hoặc mặc định)
     private int MinBookingMinutes => int.TryParse(_configuration["BookingSettings:MinBookingMinutes"], out var val) ? val : 15;
@@ -75,7 +76,8 @@ public class BookingService : IBookingService
         IRepository<ParkingSlotEntity> parkingSlotRepository,
         IRepository<PaymentEntity> paymentRepositoryMock,
         IUnitOfWork _unitOfWorkMock,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IBlacklistRepository blacklistRepository)
     {
         _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
         _vehicleRepository = _vehicleRepositoryMock ?? throw new ArgumentNullException(nameof(_vehicleRepositoryMock));
@@ -88,6 +90,7 @@ public class BookingService : IBookingService
         _paymentRepository = paymentRepositoryMock ?? throw new ArgumentNullException(nameof(paymentRepositoryMock));
         _unitOfWork = _unitOfWorkMock ?? throw new ArgumentNullException(nameof(_unitOfWorkMock));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _blacklistRepository = blacklistRepository ?? throw new ArgumentNullException(nameof(blacklistRepository));
     }
 
     // -----------------------------------------------------------------------
@@ -144,6 +147,26 @@ public class BookingService : IBookingService
             throw new DomainException(
                 errorCode: "VEHICLE_NOT_FOUND",
                 message: $"Không tìm thấy xe với biển số '{request.LicensePlate}' trong hệ thống."
+            );
+        }
+
+        // Kiểm tra xem phương tiện có nằm trong danh sách đen (Blacklist) không
+        var isVehicleBlacklisted = await _blacklistRepository.AnyAsync(b => b.VehicleId == vehicle.Id && !b.IsDeleted);
+        if (isVehicleBlacklisted)
+        {
+            throw new DomainException(
+                errorCode: "VEHICLE_BLACKLISTED",
+                message: $"Phương tiện '{vehicle.LicensePlate}' đang nằm trong danh sách đen. Không thể đặt chỗ."
+            );
+        }
+
+        // Kiểm tra xem tài khoản đặt chỗ có nằm trong danh sách đen không (thông qua các phương tiện sở hữu)
+        var isAccountBlacklisted = await _blacklistRepository.AnyAsync(b => b.Vehicle != null && b.Vehicle.AccountId == request.AccountId && !b.IsDeleted);
+        if (isAccountBlacklisted)
+        {
+            throw new DomainException(
+                errorCode: "ACCOUNT_BLACKLISTED",
+                message: "Tài khoản của bạn có phương tiện nằm trong danh sách đen. Không thể thực hiện đặt chỗ."
             );
         }
 
@@ -529,10 +552,10 @@ public class BookingService : IBookingService
             {
                 if (payment != null)
                 {
-                    payment.PaymentStatus = "REFUNDED";
+                    payment.PaymentStatus = "REFUND_PENDING";
                     _paymentRepository.Update(payment);
                 }
-                booking.CancelReason = $"{(reason ?? "Khách hàng hủy")} (Đã hoàn cọc)";
+                booking.CancelReason = $"{(reason ?? "Khách hàng hủy")} (Chờ hoàn cọc)";
             }
             else // Hủy trong vòng 60 phút trước check-in -> Mất cọc
             {

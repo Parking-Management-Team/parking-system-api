@@ -34,6 +34,7 @@ public class BookingServiceTests
     private readonly IRepository<PaymentEntity> _paymentRepositoryMock;
     private readonly IUnitOfWork _unitOfWorkMock;
     private readonly IConfiguration _configurationMock;
+    private readonly IBlacklistRepository _blacklistRepositoryMock;
     private readonly BookingService _service;
 
     public BookingServiceTests()
@@ -49,6 +50,10 @@ public class BookingServiceTests
         _paymentRepositoryMock = Substitute.For<IRepository<PaymentEntity>>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
         _configurationMock = Substitute.For<IConfiguration>();
+        _blacklistRepositoryMock = Substitute.For<IBlacklistRepository>();
+
+        // Thiết lập mặc định không nằm trong blacklist
+        _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<PBMS.Domain.Entities.Blacklist, bool>>>()).Returns(false);
 
         _service = new BookingService(
             _bookingRepositoryMock,
@@ -61,7 +66,8 @@ public class BookingServiceTests
             _parkingSlotRepositoryMock,
             _paymentRepositoryMock,
             _unitOfWorkMock,
-            _configurationMock
+            _configurationMock,
+            _blacklistRepositoryMock
         );
     }
 
@@ -576,8 +582,8 @@ public class BookingServiceTests
 
         // Assert
         Assert.Equal(BookingStatus.Cancelled, booking.BookingStatus);
-        Assert.Contains("Đã hoàn cọc", booking.CancelReason);
-        Assert.Equal("REFUNDED", payment.PaymentStatus);
+        Assert.Contains("Chờ hoàn cọc", booking.CancelReason);
+        Assert.Equal("REFUND_PENDING", payment.PaymentStatus);
         _paymentRepositoryMock.Received(1).Update(payment);
         _bookingRepositoryMock.Received(1).Update(booking);
         await _unitOfWorkMock.Received(1).SaveChangesAsync();
@@ -614,6 +620,31 @@ public class BookingServiceTests
         _paymentRepositoryMock.DidNotReceive().Update(payment);
         _bookingRepositoryMock.Received(1).Update(booking);
         await _unitOfWorkMock.Received(1).SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_ShouldThrowException_WhenVehicleIsBlacklisted()
+    {
+        // Arrange
+        var request = new CreateBookingRequest
+        {
+            AccountId = 1,
+            LicensePlate = "29A-99999",
+            BuildingId = 1,
+            PlannedCheckinTime = DateTime.UtcNow.AddMinutes(30)
+        };
+
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-99999" };
+        _vehicleRepositoryMock.FindAsync(Arg.Any<Expression<Func<VehicleEntity, bool>>>())
+            .Returns(new List<VehicleEntity> { vehicle });
+
+        // Giả lập xe bị blacklist
+        _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<PBMS.Domain.Entities.Blacklist, bool>>>())
+            .Returns(true);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<DomainException>(() => _service.CreateBookingAsync(request));
+        Assert.Equal("VEHICLE_BLACKLISTED", ex.ErrorCode);
     }
 }
 

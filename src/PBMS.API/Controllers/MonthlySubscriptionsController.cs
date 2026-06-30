@@ -126,4 +126,24 @@ public class MonthlySubscriptionsController : ControllerBase
         await _subscriptionService.CleanupExpiredPendingSubscriptionsAsync(timeoutMinutes);
         return Ok(BaseResponse<string>.Ok("Expired pending monthly subscriptions cleaned up successfully."));
     }
+
+    /// <summary>
+    /// Thay thế thẻ gửi xe mới cho vé tháng khi bị mất thẻ.
+    /// </summary>
+    [HttpPatch("{id:int}/replace-card")]
+    public async Task<ActionResult<BaseResponse<MonthlySubscriptionDto>>> ReplaceCard(int id, [FromQuery] string newCardCode)
+    {
+        var result = await _subscriptionService.ReplaceSubscriptionCardAsync(id, newCardCode);
+        return Ok(BaseResponse<MonthlySubscriptionDto>.Ok(result, "Monthly subscription card replaced successfully."));
+    }
+
+    /// <summary>
+    /// Gia hạn đăng ký vé tháng thêm 30 ngày.
+    /// </summary>
+    [HttpPost("{id:int}/renew")]
+    public async Task<ActionResult<BaseResponse<MonthlySubscriptionDto>>> RenewSubscription(int id)
+    {
+        var result = await _subscriptionService.RenewSubscriptionAsync(id);
+        return Ok(BaseResponse<MonthlySubscriptionDto>.Ok(result, "Monthly subscription renewed successfully."));
+    }
 }

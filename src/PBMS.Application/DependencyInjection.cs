@@ -92,6 +92,9 @@ public static class DependencyInjection
         // AuditLog module
         services.AddScoped<IAuditLogService, AuditLogService>();
 
+        // Dashboard module
+        services.AddScoped<PBMS.Application.Common.Interfaces.IDashboardService, PBMS.Application.Common.Services.DashboardService>();
+
         return services;
 
 

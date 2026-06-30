@@ -38,4 +38,9 @@ public interface IPaymentService
     /// Lấy lịch sử giao dịch thanh toán của một tài khoản (Account).
     /// </summary>
     Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsByAccountIdAsync(int accountId);
+
+    /// <summary>
+    /// Xử lý hoàn tiền cho giao dịch đang ở trạng thái REFUND_PENDING.
+    /// </summary>
+    Task<BaseResponse<PaymentResponseDto>> ProcessRefundAsync(int paymentId);
 }

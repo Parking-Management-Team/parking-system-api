@@ -100,6 +100,16 @@ public class ParkingSessionsController : ControllerBase
         return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
+    /// <summary>
+    /// Thay đổi thẻ gửi xe mới cho phiên gửi xe khi bị mất thẻ.
+    /// </summary>
+    [HttpPatch("{id:int}/replace-card")]
+    public async Task<IActionResult> ReplaceCard(int id, [FromQuery] string newCardCode)
+    {
+        var result = await _service.ReplaceSessionCardAsync(id, newCardCode);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
     private IActionResult ToErrorResult(string? errorCode, object result)
     {
         return errorCode switch

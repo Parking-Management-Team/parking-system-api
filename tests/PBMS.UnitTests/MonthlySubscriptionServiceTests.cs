@@ -160,4 +160,39 @@ public class MonthlySubscriptionServiceTests
         Assert.Equal(1500000m, result.MonthlyPrice);
         Assert.Equal(50, result.AssignedSlotId);
     }
+
+    [Fact]
+    public async Task RenewSubscriptionAsync_ShouldExtendBy30Days_WhenStatusIsActive()
+    {
+        // Arrange
+        var subscription = new MonthlySubscription
+        {
+            Id = 10,
+            VehicleId = 5,
+            MonthlySubscriptionStatus = "Active",
+            ExpiredAt = DateTime.UtcNow.AddDays(5),
+            MonthlyPrice = 1000000m
+        };
+        var vehicle = new Vehicle { Id = 5, VehicleTypeId = 20 };
+        var priceConfig = new SubscriptionPriceConfig { Id = 2, VehicleTypeId = 20, Price = 1200000m, IsActive = true };
+
+        _subscriptionRepositoryMock.GetByIdAsync(10).Returns(subscription);
+        _vehicleRepositoryMock.GetByIdAsync(5).Returns(vehicle);
+        _priceConfigRepositoryMock.GetActiveConfigByVehicleTypeAsync(20).Returns(priceConfig);
+
+        var originalExpiry = subscription.ExpiredAt.Value;
+
+        // Act
+        var result = await _service.RenewSubscriptionAsync(10);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Active", result.MonthlySubscriptionStatus);
+        Assert.Equal(1200000m, result.MonthlyPrice);
+        Assert.True(subscription.ExpiredAt > originalExpiry);
+        Assert.Equal(originalExpiry.AddDays(30), subscription.ExpiredAt.Value);
+        
+        _subscriptionRepositoryMock.Received(1).Update(subscription);
+        await _subscriptionRepositoryMock.Received(1).SaveChangesAsync();
+    }
 }

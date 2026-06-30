@@ -1,4 +1,6 @@
 using PBMS.Application.Common;
+using PBMS.Application.Common.Exceptions;
+using PBMS.Domain.Exceptions;
 using PBMS.Application.Contracts;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
@@ -888,4 +890,74 @@ public class ParkingSessionService : IParkingSessionService
         ZoneCode = session.Zone?.Code,
         SlotCode = session.ParkingSlot?.Code
     };
+
+    public async Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            throw new NotFoundException("ParkingSession", sessionId);
+        }
+
+        if (session.SessionStatus != ActiveStatus)
+        {
+            throw new DomainException("SESSION_NOT_ACTIVE", "Parking session is not active.");
+        }
+
+        var normalizedCardCode = newCardCode.Trim().ToUpper();
+        var newCard = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
+        if (newCard == null)
+        {
+            throw new NotFoundException("Card", newCardCode);
+        }
+
+        if (newCard.CardStatus != CardStatus.Available.ToString())
+        {
+            throw new DomainException("CARD_NOT_AVAILABLE", $"The replacement card '{newCardCode}' is not available (Status: {newCard.CardStatus}).");
+        }
+
+        // 1. Cập nhật thẻ cũ sang trạng thái LOST và đặt LostAt
+        var oldCard = await _cardRepository.GetByIdAsync(session.CardId);
+        if (oldCard != null)
+        {
+            oldCard.CardStatus = CardStatus.Lost.ToString();
+            oldCard.LostAt = DateTime.UtcNow.AddHours(7);
+            _cardRepository.Update(oldCard);
+        }
+
+        // 2. Cập nhật thẻ mới sang trạng thái ACTIVE
+        newCard.CardStatus = CardStatus.Active.ToString();
+        _cardRepository.Update(newCard);
+
+        // 3. Cập nhật session liên kết với thẻ mới
+        session.CardId = newCard.Id;
+        _sessionRepository.Update(session);
+
+        // 4. Tự động báo cáo sự cố LOST_CARD nếu chưa có để hệ thống tính phí phạt khi checkout
+        var lostCardType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LOST_CARD");
+        if (lostCardType != null)
+        {
+            var openLostIncidents = await _incidentRepository.FindAsync(i => i.SessionId == session.Id && i.IncidentTypeId == lostCardType.Id && i.Status == IncidentStatus.Open);
+            if (!openLostIncidents.Any())
+            {
+                var activePenalty = await _penaltyConfigRepository.FirstOrDefaultAsync(pc => pc.IncidentTypeId == lostCardType.Id && pc.IsActive && !pc.IsDeleted);
+                var incident = new IncidentEntity
+                {
+                    SessionId = session.Id,
+                    IncidentTypeId = lostCardType.Id,
+                    Description = $"Báo mất thẻ gửi xe (Thẻ cũ: {oldCard?.CardCode})",
+                    Status = IncidentStatus.Open,
+                    PenaltyFee = activePenalty?.PenaltyFee ?? 100000,
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                };
+                await _incidentRepository.AddAsync(incident);
+            }
+        }
+
+        await _sessionRepository.SaveChangesAsync();
+
+        // Load details for mapping
+        var updatedSession = await _sessionRepository.GetSessionWithDetailsAsync(session.Id);
+        return BaseResponse<ParkingSessionDto>.Ok(Map(updatedSession ?? session));
+    }
 }

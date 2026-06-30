@@ -355,6 +355,7 @@ public static class DbInitializer
             {
                 VehicleTypeId = motorcycleType!.Id,
                 Price = 150000, // 150k/tháng
+                DurationDays = 30,
                 EffectiveFrom = DateTime.UtcNow,
                 IsActive = true
             };
@@ -363,6 +364,7 @@ public static class DbInitializer
             {
                 VehicleTypeId = carType!.Id,
                 Price = 1000000, // 1 triệu/tháng
+                DurationDays = 30,
                 EffectiveFrom = DateTime.UtcNow,
                 IsActive = true
             };

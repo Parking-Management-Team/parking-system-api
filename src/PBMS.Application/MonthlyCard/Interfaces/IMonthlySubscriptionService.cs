@@ -42,4 +42,14 @@ public interface IMonthlySubscriptionService
     /// Cleanup expired pending subscriptions.
     /// </summary>
     Task CleanupExpiredPendingSubscriptionsAsync(int timeoutMinutes);
+
+    /// <summary>
+    /// Thay thế thẻ gửi xe mới cho vé tháng khi bị mất thẻ.
+    /// </summary>
+    Task<MonthlySubscriptionDto> ReplaceSubscriptionCardAsync(int subscriptionId, string newCardCode);
+
+    /// <summary>
+    /// Gia hạn đăng ký vé tháng thêm 30 ngày.
+    /// </summary>
+    Task<MonthlySubscriptionDto> RenewSubscriptionAsync(int id);
 }
