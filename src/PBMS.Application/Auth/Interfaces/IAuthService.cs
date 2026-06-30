@@ -44,5 +44,10 @@ namespace PBMS.Application.Auth.Interfaces
         /// Xác thực mã OTP và hoàn tất đăng ký tài khoản cho liên kết Google OAuth2.
         /// </summary>
         Task<LoginResponseDto> VerifyGoogleOtpAndRegisterAsync(GoogleVerifyOtpRequest request);
+
+        /// <summary>
+        /// Xác thực mã OTP và hoàn tất đăng nhập cho email thường.
+        /// </summary>
+        Task<LoginResponseDto> VerifyLoginOtpAsync(LoginVerifyOtpRequest request);
     }
 }
