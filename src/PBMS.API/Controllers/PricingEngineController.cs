@@ -34,9 +34,10 @@ public class PricingEngineController : ControllerBase
     public async Task<ActionResult<BaseResponse<PricingResult>>> Calculate(
         [FromQuery] int vehicleTypeId,
         [FromQuery] DateTime checkIn,
-        [FromQuery] DateTime checkOut)
+        [FromQuery] DateTime checkOut,
+        [FromQuery] int? parkingSessionId = null)
     {
-        var result = await _pricingCalculationService.CalculateFeeAsync(vehicleTypeId, checkIn, checkOut);
+        var result = await _pricingCalculationService.CalculateFeeAsync(vehicleTypeId, checkIn, checkOut, parkingSessionId);
         return Ok(BaseResponse<PricingResult>.Ok(result, "Calculated pricing successfully via Rule Engine."));
     }
 

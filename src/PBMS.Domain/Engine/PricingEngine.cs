@@ -10,7 +10,12 @@ namespace PBMS.Domain.Engine;
 /// </summary>
 public class PricingEngine : IPricingEngine
 {
-    public PricingResult Calculate(PricingPolicy policy, DateTime checkIn, DateTime checkOut)
+    public PricingResult Calculate(
+        PricingPolicy policy, 
+        DateTime checkIn, 
+        DateTime checkOut,
+        IEnumerable<Incident>? incidents = null,
+        IEnumerable<PenaltyConfig>? penaltyConfigs = null)
     {
         if (checkOut <= checkIn)
         {
@@ -26,29 +31,12 @@ public class PricingEngine : IPricingEngine
         var result = new PricingResult();
         var totalDurationMinutes = (checkOut - checkIn).TotalMinutes;
 
-        // 1. Áp dụng Grace Period Rule trước tiên (nếu có cấu hình)
-        var graceRule = activeRules.FirstOrDefault(r => r.RuleType == "GracePeriod");
-        if (graceRule?.GracePeriodRuleConfig != null)
-        {
-            var graceMinutes = graceRule.GracePeriodRuleConfig.GracePeriodMinutes;
-            if (totalDurationMinutes <= graceMinutes)
-            {
-                result.RuleResults.Add(new RuleResult
-                {
-                    RuleType = "GracePeriod",
-                    Amount = 0,
-                    Explanation = $"Tổng thời gian đỗ ({totalDurationMinutes:F1} phút) nằm trong thời gian ân hạn ({graceMinutes} phút). Miễn phí."
-                });
-                result.TotalAmount = 0;
-                return result;
-            }
-        }
-
-        // 2. Chia nhỏ thành các blocks thời gian
+        // 1. Chia nhỏ thành các blocks thời gian
         var blocks = GenerateBlocks(activeRules, checkIn, checkOut);
-        decimal totalAccumulatedAmount = 0;
+        decimal baseAmount = 0;
+        decimal incrementAmount = 0;
 
-        // 3. Thực thi tính phí cho từng block
+        // 2. Thực thi tính phí cho từng block gửi xe
         foreach (var block in blocks)
         {
             if (block.IsBase)
@@ -57,7 +45,7 @@ public class PricingEngine : IPricingEngine
                 if (baseRule?.BasePricingRuleConfig != null)
                 {
                     var config = baseRule.BasePricingRuleConfig;
-                    totalAccumulatedAmount += config.BasePriceAmount;
+                    baseAmount += config.BasePriceAmount;
                     result.RuleResults.Add(new RuleResult
                     {
                         RuleType = "BasePricing",
@@ -79,7 +67,7 @@ public class PricingEngine : IPricingEngine
                     var percentage = (actualMinutes / interval) * 100;
                     if (percentage >= config.ThresholdPercentage)
                     {
-                        totalAccumulatedAmount += config.IncrementPriceAmount;
+                        incrementAmount += config.IncrementPriceAmount;
                         result.RuleResults.Add(new RuleResult
                         {
                             RuleType = "IncrementPricing",
@@ -100,27 +88,88 @@ public class PricingEngine : IPricingEngine
             }
         }
 
-        // 4. Áp dụng Daily Cap Rule (Giới hạn trần theo ngày)
+        var totalAccumulatedParkingFee = baseAmount + incrementAmount;
+
+        // 3. Áp dụng Daily Cap Rule (Giới hạn trần theo ngày lịch 00:00) cho phí đỗ xe
         var dailyCapRule = activeRules.FirstOrDefault(r => r.RuleType == "DailyCap");
         if (dailyCapRule?.DailyCapRuleConfig != null)
         {
             var config = dailyCapRule.DailyCapRuleConfig;
-            var totalDays = Math.Ceiling((checkOut - checkIn).TotalDays);
+            
+            var startDate = checkIn.Date;
+            var endDate = checkOut.Date;
+            var totalDays = (endDate - startDate).Days + 1;
+            
             var maxCap = config.MaximumDailyAmount * (decimal)totalDays;
 
-            if (totalAccumulatedAmount > maxCap)
+            if (totalAccumulatedParkingFee > maxCap)
             {
                 result.RuleResults.Add(new RuleResult
                 {
                     RuleType = "DailyCap",
-                    Amount = maxCap - totalAccumulatedAmount,
-                    Explanation = $"Tổng phí tích lũy ({totalAccumulatedAmount:N0}) vượt quá giới hạn trần tối đa ({config.MaximumDailyAmount:N0}/ngày x {totalDays} ngày = {maxCap:N0}). Áp giá trần."
+                    Amount = maxCap - totalAccumulatedParkingFee,
+                    Explanation = $"Tổng phí tích lũy ({totalAccumulatedParkingFee:N0}) vượt quá giới hạn trần tối đa ({config.MaximumDailyAmount:N0}/ngày x {totalDays} ngày lịch = {maxCap:N0}). Áp giá trần."
                 });
-                totalAccumulatedAmount = maxCap;
+                totalAccumulatedParkingFee = maxCap;
+                
+                // Điều chỉnh lại tỉ lệ hiển thị phân bổ phí khi đã áp giá trần
+                // Gán phí base tối đa, phần còn lại đưa vào increment
+                baseAmount = Math.Min(baseAmount, totalAccumulatedParkingFee);
+                incrementAmount = totalAccumulatedParkingFee - baseAmount;
             }
         }
 
-        result.TotalAmount = totalAccumulatedAmount;
+        // 4. Áp dụng tính phí phạt từ sự cố (Penalty Surcharges)
+        decimal penaltyAmount = 0;
+        if (incidents != null && incidents.Any())
+        {
+            foreach (var incident in incidents)
+            {
+                // Độ ưu tiên tiền phạt:
+                // 1. Phí phạt thủ công gán trực tiếp trên Incident.PenaltyFee
+                // 2. Tra cứu từ danh sách PenaltyConfigs truyền vào tương ứng với IncidentTypeId
+                // 3. Tra cứu mặc định từ IncidentType.PenaltyConfigs nếu có load kèm
+                decimal incidentFee = 0;
+                
+                if (incident.PenaltyFee.HasValue)
+                {
+                    incidentFee = incident.PenaltyFee.Value;
+                }
+                else if (penaltyConfigs != null)
+                {
+                    var matchConfig = penaltyConfigs.FirstOrDefault(pc => pc.IncidentTypeId == incident.IncidentTypeId && pc.IsActive && !pc.IsDeleted);
+                    if (matchConfig != null)
+                    {
+                        incidentFee = matchConfig.PenaltyFee;
+                    }
+                }
+                else if (incident.IncidentType?.PenaltyConfigs != null)
+                {
+                    var matchConfig = incident.IncidentType.PenaltyConfigs.FirstOrDefault(pc => pc.IsActive && !pc.IsDeleted);
+                    if (matchConfig != null)
+                    {
+                        incidentFee = matchConfig.PenaltyFee;
+                    }
+                }
+
+                if (incidentFee > 0)
+                {
+                    penaltyAmount += incidentFee;
+                    result.RuleResults.Add(new RuleResult
+                    {
+                        RuleType = $"PenaltySurcharge_{incident.IncidentType?.IncidentCode ?? incident.IncidentTypeId.ToString()}",
+                        Amount = incidentFee,
+                        Explanation = $"Phụ thu phạt sự cố [{(incident.IncidentType?.IncidentName ?? "Sự cố ID: " + incident.IncidentTypeId)}]: {incidentFee:N0} VND"
+                    });
+                }
+            }
+        }
+
+        result.BaseAmount = baseAmount;
+        result.IncrementAmount = incrementAmount;
+        result.PenaltyAmount = penaltyAmount;
+        result.TotalAmount = totalAccumulatedParkingFee + penaltyAmount;
+
         return result;
     }
 

@@ -15,6 +15,7 @@ using PBMS.Application.Pricing.Interfaces;
 using PBMS.Application.Revenue.Interfaces;
 using PBMS.Domain.Entities;
 using Xunit;
+using PBMS.Domain.Engine;
 using BookingEntity = PBMS.Domain.Entities.Booking;
 
 namespace PBMS.UnitTests
@@ -29,7 +30,7 @@ namespace PBMS.UnitTests
         private readonly ICardRepository _cardRepositoryMock;
         private readonly IVNPayGateway _vnpayGatewayMock;
         private readonly IParkingSessionService _sessionServiceMock;
-        private readonly IFeeCalculationService _feeCalculationServiceMock;
+        private readonly IPricingCalculationService _pricingCalculationServiceMock;
         private readonly IConfiguration _configurationMock;
         private readonly IRevenueService _revenueServiceMock;
         private readonly IIncidentRepository _incidentRepositoryMock;
@@ -45,7 +46,7 @@ namespace PBMS.UnitTests
             _cardRepositoryMock = Substitute.For<ICardRepository>();
             _vnpayGatewayMock = Substitute.For<IVNPayGateway>();
             _sessionServiceMock = Substitute.For<IParkingSessionService>();
-            _feeCalculationServiceMock = Substitute.For<IFeeCalculationService>();
+            _pricingCalculationServiceMock = Substitute.For<IPricingCalculationService>();
             _configurationMock = Substitute.For<IConfiguration>();
             _revenueServiceMock = Substitute.For<IRevenueService>();
             _incidentRepositoryMock = Substitute.For<IIncidentRepository>();
@@ -59,7 +60,7 @@ namespace PBMS.UnitTests
                 _cardRepositoryMock,
                 _vnpayGatewayMock,
                 _sessionServiceMock,
-                _feeCalculationServiceMock,
+                _pricingCalculationServiceMock,
                 _configurationMock,
                 _revenueServiceMock,
                 _incidentRepositoryMock
@@ -101,8 +102,8 @@ namespace PBMS.UnitTests
             _paymentRepositoryMock.FindAsync(Arg.Any<Expression<Func<Payment, bool>>>())
                 .Returns(new List<Payment> { oldPendingPayment });
 
-            _feeCalculationServiceMock.CalculateFeeAsync(2, session.CheckInTime, session.CheckOutTime.Value)
-                .Returns(new PBMS.Application.Pricing.DTOs.FeeCalculationResult { TotalFee = 20000 });
+            _pricingCalculationServiceMock.CalculateFeeAsync(2, session.CheckInTime, session.CheckOutTime.Value, session.Id)
+                .Returns(new PricingResult { BaseAmount = 20000, IncrementAmount = 0, TotalAmount = 20000 });
 
             _configurationMock["PaymentSettings:CashRoundingUnit"].Returns("500");
             _configurationMock["PaymentSettings:RoundingThreshold"].Returns("250");

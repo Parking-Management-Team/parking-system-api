@@ -36,7 +36,7 @@ if (builder.Environment.IsDevelopment())
             Path.Combine(builder.Environment.ContentRootPath, ".aspnet-data-protection-keys")));
 }
 
-// Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API
+// Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API và authorize test
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 

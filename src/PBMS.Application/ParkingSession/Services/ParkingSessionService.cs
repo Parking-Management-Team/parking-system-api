@@ -25,7 +25,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IRepository<VehicleEntity> _vehicleRepository;
     private readonly IRepository<VehicleTypeEntity> _vehicleTypeRepository;
     private readonly IRepository<BookingEntity> _bookingRepository;
-    private readonly IFeeCalculationService _feeCalculationService;
+    private readonly IPricingCalculationService _pricingCalculationService;
     private readonly ICardRepository _cardRepository;
     private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IParkingSlotRepository _parkingSlotRepository;
@@ -40,7 +40,7 @@ public class ParkingSessionService : IParkingSessionService
         IRepository<VehicleEntity> vehicleRepository,
         IRepository<VehicleTypeEntity> vehicleTypeRepository,
         IRepository<BookingEntity> bookingRepository,
-        IFeeCalculationService feeCalculationService,
+        IPricingCalculationService pricingCalculationService,
         ICardRepository cardRepository,
         IMonthlySubscriptionRepository subscriptionRepository,
         IParkingSlotRepository parkingSlotRepository,
@@ -54,7 +54,7 @@ public class ParkingSessionService : IParkingSessionService
         _vehicleRepository = vehicleRepository;
         _vehicleTypeRepository = vehicleTypeRepository;
         _bookingRepository = bookingRepository;
-        _feeCalculationService = feeCalculationService;
+        _pricingCalculationService = pricingCalculationService;
         _cardRepository = cardRepository;
         _subscriptionRepository = subscriptionRepository;
         _parkingSlotRepository = parkingSlotRepository;
@@ -896,16 +896,18 @@ public class ParkingSessionService : IParkingSessionService
             }
         }
 
-        // Tính toán phí gửi xe
+        // Tính toán phí gửi xe và phí phạt gộp chung qua PricingEngine
         decimal totalFee = 0;
+        decimal totalPenaltyFee = 0;
+        decimal amountDue = 0;
         var calculationStartTime = session.CheckInTime;
-
+ 
         var vehicle = session.Vehicle ?? await _vehicleRepository.GetByIdAsync(session.VehicleId);
         if (vehicle == null)
         {
             return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_NOT_FOUND", $"Vehicle with ID {session.VehicleId} not found.");
         }
-
+ 
         if (session.MonthlySubscriptionId.HasValue)
         {
             var subscription = await _subscriptionRepository.GetByIdAsync(session.MonthlySubscriptionId.Value);
@@ -919,42 +921,48 @@ public class ParkingSessionService : IParkingSessionService
                 calculationStartTime = checkOutTime;
             }
         }
-
+ 
         if (calculationStartTime < checkOutTime)
         {
-            var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime);
-            totalFee = feeResult.TotalFee;
+            // PricingEngine sẽ tự tính phí đỗ (bao gồm block/lũy tiến/giá trần) cộng phí phạt các sự cố Open
+            var feeResult = await _pricingCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime, session.Id);
+            totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
+            totalPenaltyFee = feeResult.PenaltyAmount;
+            amountDue = feeResult.TotalAmount;
         }
-
-        // Nếu là Booking, khấu trừ tiền đặt cọc
+        else
+        {
+            // Lấy tổng tiền phạt từ các sự cố Open hiện có (nếu thời gian gửi không tốn phí đỗ xe)
+            var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
+            if (sessionIncidents != null)
+            {
+                var openIncidents = sessionIncidents.Where(i => i.Status == IncidentStatus.Open && !i.IsDeleted);
+                totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
+            }
+            amountDue = totalPenaltyFee;
+        }
+ 
+        // Nếu là Booking, khấu trừ tiền đặt cọc vào phần tiền cần thanh toán cuối cùng
         if (session.BookingId.HasValue)
         {
             var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
             if (booking != null)
             {
+                // Khấu trừ đặt cọc trước
+                amountDue = Math.Max(0, amountDue - booking.DepositAmount);
+                // Cập nhật lại totalFee sau khấu trừ (phần hiển thị phí đỗ xe nếu cần)
                 totalFee = Math.Max(0, totalFee - booking.DepositAmount);
             }
         }
-
-        // Lấy tổng tiền phạt từ các sự cố Open
-        decimal totalPenaltyFee = 0;
-        var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
-        if (sessionIncidents != null)
-        {
-            var openIncidents = sessionIncidents.Where(i => i.Status == IncidentStatus.Open);
-            totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
-        }
-
-        decimal amountDue = totalFee + totalPenaltyFee;
-
+ 
         _sessionRepository.Update(session);
         await _sessionRepository.SaveChangesAsync();
-
+ 
         var dto = Map(session);
         dto.TotalFee = totalFee;
         dto.PenaltyFee = totalPenaltyFee;
         dto.AmountDue = amountDue;
-
+ 
         return BaseResponse<ParkingSessionDto>.Ok(dto, "Started checkout successfully. Waiting for completion.");
     }
 

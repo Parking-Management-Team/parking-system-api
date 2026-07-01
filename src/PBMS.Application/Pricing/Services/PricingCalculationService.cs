@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using PBMS.Application.Contracts;
@@ -17,18 +19,24 @@ public class PricingCalculationService : IPricingCalculationService
     private readonly IPricingPolicyRepository _pricingPolicyRepository;
     private readonly IPricingEngine _pricingEngine;
     private readonly IRepository<PricingCalculationLog> _logRepository;
+    private readonly IIncidentRepository _incidentRepository;
+    private readonly IPenaltyConfigRepository _penaltyConfigRepository;
 
     public PricingCalculationService(
         IPricingPolicyRepository pricingPolicyRepository,
         IPricingEngine pricingEngine,
-        IRepository<PricingCalculationLog> logRepository)
+        IRepository<PricingCalculationLog> logRepository,
+        IIncidentRepository incidentRepository,
+        IPenaltyConfigRepository penaltyConfigRepository)
     {
         _pricingPolicyRepository = pricingPolicyRepository ?? throw new ArgumentNullException(nameof(pricingPolicyRepository));
         _pricingEngine = pricingEngine ?? throw new ArgumentNullException(nameof(pricingEngine));
         _logRepository = logRepository ?? throw new ArgumentNullException(nameof(logRepository));
+        _incidentRepository = incidentRepository ?? throw new ArgumentNullException(nameof(incidentRepository));
+        _penaltyConfigRepository = penaltyConfigRepository ?? throw new ArgumentNullException(nameof(penaltyConfigRepository));
     }
 
-    public async Task<PricingResult> CalculateFeeAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut)
+    public async Task<PricingResult> CalculateFeeAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut, int? parkingSessionId = null)
     {
         var policy = await _pricingPolicyRepository.GetActivePolicyAsync(vehicleTypeId, checkIn);
         if (policy == null)
@@ -39,7 +47,23 @@ public class PricingCalculationService : IPricingCalculationService
             );
         }
 
-        return _pricingEngine.Calculate(policy, checkIn, checkOut);
+        IEnumerable<PBMS.Domain.Entities.Incident>? incidents = null;
+        IEnumerable<PenaltyConfig>? penaltyConfigs = null;
+
+        if (parkingSessionId.HasValue)
+        {
+            // Lấy danh sách các sự cố chưa được xử lý (hoặc đang Open) của session
+            var allIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(parkingSessionId.Value);
+            incidents = allIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open && !i.IsDeleted).ToList();
+
+            if (incidents.Any())
+            {
+                // Lấy tất cả cấu hình giá phạt đang hoạt động để làm dữ liệu map cho Engine
+                penaltyConfigs = await _penaltyConfigRepository.GetAllConfigsWithDetailsAsync(incidentTypeId: null, onlyActive: true);
+            }
+        }
+
+        return _pricingEngine.Calculate(policy, checkIn, checkOut, incidents, penaltyConfigs);
     }
 
     public async Task<PricingResult> CalculateFeeAndLogAsync(
@@ -58,7 +82,21 @@ public class PricingCalculationService : IPricingCalculationService
             );
         }
 
-        var result = _pricingEngine.Calculate(policy, checkIn, checkOut);
+        IEnumerable<PBMS.Domain.Entities.Incident>? incidents = null;
+        IEnumerable<PenaltyConfig>? penaltyConfigs = null;
+
+        if (parkingSessionId.HasValue)
+        {
+            var allIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(parkingSessionId.Value);
+            incidents = allIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open && !i.IsDeleted).ToList();
+
+            if (incidents.Any())
+            {
+                penaltyConfigs = await _penaltyConfigRepository.GetAllConfigsWithDetailsAsync(incidentTypeId: null, onlyActive: true);
+            }
+        }
+
+        var result = _pricingEngine.Calculate(policy, checkIn, checkOut, incidents, penaltyConfigs);
 
         // Ghi log audit tính phí
         var log = new PricingCalculationLog

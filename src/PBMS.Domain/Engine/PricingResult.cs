@@ -19,6 +19,9 @@ public class RuleResult
 /// </summary>
 public class PricingResult
 {
+    public decimal BaseAmount { get; set; }
+    public decimal IncrementAmount { get; set; }
+    public decimal PenaltyAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public List<RuleResult> RuleResults { get; set; } = new();
 }
