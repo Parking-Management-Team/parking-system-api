@@ -28,7 +28,7 @@ public class PaymentService : IPaymentService
     private readonly ICardRepository _cardRepository;
     private readonly IVNPayGateway _vnpayGateway;
     private readonly IParkingSessionService _sessionService;
-    private readonly IFeeCalculationService _feeCalculationService;
+    private readonly IPricingCalculationService _pricingCalculationService;
     private readonly IRevenueService _revenueService;
     private readonly IConfiguration _configuration;
     private readonly IIncidentRepository _incidentRepository;
@@ -43,7 +43,7 @@ public class PaymentService : IPaymentService
         ICardRepository cardRepository,
         IVNPayGateway vnpayGateway,
         IParkingSessionService sessionService,
-        IFeeCalculationService feeCalculationService,
+        IPricingCalculationService pricingCalculationService,
         IConfiguration configuration,
         IRevenueService revenueService,
         IIncidentRepository incidentRepository)
@@ -56,7 +56,7 @@ public class PaymentService : IPaymentService
         _cardRepository = cardRepository;
         _vnpayGateway = vnpayGateway;
         _sessionService = sessionService;
-        _feeCalculationService = feeCalculationService;
+        _pricingCalculationService = pricingCalculationService;
         _configuration = configuration;
         _revenueService = revenueService;
         _incidentRepository = incidentRepository;
@@ -138,29 +138,24 @@ public class PaymentService : IPaymentService
                 }
             }
 
-            var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime);
+            // Gộp tính toán phí đỗ xe và phí phạt qua PricingEngine thống nhất
+            var feeResult = await _pricingCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime, session.Id);
+            
+            decimal finalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
+            decimal totalPenaltyFee = feeResult.PenaltyAmount;
+            originalAmount = feeResult.TotalAmount;
 
-            decimal finalFee = feeResult.TotalFee;
             // Nếu lượt gửi xe có liên kết với đặt chỗ, thực hiện khấu trừ tiền đặt cọc vào tổng tiền thanh toán
             if (session.BookingId.HasValue)
             {
                 var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
                 if (booking != null)
                 {
+                    originalAmount = Math.Max(0, originalAmount - booking.DepositAmount);
                     finalFee = Math.Max(0, finalFee - booking.DepositAmount);
                 }
             }
 
-            // Truy vấn và cộng dồn tiền phạt từ các sự cố chưa giải quyết (Open)
-            decimal totalPenaltyFee = 0;
-            var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
-            if (sessionIncidents != null)
-            {
-                var openIncidents = sessionIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open);
-                totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
-            }
-
-            originalAmount = finalFee + totalPenaltyFee;
             description = $"Parking fee payment for session {session.Id}";
             if (totalPenaltyFee > 0)
             {

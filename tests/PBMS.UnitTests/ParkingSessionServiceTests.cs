@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Xunit;
+using PBMS.Domain.Engine;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
 using BlacklistEntity = PBMS.Domain.Entities.Blacklist;
@@ -23,7 +24,7 @@ public class ParkingSessionServiceTests
     private readonly IRepository<VehicleEntity> _vehicleRepositoryMock;
     private readonly IRepository<VehicleTypeEntity> _vehicleTypeRepositoryMock;
     private readonly IRepository<Booking> _bookingRepositoryMock;
-    private readonly IFeeCalculationService _feeCalculationServiceMock;
+    private readonly IPricingCalculationService _pricingCalculationServiceMock;
     private readonly ICardRepository _cardRepositoryMock;
     private readonly IMonthlySubscriptionRepository _subscriptionRepositoryMock;
     private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
@@ -40,7 +41,7 @@ public class ParkingSessionServiceTests
         _vehicleRepositoryMock = Substitute.For<IRepository<VehicleEntity>>();
         _vehicleTypeRepositoryMock = Substitute.For<IRepository<VehicleTypeEntity>>();
         _bookingRepositoryMock = Substitute.For<IRepository<Booking>>();
-        _feeCalculationServiceMock = Substitute.For<IFeeCalculationService>();
+        _pricingCalculationServiceMock = Substitute.For<IPricingCalculationService>();
         _cardRepositoryMock = Substitute.For<ICardRepository>();
         _subscriptionRepositoryMock = Substitute.For<IMonthlySubscriptionRepository>();
         _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
@@ -55,7 +56,7 @@ public class ParkingSessionServiceTests
             _vehicleRepositoryMock,
             _vehicleTypeRepositoryMock,
             _bookingRepositoryMock,
-            _feeCalculationServiceMock,
+            _pricingCalculationServiceMock,
             _cardRepositoryMock,
             _subscriptionRepositoryMock,
             _parkingSlotRepositoryMock,
@@ -181,8 +182,8 @@ public class ParkingSessionServiceTests
 
         _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
         _subscriptionRepositoryMock.GetByIdAsync(500).Returns(subscription);
-        _feeCalculationServiceMock.CalculateFeeAsync(1, expiredAt, checkOutTime)
-            .Returns(new FeeCalculationResult { TotalFee = 15000 });
+        _pricingCalculationServiceMock.CalculateFeeAsync(1, expiredAt, checkOutTime, sessionId)
+            .Returns(new PricingResult { BaseAmount = 15000, IncrementAmount = 0, TotalAmount = 15000 });
 
         // Act
         var result = await _service.StartCheckoutAsync(sessionId, request);

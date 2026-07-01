@@ -107,8 +107,10 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/pricing-policies/{id}/windows` | `POST` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Thêm khung giờ tính giá mới vào chính sách |
 | `/api/pricing-policies/windows/{windowId}` | `PUT` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Cập nhật thông tin một khung giờ tính giá |
 | `/api/pricing-policies/windows/{windowId}` | `DELETE` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Xóa một khung giờ khỏi chính sách |
-| `/api/pricing-policies/cleanup` | `POST` | Chính sách giá | `PricingPoliciesController` | ❌ Chưa | Dọn dẹp các chính sách giá Active quá hạn sang Expired |
+| `/api/pricing-policies/cleanup` | `POST` | Chính sách giá | `PricingPoliciesController` | ✅ Có | Dọn dẹp các chính sách giá Active quá hạn sang Expired |
 | `/api/revenue` | `GET` | Báo cáo doanh thu | `RevenueController` | ✅ Có | Xem thống kê doanh thu theo bộ lọc, phân trang |
+| `/api/pricing-engine/calculate` | `GET` | Chính sách giá | `PricingEngineController` | ✅ Có | Thử nghiệm tính toán phí gửi xe bằng Rule-based Engine |
+| `/api/pricing-engine/calculate-and-log` | `POST` | Chính sách giá | `PricingEngineController` | ✅ Có | Tính toán phí gửi xe bằng Rule-based Engine và lưu log audit |
 | `/api/revenue/{id}` | `GET` | Báo cáo doanh thu | `RevenueController` | ✅ Có | Xem chi tiết doanh thu và danh sách hóa đơn |
 | `/api/subscription-price-configs` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#1-get-apisubscription-price-configs---danh-sach-cau-hinh-gia) | Lấy danh sách cấu hình giá vé tháng |
 | `/api/subscription-price-configs/active/{vehicleTypeId}` | `GET` | Vé tháng | `SubscriptionPriceConfigsController` | ✅ [Tài liệu](subscription-price-config-api.md#2-get-apisubscription-price-configsactivevehicletypeid---cau-hinh-gia-dang-hoat-dong) | Lấy cấu hình giá vé tháng đang hoạt động |

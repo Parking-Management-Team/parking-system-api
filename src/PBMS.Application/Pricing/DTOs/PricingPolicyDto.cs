@@ -32,4 +32,7 @@ public class PricingPolicyDto
 
     /// <summary>Danh sách khung giờ tính giá của chính sách này.</summary>
     public IEnumerable<PricingWindowDto> PricingWindows { get; set; } = new List<PricingWindowDto>();
+
+    /// <summary>Danh sách quy tắc tính giá của chính sách này.</summary>
+    public IEnumerable<PricingRuleDto> PricingRules { get; set; } = new List<PricingRuleDto>();
 }

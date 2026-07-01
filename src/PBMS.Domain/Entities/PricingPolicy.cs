@@ -46,6 +46,11 @@ public class PricingPolicy : BaseEntity
     public virtual ICollection<PricingWindow> PricingWindows { get; set; } = new List<PricingWindow>();
 
     /// <summary>
+    /// Danh sách các quy tắc tính giá (PricingRule) thuộc chính sách này.
+    /// </summary>
+    public virtual ICollection<PricingRule> PricingRules { get; set; } = new List<PricingRule>();
+
+    /// <summary>
     /// Danh sách các giao dịch thanh toán (Payment) đã áp dụng bảng giá này.
     /// </summary>
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();

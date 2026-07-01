@@ -52,7 +52,9 @@ Checks in a vehicle based on License Plate, Card Code, and Vehicle Type. Automat
 
 ## 2. PATCH `/api/parking-sessions/{id}/checkout/start` - Start Checkout & Evaluate Overtime
 
-Initiates the checkout process. If the parking session was created from a Booking and the current time exceeds the `PlannedCheckoutTime` by more than **15 minutes** (grace period), the system automatically creates an **Open** incident of type `LATE_CHECKOUT` and applies the configured penalty fee to the session.
+Initiates the checkout process. Calculates the total parking fee (Base + Increment Blocks + Daily Cap) and merges all active **Open** incident penalty fees via the Pricing Engine.
+
+If the parking session was created from a Booking and the current time exceeds the `PlannedCheckoutTime` by more than **15 minutes** (grace period), the system automatically creates an **Open** incident of type `LATE_CHECKOUT` and applies the configured penalty fee to the session.
 
 **Request Body:**
 ```json
@@ -85,7 +87,10 @@ Initiates the checkout process. If the parking session was created from a Bookin
     "sessionStatus": "ACTIVE",
     "cardCode": "CARD001",
     "zoneCode": "ZC01",
-    "slotCode": "ZC01-01"
+    "slotCode": "ZC01-01",
+    "totalFee": 20000.0,
+    "penaltyFee": 50000.0,
+    "amountDue": 70000.0
   },
   "success": true,
   "message": "Started checkout successfully. Waiting for completion."

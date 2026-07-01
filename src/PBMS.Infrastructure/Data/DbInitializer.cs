@@ -248,6 +248,52 @@ public static class DbInitializer
                             WindowCap = null,
                             GracePeriodMinutes = 0
                         }
+                    },
+                    PricingRules = new List<PricingRule>
+                    {
+                        new PricingRule
+                        {
+                            RuleType = "GracePeriod",
+                            ExecutionOrder = 1,
+                            IsActive = true,
+                            GracePeriodRuleConfig = new GracePeriodRuleConfig { GracePeriodMinutes = 15 }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "BasePricing",
+                            ExecutionOrder = 2,
+                            IsActive = true,
+                            BasePricingRuleConfig = new BasePricingRuleConfig
+                            {
+                                BaseDurationMinutes = 60,
+                                BasePriceAmount = 5000m,
+                                CurrencyCode = "VND"
+                            }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "IncrementPricing",
+                            ExecutionOrder = 3,
+                            IsActive = true,
+                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig
+                            {
+                                IncrementIntervalMinutes = 15,
+                                IncrementPriceAmount = 2000m,
+                                ThresholdPercentage = 50,
+                                CurrencyCode = "VND"
+                            }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "DailyCap",
+                            ExecutionOrder = 4,
+                            IsActive = true,
+                            DailyCapRuleConfig = new DailyCapRuleConfig
+                            {
+                                MaximumDailyAmount = 50000m,
+                                CurrencyCode = "VND"
+                            }
+                        }
                     }
                 },
                 new PricingPolicy
@@ -281,6 +327,52 @@ public static class DbInitializer
                             IncrementPrice = 10000m,
                             WindowCap = null,
                             GracePeriodMinutes = 0
+                        }
+                    },
+                    PricingRules = new List<PricingRule>
+                    {
+                        new PricingRule
+                        {
+                            RuleType = "GracePeriod",
+                            ExecutionOrder = 1,
+                            IsActive = true,
+                            GracePeriodRuleConfig = new GracePeriodRuleConfig { GracePeriodMinutes = 15 }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "BasePricing",
+                            ExecutionOrder = 2,
+                            IsActive = true,
+                            BasePricingRuleConfig = new BasePricingRuleConfig
+                            {
+                                BaseDurationMinutes = 60,
+                                BasePriceAmount = 20000m,
+                                CurrencyCode = "VND"
+                            }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "IncrementPricing",
+                            ExecutionOrder = 3,
+                            IsActive = true,
+                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig
+                            {
+                                IncrementIntervalMinutes = 15,
+                                IncrementPriceAmount = 5000m,
+                                ThresholdPercentage = 50,
+                                CurrencyCode = "VND"
+                            }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "DailyCap",
+                            ExecutionOrder = 4,
+                            IsActive = true,
+                            DailyCapRuleConfig = new DailyCapRuleConfig
+                            {
+                                MaximumDailyAmount = 150000m,
+                                CurrencyCode = "VND"
+                            }
                         }
                     }
                 }

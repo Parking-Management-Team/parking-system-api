@@ -67,6 +67,8 @@ public static class DependencyInjection
         // Pricing module
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();
         services.AddScoped<IFeeCalculationService, FeeCalculationService>();
+        services.AddScoped<IPricingCalculationService, PricingCalculationService>();
+        services.AddScoped<PBMS.Domain.Engine.IPricingEngine, PBMS.Domain.Engine.PricingEngine>();
         services.AddScoped<PBMS.Application.Common.IFeeCalculatorService, PBMS.Application.Common.FeeCalculatorService>();
         services.AddScoped<PBMS.Application.Pricing.Interfaces.ISubscriptionPriceConfigService, PBMS.Application.Pricing.Services.SubscriptionPriceConfigService>();
         services.AddScoped<PBMS.Application.Incident.Interfaces.IPenaltyConfigService, PBMS.Application.Incident.Services.PenaltyConfigService>();

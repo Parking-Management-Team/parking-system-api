@@ -32,6 +32,14 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
     {
         return await _dbSet
             .Include(pp => pp.PricingWindows)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.BasePricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.IncrementPricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.DailyCapRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.GracePeriodRuleConfig)
             .Include(pp => pp.VehicleType)
             .FirstOrDefaultAsync(pp => pp.Id == id);
     }
@@ -46,6 +54,14 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
     {
         var query = _dbSet
             .Include(pp => pp.PricingWindows)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.BasePricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.IncrementPricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.DailyCapRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.GracePeriodRuleConfig)
             .Include(pp => pp.VehicleType)
             .AsQueryable();
 
@@ -79,6 +95,14 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
     {
         return await _dbSet
             .Include(pp => pp.PricingWindows)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.BasePricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.IncrementPricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.DailyCapRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.GracePeriodRuleConfig)
             .Where(pp =>
                 pp.VehicleTypeId == vehicleTypeId &&
                 pp.PricingPolicyStatus == "Active" &&
