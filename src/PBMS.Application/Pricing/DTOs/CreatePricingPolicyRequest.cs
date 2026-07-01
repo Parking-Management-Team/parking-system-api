@@ -43,4 +43,9 @@ public class CreatePricingPolicyRequest
     [Required]
     [MinLength(1)]
     public List<CreatePricingWindowRequest> PricingWindows { get; set; } = new();
+
+    /// <summary>
+    /// Danh sách các quy tắc tính giá đi kèm.
+    /// </summary>
+    public List<CreatePricingRuleRequest> PricingRules { get; set; } = new();
 }

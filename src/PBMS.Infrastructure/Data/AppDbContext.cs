@@ -136,6 +136,13 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<PricingWindow> PricingWindows { get; set; } = null!;
 
+    public DbSet<PricingRule> PricingRules { get; set; } = null!;
+    public DbSet<BasePricingRuleConfig> BasePricingRuleConfigs { get; set; } = null!;
+    public DbSet<IncrementPricingRuleConfig> IncrementPricingRuleConfigs { get; set; } = null!;
+    public DbSet<DailyCapRuleConfig> DailyCapRuleConfigs { get; set; } = null!;
+    public DbSet<GracePeriodRuleConfig> GracePeriodRuleConfigs { get; set; } = null!;
+    public DbSet<PricingCalculationLog> PricingCalculationLogs { get; set; } = null!;
+
     /// <summary>
     /// Tập hợp dữ liệu bảng Quyền hạn (Permissions).
     /// </summary>
