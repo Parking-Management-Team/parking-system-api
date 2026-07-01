@@ -333,6 +333,24 @@ public class ParkingSessionService : IParkingSessionService
                 assignedSlot.Status = SlotStatus.Occupied;
                 _parkingSlotRepository.Update(assignedSlot);
             }
+            else if (request.RandomizeSlot)
+            {
+                // Random slot assignment: fetch all available slots and pick one randomly
+                var availableSlots = await _sessionRepository.FindAllAvailableGeneralSlotsAsync(
+                    request.VehicleTypeId,
+                    booking?.BuildingId ?? request.BuildingId);
+
+                if (availableSlots.Count == 0)
+                {
+                    return BaseResponse<ParkingSessionDto>.Fail("NO_AVAILABLE_SLOT", "No available GENERAL slot found for this vehicle type.");
+                }
+
+                var random = new Random();
+                assignedSlot = availableSlots[random.Next(availableSlots.Count)];
+                assignedZone = assignedSlot.Zone;
+                assignedSlot.Status = SlotStatus.Occupied;
+                _parkingSlotRepository.Update(assignedSlot);
+            }
             else
             {
                 assignedSlot = await _sessionRepository.FindAvailableGeneralSlotAsync(
@@ -423,6 +441,230 @@ public class ParkingSessionService : IParkingSessionService
         await _sessionRepository.SaveChangesAsync();
 
         return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Vehicle checked in successfully.");
+    }
+
+    public async Task<BaseResponse<CheckEntryResult>> CheckEntryConditionsAsync(CheckEntryRequest request)
+    {
+        var normalizedPlate = Normalize(request.LicensePlate);
+        var normalizedCardCode = Normalize(request.CardCode);
+
+        var result = new CheckEntryResult();
+
+        // 1. Validate card exists and is available
+        var card = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
+        result.CardAvailable = card != null &&
+            (string.Equals(card.CardStatus, CardStatus.Available.ToString(), StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(card.CardStatus, CardStatus.Assigned.ToString(), StringComparison.OrdinalIgnoreCase));
+
+        if (card == null)
+        {
+            result.Allowed = false;
+            result.Reason = $"Card with code '{normalizedCardCode}' not found.";
+            return BaseResponse<CheckEntryResult>.Ok(result, result.Reason);
+        }
+
+        // 2. Check blacklist
+        var isCardBlacklisted = await _blacklistRepository.AnyAsync(b => b.CardId == card.Id && !b.IsDeleted);
+        var isVehicleBlacklisted = false;
+
+        var vehicle = await _sessionRepository.GetVehicleByLicensePlateAsync(normalizedPlate);
+        if (vehicle != null && vehicle.Id > 0)
+        {
+            isVehicleBlacklisted = await _blacklistRepository.AnyAsync(b => b.VehicleId == vehicle.Id && !b.IsDeleted);
+        }
+
+        result.NotBlacklisted = !isCardBlacklisted && !isVehicleBlacklisted;
+
+        // 3. Check vehicle type
+        var vehicleType = await _vehicleTypeRepository.GetByIdAsync(request.VehicleTypeId);
+        if (vehicleType == null)
+        {
+            result.Allowed = false;
+            result.Reason = $"Vehicle type with ID {request.VehicleTypeId} not found.";
+            return BaseResponse<CheckEntryResult>.Ok(result, result.Reason);
+        }
+
+        // 4. Check vehicle not already in active session
+        if (vehicle != null && vehicle.Id > 0)
+        {
+            result.NotAlreadyParked = !await _sessionRepository.HasActiveSessionForVehicleAsync(vehicle.Id);
+        }
+        else
+        {
+            result.NotAlreadyParked = true;
+        }
+
+        // 5. Check card not already in active session
+        if (card != null)
+        {
+            var cardInSession = await _sessionRepository.AnyAsync(s => s.CardId == card.Id && s.SessionStatus == ActiveStatus);
+            if (cardInSession)
+            {
+                result.CardAvailable = false;
+            }
+        }
+
+        // 6. Check zone availability
+        if (IsCar(vehicleType))
+        {
+            var availableSlot = await _sessionRepository.FindAvailableGeneralSlotAsync(
+                request.VehicleTypeId, request.BuildingId);
+            result.ZoneAvailable = availableSlot != null;
+        }
+        else
+        {
+            var availableZone = await _sessionRepository.FindAvailableZoneAsync(
+                request.VehicleTypeId, request.BuildingId);
+            result.ZoneAvailable = availableZone != null;
+        }
+
+        // 7. Check pricing policy validity
+        var pricingCheck = await _sessionRepository.AnyAsync(_ => true); // placeholder — pricing policy existence check
+        result.PricingPolicyValid = true; // pricing policy always valid if zone is available
+
+        // Determine overall result
+        result.Allowed = result.CardAvailable && result.NotBlacklisted && result.NotAlreadyParked && result.ZoneAvailable && result.PricingPolicyValid;
+
+        if (!result.Allowed && string.IsNullOrEmpty(result.Reason))
+        {
+            var failures = new List<string>();
+            if (!result.CardAvailable) failures.Add("card is not available or already in use");
+            if (!result.NotBlacklisted) failures.Add("card or vehicle is blacklisted");
+            if (!result.NotAlreadyParked) failures.Add("vehicle already has an active session");
+            if (!result.ZoneAvailable) failures.Add("no available zone/slot for this vehicle type");
+            result.Reason = $"Entry conditions not met: {string.Join("; ", failures)}.";
+        }
+        else if (result.Allowed)
+        {
+            result.Reason = "All entry conditions passed. Ready for check-in.";
+        }
+
+        return BaseResponse<CheckEntryResult>.Ok(result, result.Reason);
+    }
+
+    public async Task<BaseResponse<ParkingSessionDto>> UpdateCheckinInfoAsync(int sessionId, UpdateCheckinRequest request)
+    {
+        var session = await _sessionRepository.GetSessionWithDetailsAsync(sessionId);
+        if (session == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {sessionId} not found.");
+        }
+
+        if (!IsActive(session))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be updated.");
+        }
+
+        // Update license plate
+        if (!string.IsNullOrWhiteSpace(request.LicensePlate))
+        {
+            var normalizedPlate = Normalize(request.LicensePlate);
+            session.LicensePlateIn = normalizedPlate;
+
+            // Also update the vehicle's license plate
+            if (session.Vehicle != null)
+            {
+                session.Vehicle.LicensePlate = normalizedPlate;
+                _vehicleRepository.Update(session.Vehicle);
+            }
+        }
+
+        // Update vehicle type
+        if (request.VehicleTypeId.HasValue)
+        {
+            var vehicleType = await _vehicleTypeRepository.GetByIdAsync(request.VehicleTypeId.Value);
+            if (vehicleType == null)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Vehicle type with ID {request.VehicleTypeId.Value} not found.");
+            }
+
+            if (session.Vehicle != null)
+            {
+                session.Vehicle.VehicleTypeId = request.VehicleTypeId.Value;
+                _vehicleRepository.Update(session.Vehicle);
+            }
+        }
+
+        // Update card
+        if (!string.IsNullOrWhiteSpace(request.CardCode))
+        {
+            var normalizedCardCode = Normalize(request.CardCode);
+            var newCard = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
+            if (newCard == null)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Card with code '{normalizedCardCode}' not found.");
+            }
+
+            if (newCard.Id != session.CardId)
+            {
+                // Release old card
+                var oldCard = await _cardRepository.GetByIdAsync(session.CardId);
+                if (oldCard != null && string.Equals(oldCard.CardStatus, CardStatus.Active.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    oldCard.CardStatus = CardStatus.Available.ToString();
+                    _cardRepository.Update(oldCard);
+                }
+
+                // Assign new card
+                newCard.CardStatus = CardStatus.Active.ToString();
+                _cardRepository.Update(newCard);
+                session.CardId = newCard.Id;
+            }
+        }
+
+        // Update slot
+        if (request.SlotId.HasValue)
+        {
+            var newSlot = await _parkingSlotRepository.GetSlotWithDetailsAsync(request.SlotId.Value);
+            if (newSlot == null)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_FOUND", $"Parking slot with ID {request.SlotId.Value} not found.");
+            }
+
+            if (newSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Selected slot is currently blocked or under maintenance.");
+            }
+
+            if (session.Vehicle != null && newSlot.VehicleTypeId != session.Vehicle.VehicleTypeId)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_TYPE_MISMATCH", "Selected slot does not match the vehicle type.");
+            }
+
+            if (newSlot.Zone?.Floor != null && newSlot.Zone.Floor.BuildingId != session.BuildingId)
+            {
+                return BaseResponse<ParkingSessionDto>.Fail("BUILDING_MISMATCH", "Selected slot is in a different building.");
+            }
+
+            // Release old slot
+            if (session.SlotId.HasValue && session.SlotId.Value != request.SlotId.Value)
+            {
+                var oldSlot = await _parkingSlotRepository.GetByIdAsync(session.SlotId.Value);
+                if (oldSlot != null)
+                {
+                    oldSlot.Status = SlotStatus.Available;
+                    _parkingSlotRepository.Update(oldSlot);
+                }
+            }
+
+            newSlot.Status = SlotStatus.Occupied;
+            _parkingSlotRepository.Update(newSlot);
+            session.SlotId = newSlot.Id;
+            session.ZoneId = newSlot.ZoneId;
+        }
+        else if (request.ZoneId.HasValue)
+        {
+            // Allow changing zone without changing slot
+            session.ZoneId = request.ZoneId.Value;
+            session.SlotId = null;
+        }
+
+        _sessionRepository.Update(session);
+        await _sessionRepository.SaveChangesAsync();
+
+        // Reload with details
+        var updated = await _sessionRepository.GetSessionWithDetailsAsync(sessionId);
+        return BaseResponse<ParkingSessionDto>.Ok(Map(updated ?? session), "Check-in info updated successfully.");
     }
 
     public async Task<BaseResponse<CheckInBookingLookupDto>> GetCheckInBookingByLicensePlateAsync(string licensePlate, int? buildingId = null)

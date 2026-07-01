@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Xunit;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
+using BlacklistEntity = PBMS.Domain.Entities.Blacklist;
 
 namespace PBMS.UnitTests;
 
@@ -566,6 +567,322 @@ public class ParkingSessionServiceTests
         // Assert
         await _notificationRepositoryMock.Received(1).AddAsync(Arg.Any<Notification>());
         await _notificationRepositoryMock.Received(1).SaveChangesAsync();
+    }
+
+    // ─── Check Entry Conditions Tests ───────────────────────────────────────
+
+    [Fact]
+    public async Task CheckEntryConditionsAsync_ShouldReturnAllowed_WhenAllConditionsMet()
+    {
+        // Arrange
+        var request = new CheckEntryRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "CARD-001",
+            VehicleTypeId = 1,
+            BuildingId = 10
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
+        var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var zone = new Zone { Id = 5, Floor = new Floor { BuildingId = 10 } };
+        var slot = new ParkingSlot { Id = 100, ZoneId = 5, VehicleTypeId = 1, Status = SlotStatus.Available, Zone = zone };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(false);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
+        _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+        _sessionRepositoryMock.FindAllAvailableGeneralSlotsAsync(1, 10).Returns(new List<ParkingSlot> { slot });
+
+        // Act
+        var result = await _service.CheckEntryConditionsAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.True(result.Data.Allowed);
+        Assert.True(result.Data.CardAvailable);
+        Assert.True(result.Data.NotBlacklisted);
+        Assert.True(result.Data.NotAlreadyParked);
+        Assert.True(result.Data.ZoneAvailable);
+    }
+
+    [Fact]
+    public async Task CheckEntryConditionsAsync_ShouldReturnNotAllowed_WhenCardNotFound()
+    {
+        // Arrange
+        var request = new CheckEntryRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "NONEXISTENT",
+            VehicleTypeId = 1,
+            BuildingId = 10
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("NONEXISTENT").Returns((Card?)null);
+
+        // Act
+        var result = await _service.CheckEntryConditionsAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.False(result.Data.Allowed);
+        Assert.False(result.Data.CardAvailable);
+        Assert.Contains("not found", result.Data.Reason);
+    }
+
+    [Fact]
+    public async Task CheckEntryConditionsAsync_ShouldReturnNotAllowed_WhenCardBlacklisted()
+    {
+        // Arrange
+        var request = new CheckEntryRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "CARD-001",
+            VehicleTypeId = 1,
+            BuildingId = 10
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
+        var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var zone = new Zone { Id = 5, Floor = new Floor { BuildingId = 10 } };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        // Card is blacklisted
+        _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(true);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
+        _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+
+        // Act
+        var result = await _service.CheckEntryConditionsAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.False(result.Data.Allowed);
+        Assert.False(result.Data.NotBlacklisted);
+    }
+
+    [Fact]
+    public async Task CheckEntryConditionsAsync_ShouldReturnNotAllowed_WhenNoAvailableZone()
+    {
+        // Arrange
+        var request = new CheckEntryRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "CARD-001",
+            VehicleTypeId = 1,
+            BuildingId = 10
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
+        var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(false);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
+        _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns((Zone?)null);
+
+        // Act
+        var result = await _service.CheckEntryConditionsAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.False(result.Data.Allowed);
+        Assert.False(result.Data.ZoneAvailable);
+    }
+
+    // ─── Random Slot Assignment Tests ───────────────────────────────────────
+
+    [Fact]
+    public async Task CheckInAsync_ShouldRandomlyAssignSlot_WhenRandomizeSlotIsTrue()
+    {
+        // Arrange
+        var request = new CheckInRequest
+        {
+            LicensePlate = "29A-12345",
+            CardCode = "CARD-001",
+            VehicleTypeId = 2,
+            BuildingId = 10,
+            StaffId = 5,
+            RandomizeSlot = true
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 2, TypeName = "CAR" };
+        var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 2 };
+        var zone = new Zone { Id = 5, Floor = new Floor { BuildingId = 10 } };
+        var slot1 = new ParkingSlot { Id = 100, ZoneId = 5, VehicleTypeId = 2, Status = SlotStatus.Available, Zone = zone };
+        var slot2 = new ParkingSlot { Id = 101, ZoneId = 5, VehicleTypeId = 2, Status = SlotStatus.Available, Zone = zone };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(2).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(false);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
+        _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
+        _sessionRepositoryMock.FindAllAvailableGeneralSlotsAsync(2, 10)
+            .Returns(new List<ParkingSlot> { slot1, slot2 });
+        _bookingRepositoryMock.FirstOrDefaultAsync(Arg.Any<Expression<Func<Booking, bool>>>())
+            .Returns((Booking?)null);
+
+        // Act
+        var result = await _service.CheckInAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.NotNull(result.Data.SlotId);
+        Assert.Contains(result.Data.SlotId.Value, new[] { 100, 101 });
+        Assert.Equal(SlotStatus.Occupied, (slot1.Status == SlotStatus.Occupied ? slot1 : slot2).Status);
+    }
+
+    // ─── Update Check-in Info Tests ─────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateCheckinInfoAsync_ShouldUpdateLicensePlate_WhenSessionIsActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateCheckinRequest { LicensePlate = "51B-999.99" };
+
+        var session = new ParkingSession
+        {
+            Id = sessionId,
+            SessionStatus = "ACTIVE",
+            LicensePlateIn = "29A-12345",
+            CardId = 10,
+            BuildingId = 10,
+            Vehicle = new VehicleEntity { Id = 20, LicensePlate = "29A-12345", VehicleTypeId = 1 }
+        };
+
+        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
+
+        // Act
+        var result = await _service.UpdateCheckinInfoAsync(sessionId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.Equal("51B-999.99", result.Data.LicensePlateIn);
+        Assert.Equal("51B-999.99", session.Vehicle.LicensePlate);
+    }
+
+    [Fact]
+    public async Task UpdateCheckinInfoAsync_ShouldFail_WhenSessionNotActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateCheckinRequest { LicensePlate = "51B-999.99" };
+
+        var session = new ParkingSession
+        {
+            Id = sessionId,
+            SessionStatus = "COMPLETED",
+            LicensePlateIn = "29A-12345",
+            Vehicle = new VehicleEntity { Id = 20, LicensePlate = "29A-12345", VehicleTypeId = 1 }
+        };
+
+        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
+
+        // Act
+        var result = await _service.UpdateCheckinInfoAsync(sessionId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.False(result.Success);
+        Assert.Equal("SESSION_NOT_ACTIVE", result.ErrorCode);
+    }
+
+    [Fact]
+    public async Task UpdateCheckinInfoAsync_ShouldUpdateSlot_WhenNewSlotProvided()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateCheckinRequest { SlotId = 200 };
+
+        var session = new ParkingSession
+        {
+            Id = sessionId,
+            SessionStatus = "ACTIVE",
+            SlotId = 100,
+            ZoneId = 5,
+            BuildingId = 10,
+            Vehicle = new VehicleEntity { Id = 20, VehicleTypeId = 2 }
+        };
+
+        var oldSlot = new ParkingSlot { Id = 100, Status = SlotStatus.Occupied };
+        var newSlot = new ParkingSlot
+        {
+            Id = 200,
+            Status = SlotStatus.Available,
+            VehicleTypeId = 2,
+            ZoneId = 6,
+            Zone = new Zone { Id = 6, Floor = new Floor { BuildingId = 10 } }
+        };
+
+        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
+        _parkingSlotRepositoryMock.GetSlotWithDetailsAsync(200).Returns(newSlot);
+        _parkingSlotRepositoryMock.GetByIdAsync(100).Returns(oldSlot);
+
+        // Act
+        var result = await _service.UpdateCheckinInfoAsync(sessionId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Equal(200, session.SlotId);
+        Assert.Equal(6, session.ZoneId);
+        Assert.Equal(SlotStatus.Available, oldSlot.Status);
+        Assert.Equal(SlotStatus.Occupied, newSlot.Status);
+    }
+
+    [Fact]
+    public async Task UpdateCheckinInfoAsync_ShouldFail_WhenSlotNotFound()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateCheckinRequest { SlotId = 999 };
+
+        var session = new ParkingSession
+        {
+            Id = sessionId,
+            SessionStatus = "ACTIVE",
+            Vehicle = new VehicleEntity { Id = 20, VehicleTypeId = 2 }
+        };
+
+        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
+        _parkingSlotRepositoryMock.GetSlotWithDetailsAsync(999).Returns((ParkingSlot?)null);
+
+        // Act
+        var result = await _service.UpdateCheckinInfoAsync(sessionId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.False(result.Success);
+        Assert.Equal("SLOT_NOT_FOUND", result.ErrorCode);
     }
 }
 

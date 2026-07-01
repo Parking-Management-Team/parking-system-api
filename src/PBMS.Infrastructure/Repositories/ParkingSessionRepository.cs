@@ -166,6 +166,44 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .FirstOrDefaultAsync();
     }
 
+    public async Task<List<ParkingSlot>> FindAllAvailableGeneralSlotsAsync(int vehicleTypeId, int? buildingId = null)
+    {
+        var now = DateTime.UtcNow;
+        var startGrace = now.AddMinutes(30);
+
+        var query = _context.ParkingSlots
+            .Include(s => s.Zone)
+            .ThenInclude(z => z.Floor)
+            .Where(s =>
+                s.VehicleTypeId == vehicleTypeId &&
+                s.Status == SlotStatus.Available &&
+                s.Zone.Status == ZoneStatus.Available &&
+                s.Zone.AccessType == ZoneAccessType.General);
+
+        if (buildingId.HasValue)
+        {
+            query = query.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
+        }
+
+        // Exclude slots reserved by active/upcoming bookings
+        var reservedSlotIds = await _context.Set<Booking>()
+            .Where(b =>
+                b.SlotId != null &&
+                (b.BookingStatus == BookingStatus.Confirmed ||
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.PlannedCheckinTime <= startGrace &&
+                b.PlannedCheckoutTime > now)
+            .Select(b => b.SlotId!.Value)
+            .ToListAsync();
+
+        if (reservedSlotIds.Any())
+        {
+            query = query.Where(s => !reservedSlotIds.Contains(s.Id));
+        }
+
+        return await query.ToListAsync();
+    }
+
     public async Task<ParkingSessionEntity?> GetSessionWithDetailsAsync(int id)
     {
         return await _context.ParkingSessions
