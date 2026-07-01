@@ -16,6 +16,18 @@ public class ParkingSessionsController : ControllerBase
         _service = service;
     }
 
+    [HttpPost("check-entry")]
+    public async Task<IActionResult> CheckEntry([FromBody] CheckEntryRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.CheckEntryConditionsAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("check-in")]
     public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
     {
@@ -72,6 +84,18 @@ public class ParkingSessionsController : ControllerBase
         return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
+    [HttpPatch("{id:int}/update")]
+    public async Task<IActionResult> UpdateCheckinInfo(int id, [FromBody] UpdateCheckinRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.UpdateCheckinInfoAsync(id, request);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
     [HttpPatch("{id:int}/slot")]
     public async Task<IActionResult> AssignSlot(int id, [FromBody] AssignParkingSessionSlotRequest request)
     {
@@ -115,7 +139,10 @@ public class ParkingSessionsController : ControllerBase
         return errorCode switch
         {
             "NOT_FOUND" or "BOOKING_NOT_FOUND" => NotFound(result),
-            "VEHICLE_IN_ACTIVE_SESSION" or "CARD_IN_ACTIVE_SESSION" or "SLOT_IN_ACTIVE_SESSION" => Conflict(result),
+            "VEHICLE_IN_ACTIVE_SESSION" or "CARD_IN_ACTIVE_SESSION" or "SLOT_IN_ACTIVE_SESSION"
+                or "SESSION_NOT_ACTIVE" => Conflict(result),
+            "VEHICLE_TYPE_MISMATCH" or "BUILDING_MISMATCH"
+                or "SLOT_NOT_AVAILABLE" => Conflict(result),
             _ => BadRequest(result)
         };
     }

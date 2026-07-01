@@ -25,6 +25,11 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     Task<ParkingSlot?> FindAvailableGeneralSlotAsync(int vehicleTypeId, int? buildingId = null);
 
     /// <summary>
+    /// Lấy tất cả slot GENERAL trống cho loại phương tiện, dùng cho random assignment.
+    /// </summary>
+    Task<List<ParkingSlot>> FindAllAvailableGeneralSlotsAsync(int vehicleTypeId, int? buildingId = null);
+
+    /// <summary>
     /// Lấy thông tin phiên gửi xe kèm theo thông tin chi tiết (ví dụ: Vehicle).
     /// </summary>
     Task<ParkingSessionEntity?> GetSessionWithDetailsAsync(int id);

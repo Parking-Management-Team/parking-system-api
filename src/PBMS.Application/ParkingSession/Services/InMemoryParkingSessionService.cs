@@ -215,6 +215,54 @@ public class InMemoryParkingSessionService : IParkingSessionService
         return Task.CompletedTask;
     }
 
+    public Task<BaseResponse<CheckEntryResult>> CheckEntryConditionsAsync(CheckEntryRequest request)
+    {
+        return Task.FromResult(BaseResponse<CheckEntryResult>.Ok(new CheckEntryResult
+        {
+            Allowed = true,
+            PricingPolicyValid = true,
+            ZoneAvailable = true,
+            CardAvailable = true,
+            NotBlacklisted = true,
+            NotAlreadyParked = true,
+            Reason = "All entry conditions passed. Ready for check-in."
+        }));
+    }
+
+    public Task<BaseResponse<ParkingSessionDto>> UpdateCheckinInfoAsync(int sessionId, UpdateCheckinRequest request)
+    {
+        lock (_sync)
+        {
+            var session = Find(sessionId);
+            if (session == null)
+            {
+                return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {sessionId} not found."));
+            }
+
+            if (!IsActive(session))
+            {
+                return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be updated."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.LicensePlate))
+            {
+                session.LicensePlateIn = request.LicensePlate.Trim().ToUpperInvariant();
+            }
+
+            if (request.SlotId.HasValue)
+            {
+                session.SlotId = request.SlotId;
+            }
+            else if (request.ZoneId.HasValue)
+            {
+                session.ZoneId = request.ZoneId;
+                session.SlotId = null;
+            }
+
+            return Task.FromResult(BaseResponse<ParkingSessionDto>.Ok(session, "Check-in info updated successfully."));
+        }
+    }
+
     public Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode)
     {
         lock (_sync)
