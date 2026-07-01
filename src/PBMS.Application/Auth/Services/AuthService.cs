@@ -74,75 +74,19 @@ namespace PBMS.Application.Auth.Services
                 throw new UnauthorizedAccessException("Incorrect email or password.");
             }
 
-            // 5. Kiểm tra giới hạn gửi OTP (cooldown/lockout)
-            if (_otpService.IsLockedOut(account.Email!))
+            // 5. Tiến hành cấp mã Token JWT của PBMS để đăng nhập hệ thống
+            var (token, expiration) = _tokenService.GenerateToken(account);
+
+            return new LoginResponseDto
             {
-                throw new InvalidOperationException("This email is temporarily locked due to too many failed OTP attempts. Please try again in 15 minutes.");
-            }
-
-            if (!_otpService.CanSendOtp(account.Email!))
-            {
-                throw new InvalidOperationException("Please wait 60 seconds before requesting another verification code.");
-            }
-
-            // 6. Sinh mã OTP & Lưu Cache
-            var otp = _otpService.GenerateAndStoreOtp(account.Email!);
-
-            // 7. Gửi Mail qua SMTP mang thương hiệu NexPark (Emerald Theme)
-            var subject = "[NexPark] - Login Verification Code";
-            var body = $@"
-<div style=""background-color: #f0fdf4; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
-    <div style=""max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06); border: 1px solid #d1fae5;"">
-        
-        <!-- Header / Banner - NexPark Emerald Theme -->
-        <div style=""background: linear-gradient(135deg, #065f46, #047857); padding: 35px 20px; text-align: center;"">
-            <h1 style=""color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;"">NexPark</h1>
-            <p style=""color: #a7f3d0; margin: 6px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;"">Smart Parking Solutions</p>
-        </div>
-        
-        <!-- Body Content -->
-        <div style=""padding: 40px 32px;"">
-            <h2 style=""color: #064e3b; margin-top: 0; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: -0.5px;"">Verify Your Login</h2>
-            <p style=""color: #475569; font-size: 15px; line-height: 1.6; text-align: center; margin-bottom: 30px;"">
-                To complete your login, please use the following one-time password (OTP) verification code:
-            </p>
-            
-            <!-- OTP Box -->
-            <div style=""background-color: #ecfdf5; border: 2px dashed #6ee7b7; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 30px;"">
-                <span style=""font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #059669; font-family: 'Courier New', monospace; display: inline-block; padding-left: 8px;"">{otp}</span>
-            </div>
-            
-            <!-- Security Notice -->
-            <div style=""border-left: 4px solid #f59e0b; background-color: #fef3c7; padding: 16px; border-radius: 6px; margin-bottom: 30px;"">
-                <p style=""color: #b45309; font-size: 13px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.4;"">
-                    ⚠️ Security Notice:
-                </p>
-                <p style=""color: #6b7280; font-size: 13px; margin: 0; line-height: 1.5;"">
-                    This one-time password (OTP) is valid for <strong>5 minutes</strong>. Never share this code with anyone, including NexPark staff.
-                </p>
-            </div>
-            
-            <p style=""color: #94a3b8; font-size: 12px; text-align: center; line-height: 1.5; margin: 0;"">
-                If you did not attempt to sign in to your account, please change your password immediately.
-            </p>
-        </div>
-        
-        <!-- Footer -->
-        <div style=""background-color: #f0fdf4; padding: 24px; border-top: 1px solid #d1fae5; text-align: center;"">
-            <p style=""color: #059669; font-size: 12px; margin: 0 0 4px 0; font-weight: 500;"">
-                Connect. Park. Go.
-            </p>
-            <p style=""color: #a7f3d0; font-size: 11px; margin: 0;"">
-                &copy; 2026 NexPark System. All rights reserved.
-            </p>
-        </div>
-    </div>
-</div>";
-
-            await _emailService.SendEmailAsync(account.Email!, subject, body);
-
-            // Ném exception để báo client cần nhập OTP cho luồng login thường
-            throw new LoginOtpRequiredException(account.Email!, "Login requires email verification.");
+                Token = token,
+                Expiration = expiration,
+                AccountId = account.Id,
+                Username = account.Username,
+                Email = account.Email,
+                FullName = account.FullName,
+                RoleName = account.Role?.RoleName ?? "Driver"
+            };
         }
 
         /// <summary>
