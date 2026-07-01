@@ -23,4 +23,10 @@ public class CheckInRequest
     public int? BookingId { get; set; }
 
     public int? MonthlySubscriptionId { get; set; }
+
+    /// <summary>
+    /// When true, randomly assigns an available slot instead of the first one found.
+    /// Applies only to CAR walk-in/booking check-in without a reserved slot.
+    /// </summary>
+    public bool RandomizeSlot { get; set; }
 }
