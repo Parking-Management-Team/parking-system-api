@@ -30,7 +30,7 @@ public class BookingServiceTests
     private readonly IBuildingRepository _buildingDetailRepositoryMock;
     private readonly IPricingPolicyRepository _pricingPolicyRepositoryMock;
     private readonly IRepository<ParkingSessionEntity> _sessionRepositoryMock;
-    private readonly IRepository<ParkingSlotEntity> _parkingSlotRepositoryMock;
+    private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
     private readonly IRepository<PaymentEntity> _paymentRepositoryMock;
     private readonly IUnitOfWork _unitOfWorkMock;
     private readonly IConfiguration _configurationMock;
@@ -46,7 +46,7 @@ public class BookingServiceTests
         _buildingDetailRepositoryMock = Substitute.For<IBuildingRepository>();
         _pricingPolicyRepositoryMock = Substitute.For<IPricingPolicyRepository>();
         _sessionRepositoryMock = Substitute.For<IRepository<ParkingSessionEntity>>();
-        _parkingSlotRepositoryMock = Substitute.For<IRepository<ParkingSlotEntity>>();
+        _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _paymentRepositoryMock = Substitute.For<IRepository<PaymentEntity>>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
         _configurationMock = Substitute.For<IConfiguration>();
@@ -178,7 +178,7 @@ public class BookingServiceTests
         var zone = new Zone { FloorId = 1, Floor = floor };
         var slot = new ParkingSlotEntity { Id = 10, VehicleTypeId = 1, Status = SlotStatus.Available, Zone = zone };
 
-        _parkingSlotRepositoryMock.FirstOrDefaultAsync(Arg.Any<Expression<Func<ParkingSlotEntity, bool>>>())
+        _parkingSlotRepositoryMock.GetSlotWithDetailsAsync(10)
             .Returns(slot);
 
         _bookingRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BookingEntity, bool>>>())
@@ -352,7 +352,7 @@ public class BookingServiceTests
         var zone = new Zone { FloorId = 1, Floor = floor };
         var slot = new ParkingSlotEntity { Id = 10, VehicleTypeId = 99, Status = SlotStatus.Available, Zone = zone };
 
-        _parkingSlotRepositoryMock.FirstOrDefaultAsync(Arg.Any<Expression<Func<ParkingSlotEntity, bool>>>())
+        _parkingSlotRepositoryMock.GetSlotWithDetailsAsync(10)
             .Returns(slot);
 
         // Act & Assert
@@ -411,7 +411,7 @@ public class BookingServiceTests
         var zone = new Zone { FloorId = 1, Floor = floor };
         var slot = new ParkingSlotEntity { Id = 10, VehicleTypeId = 1, Status = SlotStatus.Blocked, Zone = zone };
 
-        _parkingSlotRepositoryMock.FirstOrDefaultAsync(Arg.Any<Expression<Func<ParkingSlotEntity, bool>>>())
+        _parkingSlotRepositoryMock.GetSlotWithDetailsAsync(10)
             .Returns(slot);
 
         // Act & Assert
@@ -470,7 +470,7 @@ public class BookingServiceTests
         var zone = new Zone { FloorId = 1, Floor = floor };
         var slot = new ParkingSlotEntity { Id = 10, VehicleTypeId = 1, Status = SlotStatus.Available, Zone = zone };
 
-        _parkingSlotRepositoryMock.FirstOrDefaultAsync(Arg.Any<Expression<Func<ParkingSlotEntity, bool>>>())
+        _parkingSlotRepositoryMock.GetSlotWithDetailsAsync(10)
             .Returns(slot);
 
         _bookingRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BookingEntity, bool>>>())
@@ -564,7 +564,7 @@ public class BookingServiceTests
         {
             Id = 1,
             BookingStatus = BookingStatus.Confirmed,
-            PlannedCheckinTime = DateTime.UtcNow.AddHours(2) // 2 hours is > 1 hour
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(7).AddHours(2) // 2 hours is > 1 hour from current VN time
         };
         var payment = new PaymentEntity
         {
@@ -597,7 +597,7 @@ public class BookingServiceTests
         {
             Id = 1,
             BookingStatus = BookingStatus.Confirmed,
-            PlannedCheckinTime = DateTime.UtcNow.AddMinutes(30) // 30 minutes is < 1 hour
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(7).AddMinutes(30) // 30 minutes is < 1 hour from current VN time
         };
         var payment = new PaymentEntity
         {
