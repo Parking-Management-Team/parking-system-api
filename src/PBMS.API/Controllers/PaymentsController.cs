@@ -105,13 +105,13 @@ namespace PBMS.API.Controllers
             // Đọc Frontend Return URL từ cấu hình appsettings.json
             var feReturnUrl = _configuration["VNPay:FrontendReturnUrl"] ?? "http://localhost:3000/payment-result";
 
-            // Tạo các tham số truy vấn trả về Frontend
+            // Chuyển tiếp toàn bộ query string gốc (chứa tham số VNPay) và đính kèm trạng thái
+            var queryString = Request.QueryString.Value ?? "";
+            var connector = queryString.Contains("?") ? "&" : "?";
             var status = response.Success ? "success" : "failed";
             var message = Uri.EscapeDataString(response.Message ?? "");
-            var bookingId = collections.ContainsKey("vnp_TxnRef") ? collections["vnp_TxnRef"].ToString() : "";
-            var paymentId = collections.ContainsKey("vnp_TransactionNo") ? collections["vnp_TransactionNo"].ToString() : "";
 
-            var redirectUrl = $"{feReturnUrl}?status={status}&bookingId={bookingId}&paymentId={paymentId}&message={message}";
+            var redirectUrl = $"{feReturnUrl}{queryString}{connector}status={status}&message={message}";
             
             return Redirect(redirectUrl);
         }

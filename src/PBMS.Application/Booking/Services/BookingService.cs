@@ -29,7 +29,7 @@ public class BookingService : IBookingService
     private readonly IBuildingRepository _buildingDetailRepository;
     private readonly IPricingPolicyRepository _pricingPolicyRepository;
     private readonly IRepository<ParkingSessionEntity> _sessionRepository;
-    private readonly IRepository<ParkingSlotEntity> _parkingSlotRepository;
+    private readonly IParkingSlotRepository _parkingSlotRepository;
     private readonly IRepository<PaymentEntity> _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
@@ -73,7 +73,7 @@ public class BookingService : IBookingService
         IBuildingRepository _buildingDetailRepositoryMock,
         IPricingPolicyRepository _pricingPolicyRepositoryMock,
         IRepository<ParkingSessionEntity> _sessionRepositoryMock,
-        IRepository<ParkingSlotEntity> parkingSlotRepository,
+        IParkingSlotRepository parkingSlotRepository,
         IRepository<PaymentEntity> paymentRepositoryMock,
         IUnitOfWork _unitOfWorkMock,
         IConfiguration configuration,
@@ -292,11 +292,9 @@ public class BookingService : IBookingService
             }
 
             // 2. Kiểm tra slot tồn tại và thuộc tòa nhà đã chọn
-            var slot = await _parkingSlotRepository.FirstOrDefaultAsync(s => 
-                s.Id == request.SlotId.Value && 
-                s.Zone.Floor.BuildingId == request.BuildingId);
+            var slot = await _parkingSlotRepository.GetSlotWithDetailsAsync(request.SlotId.Value);
 
-            if (slot == null)
+            if (slot == null || slot.Zone?.Floor?.BuildingId != request.BuildingId)
             {
                 throw new DomainException(
                     errorCode: "SLOT_NOT_FOUND",
