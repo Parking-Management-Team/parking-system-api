@@ -48,7 +48,7 @@ public class VehicleServiceTests
 
         _vehicleRepositoryMock.AccountExistsAsync(10).Returns(true);
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(activeVehicleType);
-        _vehicleRepositoryMock.LicensePlateExistsAsync("51A12345").Returns(false);
+        _vehicleRepositoryMock.GetByLicensePlateAsync("51A12345").Returns((Vehicle?)null);
         _vehicleRepositoryMock.AddAsync(Arg.Any<Vehicle>()).Returns(call =>
         {
             var vehicle = call.Arg<Vehicle>();
@@ -78,19 +78,73 @@ public class VehicleServiceTests
             VehicleTypeId = 1,
             LicensePlate = "51A-123.45"
         };
-        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(new VehicleType
+        var activeVehicleType = new VehicleType
         {
             Id = 1,
             TypeName = VehicleType.CarTypeName,
             VehicleTypeStatus = VehicleType.StatusActive
+        };
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(activeVehicleType);
+        _vehicleRepositoryMock.GetByLicensePlateAsync("51A12345").Returns(new Vehicle
+        {
+            Id = 99,
+            LicensePlate = "51A12345",
+            AccountId = 20, // Already belongs to another account
+            VehicleTypeId = 1,
+            VehicleType = activeVehicleType
         });
-        _vehicleRepositoryMock.LicensePlateExistsAsync("51A12345").Returns(true);
 
         var result = await _vehicleService.CreateAsync(request);
 
         Assert.False(result.Success);
         Assert.Equal("LICENSE_PLATE_EXISTS", result.ErrorCode);
         await _vehicleRepositoryMock.DidNotReceive().AddAsync(Arg.Any<Vehicle>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_ClaimsGuestVehicle_WhenLicensePlateExistsAsGuest()
+    {
+        var request = new CreateVehicleDto
+        {
+            AccountId = 10,
+            VehicleTypeId = 1,
+            LicensePlate = "51A-123.45",
+            VehicleStatus = Vehicle.StatusActive
+        };
+        var activeVehicleType = new VehicleType
+        {
+            Id = 1,
+            TypeName = VehicleType.CarTypeName,
+            VehicleTypeStatus = VehicleType.StatusActive
+        };
+
+        _vehicleRepositoryMock.AccountExistsAsync(10).Returns(true);
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(activeVehicleType);
+        
+        var existingGuestVehicle = new Vehicle
+        {
+            Id = 99,
+            LicensePlate = "51A12345",
+            AccountId = null, // Guest vehicle
+            VehicleTypeId = 2, // Old guest type
+            VehicleType = activeVehicleType
+        };
+        _vehicleRepositoryMock.GetByLicensePlateAsync("51A12345").Returns(existingGuestVehicle);
+        _vehicleRepositoryMock.UpdateAsync(Arg.Any<Vehicle>()).Returns(call =>
+        {
+            var vehicle = call.Arg<Vehicle>();
+            return vehicle;
+        });
+
+        var result = await _vehicleService.CreateAsync(request);
+
+        Assert.True(result.Success);
+        Assert.Equal(99, result.Data!.Id);
+        Assert.Equal(10, result.Data.AccountId);
+        Assert.Equal(1, result.Data.VehicleTypeId);
+        Assert.Equal("51A12345", result.Data.LicensePlate);
+        await _vehicleRepositoryMock.DidNotReceive().AddAsync(Arg.Any<Vehicle>());
+        await _vehicleRepositoryMock.Received(1).UpdateAsync(Arg.Is<Vehicle>(v => v.Id == 99 && v.AccountId == 10));
     }
 
     [Fact]
