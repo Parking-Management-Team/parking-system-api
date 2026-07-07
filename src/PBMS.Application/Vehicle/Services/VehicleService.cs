@@ -108,8 +108,24 @@ public class VehicleService : IVehicleService
             }
 
             var normalizedPlate = NormalizeLicensePlate(createDto.LicensePlate);
-            if (await _vehicleRepository.LicensePlateExistsAsync(normalizedPlate))
+
+            // Check if vehicle with same license plate already exists
+            var existingVehicle = await _vehicleRepository.GetByLicensePlateAsync(normalizedPlate);
+            if (existingVehicle != null)
             {
+                if (existingVehicle.AccountId == null)
+                {
+                    // Vehicle is a guest/walk-in vehicle (no owner). Claim it by assigning AccountId.
+                    existingVehicle.AccountId = createDto.AccountId;
+                    existingVehicle.VehicleTypeId = createDto.VehicleTypeId;
+                    existingVehicle.RegisteredDay = createDto.RegisteredDay ?? existingVehicle.RegisteredDay;
+                    existingVehicle.VehicleStatus = NormalizeStatus(createDto.VehicleStatus);
+
+                    var claimed = await _vehicleRepository.UpdateAsync(existingVehicle);
+                    return BaseResponse<VehicleDto>.Ok(MapToDto(claimed), "Vehicle claimed and linked to account successfully.");
+                }
+
+                // Vehicle already belongs to another account
                 return BaseResponse<VehicleDto>.Fail(
                     "LICENSE_PLATE_EXISTS",
                     $"Vehicle license plate '{createDto.LicensePlate.Trim()}' already exists in the system.");

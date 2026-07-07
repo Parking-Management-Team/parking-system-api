@@ -93,7 +93,7 @@ builder.Services.AddAuthentication(options =>
 var app = builder.Build();
 
 // Tự động chạy Migration khi ứng dụng khởi động ở môi trường Development
-if (app.Environment.IsDevelopment() && !useInMemoryParkingSession)
+if (!useInMemoryParkingSession)
 {
     try
     {

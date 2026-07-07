@@ -110,8 +110,10 @@ namespace PBMS.API.Controllers
             var message = Uri.EscapeDataString(response.Message ?? "");
             var bookingId = collections.ContainsKey("vnp_TxnRef") ? collections["vnp_TxnRef"].ToString() : "";
             var paymentId = collections.ContainsKey("vnp_TransactionNo") ? collections["vnp_TransactionNo"].ToString() : "";
+            var vnpAmount = collections.ContainsKey("vnp_Amount") ? collections["vnp_Amount"].ToString() : "";
+            var vnpPayDate = collections.ContainsKey("vnp_PayDate") ? collections["vnp_PayDate"].ToString() : "";
 
-            var redirectUrl = $"{feReturnUrl}?status={status}&bookingId={bookingId}&paymentId={paymentId}&message={message}";
+            var redirectUrl = $"{feReturnUrl}?status={status}&bookingId={bookingId}&paymentId={paymentId}&message={message}&vnp_Amount={vnpAmount}&vnp_PayDate={vnpPayDate}";
             
             return Redirect(redirectUrl);
         }

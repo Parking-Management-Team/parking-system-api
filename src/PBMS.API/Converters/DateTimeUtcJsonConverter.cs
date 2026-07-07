@@ -5,8 +5,8 @@ using System.Text.Json.Serialization;
 namespace PBMS.API.Converters
 {
     /// <summary>
-    /// Custom JSON converter that deserializes all incoming DateTime values into UTC.
-    /// Handles both inputs with timezone offsets (Z, +07:00, etc.) and unspecified local times (defaulting to Vietnam ICT +7).
+    /// Custom JSON converter that deserializes all incoming DateTime values into UTC
+    /// and serializes all outgoing DateTime values into Vietnam local timezone (UTC+7).
     /// </summary>
     public class DateTimeUtcJsonConverter : JsonConverter<DateTime>
     {
@@ -17,12 +17,10 @@ namespace PBMS.API.Converters
 
             if (rawValue != null)
             {
-                // Check if string contains a time separator (e.g., ':')
                 bool hasTime = rawValue.Contains(":");
 
                 if (hasTime)
                 {
-                    // Check if it has timezone indicator (Z, +, or a offset hyphen after the time separator)
                     bool hasTimezone = rawValue.EndsWith("Z", StringComparison.OrdinalIgnoreCase) || 
                                       rawValue.Contains("+");
 
@@ -69,7 +67,8 @@ namespace PBMS.API.Converters
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
+            // value is stored in Vietnam local time (UTC+7), so we write it directly with +07:00 offset
+            writer.WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss+07:00"));
         }
     }
 }

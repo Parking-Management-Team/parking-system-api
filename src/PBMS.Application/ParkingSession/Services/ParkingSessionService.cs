@@ -751,6 +751,12 @@ public class ParkingSessionService : IParkingSessionService
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
     }
 
+    public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetByAccountIdAsync(int accountId)
+    {
+        var sessions = await _sessionRepository.GetByAccountIdAsync(accountId);
+        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
+    }
+
     public async Task<BaseResponse<ParkingSessionDto>> GetByIdAsync(int id)
     {
         var session = await _sessionRepository.GetByIdAsync(id);
@@ -1122,6 +1128,7 @@ public class ParkingSessionService : IParkingSessionService
     {
         Id = session.Id,
         VehicleId = session.VehicleId,
+        AccountId = session.Vehicle?.AccountId,
         BuildingId = session.BuildingId,
         CardId = session.CardId,
         ZoneId = session.ZoneId,

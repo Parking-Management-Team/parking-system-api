@@ -77,6 +77,13 @@ public class ParkingSessionsController : ControllerBase
         return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
+    [HttpGet("by-account/{accountId:int}")]
+    public async Task<IActionResult> GetByAccount(int accountId)
+    {
+        var result = await _service.GetByAccountIdAsync(accountId);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {

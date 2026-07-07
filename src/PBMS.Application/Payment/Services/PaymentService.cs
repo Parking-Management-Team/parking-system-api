@@ -182,6 +182,29 @@ public class PaymentService : IPaymentService
             description = $"Monthly subscription payment for subscription {subscription.Id}";
         }
 
+        // Nếu số tiền cần thanh toán thực tế là 0đ (do trong grace period hoặc được khấu trừ hết)
+        if (originalAmount <= 0)
+        {
+            var payment = new PBMS.Domain.Entities.Payment
+            {
+                SessionId = request.SessionId,
+                BookingId = request.BookingId,
+                MonthlySubscriptionId = request.MonthlySubscriptionId,
+                Amount = 0,
+                PaymentMethod = request.PaymentMethod.ToUpperInvariant(),
+                PaymentStatus = "PAID",
+                PaymentTime = DateTime.UtcNow.AddHours(7)
+            };
+
+            await _paymentRepository.AddAsync(payment);
+            await _paymentRepository.SaveChangesAsync();
+
+            // Hoàn tất nghiệp vụ logic sau khi thanh toán thành công
+            await CompleteBusinessFlowAsync(payment);
+
+            return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Payment successful (Zero amount due, automatically marked as PAID).");
+        }
+
         // 3. Xử lý logic theo Phương thức thanh toán
         var method = request.PaymentMethod.ToUpperInvariant();
 

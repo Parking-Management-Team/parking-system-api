@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
-using PBMS.Infrastructure.Data;
 using BCrypt.Net;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace PBMS.Infrastructure.Data;
 
@@ -157,53 +160,98 @@ public static class DbInitializer
             motorcycleType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
             carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
 
-            var zoneMotor = new Zone 
+            // Floor 1 has Motorcycle Zone (ZM01 - 25 slots) and Car Zone (ZC01 - 25 slots)
+            var zoneMotorF1 = new Zone 
             { 
                 FloorId = floor1.Id, 
                 Code = "ZM01", 
-                Name = "Motorbike Zone", 
-                Capacity = 100, 
+                Name = "Motorbike Zone F1", 
+                Capacity = 25, 
                 VehicleTypeId = motorcycleType!.Id,
                 AccessType = ZoneAccessType.General,
                 Status = ZoneStatus.Available
             };
-            var zoneCar = new Zone 
+            var zoneCarF1 = new Zone 
             { 
-                FloorId = floor2.Id, 
+                FloorId = floor1.Id, 
                 Code = "ZC01", 
-                Name = "Car Zone", 
-                Capacity = 10, 
+                Name = "Car Zone F1", 
+                Capacity = 25, 
                 VehicleTypeId = carType!.Id,
                 AccessType = ZoneAccessType.General,
                 Status = ZoneStatus.Available
             };
-            await context.AddRangeAsync(zoneMotor, zoneCar);
+
+            // Floor 2 has Car Zone (ZC02 - 50 slots)
+            var zoneCarF2 = new Zone 
+            { 
+                FloorId = floor2.Id, 
+                Code = "ZC02", 
+                Name = "Car Zone F2", 
+                Capacity = 50, 
+                VehicleTypeId = carType.Id,
+                AccessType = ZoneAccessType.General,
+                Status = ZoneStatus.Available
+            };
+
+            await context.AddRangeAsync(zoneMotorF1, zoneCarF1, zoneCarF2);
             await context.SaveChangesAsync();
 
-            // Seed Slots for Car Zone (Auto-generate 10 slots)
-            for (int i = 1; i <= 10; i++)
+            // Seed Slots for Floor 1 - Motorbike Zone (25 slots)
+            for (int i = 1; i <= 25; i++)
             {
                 context.Set<ParkingSlot>().Add(new ParkingSlot
                 {
-                    ZoneId = zoneCar.Id,
+                    ZoneId = zoneMotorF1.Id,
+                    VehicleTypeId = motorcycleType.Id,
+                    Code = $"ZM01-{i:D2}",
+                    Name = $"Slot ZM01-{i:D2}",
+                    Status = SlotStatus.Available
+                });
+            }
+
+            // Seed Slots for Floor 1 - Car Zone (25 slots)
+            for (int i = 1; i <= 25; i++)
+            {
+                context.Set<ParkingSlot>().Add(new ParkingSlot
+                {
+                    ZoneId = zoneCarF1.Id,
                     VehicleTypeId = carType.Id,
                     Code = $"ZC01-{i:D2}",
                     Name = $"Slot ZC01-{i:D2}",
                     Status = SlotStatus.Available
                 });
             }
+
+            // Seed Slots for Floor 2 - Car Zone (50 slots)
+            for (int i = 1; i <= 50; i++)
+            {
+                context.Set<ParkingSlot>().Add(new ParkingSlot
+                {
+                    ZoneId = zoneCarF2.Id,
+                    VehicleTypeId = carType.Id,
+                    Code = $"ZC02-{i:D2}",
+                    Name = $"Slot ZC02-{i:D2}",
+                    Status = SlotStatus.Available
+                });
+            }
+
             await context.SaveChangesAsync();
         }
 
-        // 5. Seed Cards
+        // 5. Seed Cards (Delete mock and add 50 physical cards CARD001 -> CARD050)
         if (!await context.Set<Card>().AnyAsync())
         {
-            var cards = new List<Card>
+            var cards = new List<Card>();
+            for (int i = 1; i <= 50; i++)
             {
-                new Card { CardCode = "CARD001", CardType = "PARKING_CARD", CardStatus = CardStatus.Available.ToString() },
-                new Card { CardCode = "CARD002", CardType = "PARKING_CARD", CardStatus = CardStatus.Available.ToString() },
-                new Card { CardCode = "CARD003", CardType = "PARKING_CARD", CardStatus = CardStatus.Available.ToString() }
-            };
+                cards.Add(new Card 
+                { 
+                    CardCode = $"CARD{i:D3}", 
+                    CardType = "PARKING_CARD", 
+                    CardStatus = CardStatus.Available.ToString() 
+                });
+            }
             await context.AddRangeAsync(cards);
             await context.SaveChangesAsync();
         }
@@ -382,11 +430,8 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // 7. Retrieve seeded accounts for vehicle and session relations
-        staffAccount = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "staff");
+        // 7. Seed Vehicle for Driver
         driverAccount = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver");
-
-        // 8. Seed Vehicle for Driver
         var carTypeForSeed = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
         Vehicle? vehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-12345");
         if (vehicle == null && driverAccount != null && carTypeForSeed != null)
@@ -403,44 +448,9 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // 9. Seed an ACTIVE Parking Session for testing checkout & VNPay payment
-        if (vehicle != null)
-        {
-            var activeSession = await context.Set<ParkingSession>().FirstOrDefaultAsync(s => s.VehicleId == vehicle.Id && s.SessionStatus == "ACTIVE");
-            if (activeSession == null)
-            {
-                var building = await context.Set<Building>().FirstOrDefaultAsync(b => b.Code == "BLD01");
-                var card = await context.Set<Card>().FirstOrDefaultAsync(c => c.CardCode == "CARD001");
-                var zone = await context.Set<Zone>().FirstOrDefaultAsync(z => z.Code == "ZC01");
-                var slot = await context.Set<ParkingSlot>().FirstOrDefaultAsync(ps => ps.Code == "ZC01-01");
+        // 8. Active Parking Session - REMOVED completely to avoid active mock parking session seeding
 
-                if (building != null && card != null && zone != null && slot != null)
-                {
-                    // Update card status to Active
-                    card.CardStatus = CardStatus.Active.ToString();
-
-                    // Update slot status to Occupied
-                    slot.Status = SlotStatus.Occupied;
-
-                    activeSession = new ParkingSession
-                    {
-                        VehicleId = vehicle.Id,
-                        BuildingId = building.Id,
-                        CardId = card.Id,
-                        ZoneId = zone.Id,
-                        SlotId = slot.Id,
-                        InStaffId = staffAccount?.Id,
-                        CheckInTime = DateTime.UtcNow.AddHours(7).AddHours(-2), // 2 hours ago (so fee is positive)
-                        LicensePlateIn = "51G-12345",
-                        SessionStatus = "ACTIVE"
-                    };
-
-                    await context.AddAsync(activeSession);
-                    await context.SaveChangesAsync();
-                }
-            }
-        }
-        // 10. Seed Subscription Price Configs
+        // 9. Seed Subscription Price Configs
         if (!await context.Set<SubscriptionPriceConfig>().AnyAsync())
         {
             var motorcycleConfig = new SubscriptionPriceConfig
@@ -465,7 +475,7 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // 11. Seed IncidentTypes
+        // 10. Seed IncidentTypes
         if (!await context.Set<IncidentType>().AnyAsync())
         {
             var lostCardType = new IncidentType
@@ -497,7 +507,7 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // 12. Seed Penalty Configs based on existing IncidentTypes
+        // 11. Seed Penalty Configs based on existing IncidentTypes
         var incidentTypes = await context.Set<IncidentType>().ToListAsync();
         if (incidentTypes.Any() && !await context.Set<PenaltyConfig>().AnyAsync())
         {

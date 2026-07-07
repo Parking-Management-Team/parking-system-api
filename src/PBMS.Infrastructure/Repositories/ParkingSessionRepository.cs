@@ -229,4 +229,16 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                         s.Booking!.PlannedCheckoutTime > now)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<ParkingSessionEntity>> GetByAccountIdAsync(int accountId)
+    {
+        return await _context.ParkingSessions
+            .Include(s => s.Vehicle)
+            .Include(s => s.Card)
+            .Include(s => s.Zone)
+            .Include(s => s.ParkingSlot)
+            .Where(s => s.Vehicle.AccountId == accountId)
+            .OrderByDescending(s => s.CheckInTime)
+            .ToListAsync();
+    }
 }

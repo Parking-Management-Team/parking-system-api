@@ -48,9 +48,9 @@ public class BookingService : IBookingService
     /// Chuyển đổi DateTime UTC sang DateTimeOffset giờ Việt Nam (UTC+7).
     /// Dùng cho pricing lookup — không gửi cho PostgreSQL.
     /// </summary>
-    private static DateTimeOffset ToVietnamTimeOffset(DateTime utcDateTime)
+    private static DateTimeOffset ToVietnamTimeOffset(DateTime localDateTime)
     {
-        return new DateTimeOffset(utcDateTime, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(7));
+        return new DateTimeOffset(DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified), TimeSpan.FromHours(7));
     }
 
     /// <summary>
@@ -110,16 +110,16 @@ public class BookingService : IBookingService
     /// </summary>
     public async Task<BookingDto> CreateBookingAsync(CreateBookingRequest request)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
 
-        // Đảm bảo DateTime luôn là UTC cho PostgreSQL
+        // Đảm bảo DateTime luôn là giờ Việt Nam (UTC+7)
         var plannedCheckinUtc = request.PlannedCheckinTime.Kind == DateTimeKind.Utc
-            ? request.PlannedCheckinTime
-            : request.PlannedCheckinTime.ToUniversalTime();
+            ? request.PlannedCheckinTime.AddHours(7)
+            : request.PlannedCheckinTime;
         var plannedCheckoutUtc = request.PlannedCheckoutTime.HasValue
             ? (request.PlannedCheckoutTime.Value.Kind == DateTimeKind.Utc
-                ? request.PlannedCheckoutTime.Value
-                : request.PlannedCheckoutTime.Value.ToUniversalTime())
+                ? request.PlannedCheckoutTime.Value.AddHours(7)
+                : request.PlannedCheckoutTime.Value)
             : (DateTime?)null;
 
         // Bước 1: Validate thời gian đặt chỗ
@@ -465,13 +465,13 @@ public class BookingService : IBookingService
             );
         }
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var minAllowed = now.AddMinutes(MinBookingMinutes);
 
-        // Đảm bảo DateTime luôn là UTC cho PostgreSQL
+        // Đảm bảo DateTime luôn là giờ Việt Nam (UTC+7)
         var plannedCheckinUtc = request.PlannedCheckinTime.Kind == DateTimeKind.Utc
-            ? request.PlannedCheckinTime
-            : request.PlannedCheckinTime.ToUniversalTime();
+            ? request.PlannedCheckinTime.AddHours(7)
+            : request.PlannedCheckinTime;
 
         if (plannedCheckinUtc < minAllowed)
         {
@@ -585,7 +585,7 @@ public class BookingService : IBookingService
     /// </summary>
     public async Task CleanupExpiredBookingsAsync()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
 
         // 1. Pending quá hạn thanh toán cọc -> Expired
         var expiredPendingBookings = await _bookingRepository.FindAsync(b =>
