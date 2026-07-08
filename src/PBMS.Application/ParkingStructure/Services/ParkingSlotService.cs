@@ -156,10 +156,11 @@ public class ParkingSlotService : IParkingSlotService
                 : plannedCheckoutTime.Value.ToUniversalTime();
             var end = endUtc.AddHours(7);
 
-            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm 30 phút, chỉ tính booking đã Confirmed)
+            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm 30 phút, tính cả booking đã Confirmed hoặc Pending chưa quá hạn thanh toán)
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
-                b.BookingStatus == BookingStatus.Confirmed &&
+                (b.BookingStatus == BookingStatus.Confirmed ||
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
                 b.PlannedCheckoutTime.AddMinutes(30) > start &&
                 end.AddMinutes(30) > b.PlannedCheckinTime);
 
