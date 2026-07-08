@@ -221,12 +221,19 @@ public class BuildingService : IBuildingService
             throw new NotFoundException("Building", buildingId);
         }
 
-        // Convert to Vietnam Local Time (UTC+7) to match database values
-        var start = plannedCheckinTime.Kind == DateTimeKind.Utc ? plannedCheckinTime.AddHours(7) : plannedCheckinTime;
+        // Convert to Vietnam Local Time (UTC+7) safely regardless of incoming Kind
+        var startUtc = plannedCheckinTime.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(plannedCheckinTime, DateTimeKind.Utc)
+            : plannedCheckinTime.ToUniversalTime();
+        var start = startUtc.AddHours(7);
+
         // Mặc định 4 tiếng nếu không truyền checkout
-        var end = plannedCheckoutTime.HasValue 
-            ? (plannedCheckoutTime.Value.Kind == DateTimeKind.Utc ? plannedCheckoutTime.Value.AddHours(7) : plannedCheckoutTime.Value)
-            : start.AddHours(4);
+        var endUtc = plannedCheckoutTime.HasValue 
+            ? (plannedCheckoutTime.Value.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(plannedCheckoutTime.Value, DateTimeKind.Utc)
+                : plannedCheckoutTime.Value.ToUniversalTime())
+            : startUtc.AddHours(4);
+        var end = plannedCheckoutTime.HasValue ? endUtc.AddHours(7) : start.AddHours(4);
 
         if (end <= start)
         {

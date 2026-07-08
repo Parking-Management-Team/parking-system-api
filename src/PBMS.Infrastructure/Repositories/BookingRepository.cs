@@ -78,7 +78,7 @@ public class BookingRepository : BaseRepository<BookingEntity>, IBookingReposito
     /// </summary>
     public async Task<int> GetActiveBookingsCountAsync(int buildingId, int vehicleTypeId, DateTime start, DateTime end)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         return await _dbContext.Set<BookingEntity>()
             .Include(b => b.Vehicle)
             .CountAsync(b =>

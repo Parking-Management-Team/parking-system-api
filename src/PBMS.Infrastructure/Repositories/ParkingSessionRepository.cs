@@ -88,7 +88,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var startGrace = now.AddMinutes(30);
 
         var zones = _context.Zones
@@ -127,7 +127,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<ParkingSlot?> FindAvailableGeneralSlotAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var startGrace = now.AddMinutes(30);
 
         var query = _context.ParkingSlots
@@ -168,7 +168,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<List<ParkingSlot>> FindAllAvailableGeneralSlotsAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var startGrace = now.AddMinutes(30);
 
         var query = _context.ParkingSlots

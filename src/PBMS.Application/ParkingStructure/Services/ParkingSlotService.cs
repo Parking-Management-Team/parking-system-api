@@ -144,10 +144,17 @@ public class ParkingSlotService : IParkingSlotService
 
         if (plannedCheckinTime.HasValue && plannedCheckoutTime.HasValue)
         {
-            var now = DateTime.UtcNow;
-            // Convert to Vietnam Local Time (UTC+7) to match database values
-            var start = plannedCheckinTime.Value.Kind == DateTimeKind.Utc ? plannedCheckinTime.Value.AddHours(7) : plannedCheckinTime.Value;
-            var end = plannedCheckoutTime.Value.Kind == DateTimeKind.Utc ? plannedCheckoutTime.Value.AddHours(7) : plannedCheckoutTime.Value;
+            var now = DateTime.UtcNow.AddHours(7);
+            // Convert to Vietnam Local Time (UTC+7) safely regardless of incoming Kind
+            var startUtc = plannedCheckinTime.Value.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(plannedCheckinTime.Value, DateTimeKind.Utc)
+                : plannedCheckinTime.Value.ToUniversalTime();
+            var start = startUtc.AddHours(7);
+
+            var endUtc = plannedCheckoutTime.Value.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(plannedCheckoutTime.Value, DateTimeKind.Utc)
+                : plannedCheckoutTime.Value.ToUniversalTime();
+            var end = endUtc.AddHours(7);
 
             // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm 30 phút)
             var activeBookings = await _bookingRepository.FindAsync(b =>
@@ -164,13 +171,12 @@ public class ParkingSlotService : IParkingSlotService
         else
         {
             // Nếu không truyền khoảng thời gian, mặc định kiểm tra các booking đang diễn ra HOẶC chuẩn bị check-in (trong vòng 15 phút tới) ngay thời điểm hiện tại
-            var now = DateTime.UtcNow;
-            var nowLocal = now.AddHours(7);
+            var nowLocal = DateTime.UtcNow.AddHours(7);
             var startGrace = nowLocal.AddMinutes(15);
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
                 (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > nowLocal)) &&
                 b.PlannedCheckinTime <= startGrace &&
                 b.PlannedCheckoutTime > nowLocal);
 
