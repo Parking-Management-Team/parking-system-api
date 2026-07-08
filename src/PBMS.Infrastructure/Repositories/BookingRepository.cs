@@ -86,7 +86,7 @@ public class BookingRepository : BaseRepository<BookingEntity>, IBookingReposito
                 b.Vehicle.VehicleTypeId == vehicleTypeId &&
                 (b.BookingStatus == BookingStatus.Confirmed ||
                  (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                b.PlannedCheckinTime < end &&
-                b.PlannedCheckoutTime > start);
+                b.PlannedCheckoutTime.AddMinutes(30) > start &&
+                end.AddMinutes(30) > b.PlannedCheckinTime);
     }
 }

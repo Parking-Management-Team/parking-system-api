@@ -322,13 +322,14 @@ public class BookingService : IBookingService
                 );
             }
 
-            // 5. Kiểm tra xem slot đã được đặt bởi booking chồng lấn khác chưa (chỉ tính booking Confirmed hoặc Pending chưa quá hạn thanh toán)
+            // 5. Kiểm tra xem slot đã được đặt bởi booking chồng lấn khác chưa (chỉ tính booking Confirmed hoặc Pending chưa quá hạn thanh toán, áp dụng khoảng đệm 30 phút)
             var isSlotTaken = await _bookingRepository.AnyAsync(b =>
                 b.SlotId == request.SlotId.Value &&
                 b.BuildingId == request.BuildingId &&
                 (b.BookingStatus == BookingStatus.Confirmed || 
                  (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                !(b.PlannedCheckoutTime <= start || b.PlannedCheckinTime >= end));
+                b.PlannedCheckoutTime.AddMinutes(30) > start &&
+                end.AddMinutes(30) > b.PlannedCheckinTime);
 
             if (isSlotTaken)
             {
