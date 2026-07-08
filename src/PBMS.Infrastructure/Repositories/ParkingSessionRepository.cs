@@ -113,8 +113,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 ReservedBookings = _context.Set<Booking>().Count(b =>
                     b.SlotId != null &&
                     b.ParkingSlot.ZoneId == z.Id &&
-                    (b.BookingStatus == BookingStatus.Confirmed ||
-                     (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                    b.BookingStatus == BookingStatus.Confirmed &&
                     b.PlannedCheckinTime <= startGrace &&
                     b.PlannedCheckoutTime > now)
             })
@@ -148,8 +147,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
         var reservedSlotIds = await _context.Set<Booking>()
             .Where(b =>
                 b.SlotId != null &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
                 b.PlannedCheckoutTime > now)
             .Select(b => b.SlotId!.Value)
@@ -189,8 +187,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
         var reservedSlotIds = await _context.Set<Booking>()
             .Where(b =>
                 b.SlotId != null &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
                 b.PlannedCheckoutTime > now)
             .Select(b => b.SlotId!.Value)
