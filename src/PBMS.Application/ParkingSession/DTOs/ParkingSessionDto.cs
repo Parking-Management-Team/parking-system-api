@@ -4,6 +4,7 @@ public class ParkingSessionDto
 {
     public int Id { get; set; }
     public int VehicleId { get; set; }
+    public int? AccountId { get; set; }
     public int BuildingId { get; set; }
     public int CardId { get; set; }
     public int? ZoneId { get; set; }

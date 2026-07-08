@@ -73,14 +73,7 @@ public static class DependencyInjection
         services.AddScoped<PBMS.Application.Pricing.Interfaces.ISubscriptionPriceConfigService, PBMS.Application.Pricing.Services.SubscriptionPriceConfigService>();
         services.AddScoped<PBMS.Application.Incident.Interfaces.IPenaltyConfigService, PBMS.Application.Incident.Services.PenaltyConfigService>();
         services.AddScoped<IAccountService, AccountService>();
-        if (useInMemoryParkingSession)
-        {
-            services.AddSingleton<IParkingSessionService, InMemoryParkingSessionService>();
-        }
-        else
-        {
-            services.AddScoped<IParkingSessionService, ParkingSessionService>();
-        }
+        services.AddScoped<IParkingSessionService, ParkingSessionService>();
         // Payment module
         services.AddScoped<IPaymentService, PaymentService>();
         // Revenue module

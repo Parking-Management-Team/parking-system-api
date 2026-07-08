@@ -61,6 +61,15 @@ public class VehicleRepository : IVehicleRepository
         return await query.AnyAsync();
     }
 
+    public async Task<Vehicle?> GetByLicensePlateAsync(string licensePlate)
+    {
+        var normalized = NormalizeLicensePlate(licensePlate);
+        return await _context.Vehicles
+            .Include(v => v.VehicleType)
+            .FirstOrDefaultAsync(v =>
+                v.LicensePlate.ToUpper().Replace(" ", "").Replace("-", "").Replace(".", "") == normalized);
+    }
+
     private static string NormalizeLicensePlate(string licensePlate)
     {
         return new string(licensePlate
