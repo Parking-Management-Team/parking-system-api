@@ -162,6 +162,26 @@ public class BookingsController : ControllerBase
     }
 
     // -----------------------------------------------------------------------
+    // POST /api/bookings/{id}/extend — Gia hạn đặt chỗ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Yêu cầu gia hạn thời gian đỗ xe (PlannedCheckoutTime) của Booking.
+    /// Chỉ hỗ trợ khi Booking ở trạng thái Confirmed hoặc CheckedIn.
+    ///
+    /// Route  : POST /api/bookings/{id}/extend?requestedNewEndTime=...
+    /// Returns: 200 OK + BookingExtensionResultDto
+    /// </summary>
+    [HttpPost("{id:int}/extend")]
+    public async Task<ActionResult<BaseResponse<BookingExtensionResultDto>>> RequestExtension(
+        int id,
+        [FromQuery] DateTime requestedNewEndTime)
+    {
+        var result = await _bookingService.RequestExtensionAsync(id, requestedNewEndTime);
+        return Ok(BaseResponse<BookingExtensionResultDto>.Ok(result));
+    }
+
+    // -----------------------------------------------------------------------
     // DELETE /api/bookings/{id} — Hủy Booking
     // -----------------------------------------------------------------------
 

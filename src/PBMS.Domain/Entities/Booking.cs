@@ -78,6 +78,11 @@ public class Booking : BaseEntity
     /// </summary>
     public int? SlotId { get; set; }
 
+    /// <summary>
+    /// Thời gian dự kiến checkout gia hạn (tạm thời chờ thanh toán).
+    /// </summary>
+    public DateTime? ExtendedCheckoutTime { get; set; }
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------

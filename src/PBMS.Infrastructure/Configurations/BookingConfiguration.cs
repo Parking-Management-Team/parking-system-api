@@ -121,6 +121,9 @@ namespace PBMS.Infrastructure.Configurations
             builder.Property(b => b.SlotId)
                 .HasColumnName("slot_id");
 
+            builder.Property(b => b.ExtendedCheckoutTime)
+                .HasColumnName("extended_checkout_time");
+
             // Quan hệ N-1: Nhiều Booking liên kết tới 1 ParkingSlot (ở các khung thời gian khác nhau)
             builder.HasOne(b => b.ParkingSlot)
                 .WithMany(ps => ps.Bookings)

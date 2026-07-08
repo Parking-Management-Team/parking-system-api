@@ -4,6 +4,8 @@ using PBMS.Application.Contracts;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
 using Microsoft.Extensions.Configuration;
+using PBMS.Application.Payment.Interfaces;
+using PBMS.Application.Pricing.Interfaces;
 using BookingEntity = PBMS.Domain.Entities.Booking;
 using ParkingSlotEntity = PBMS.Domain.Entities.ParkingSlot;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
@@ -34,6 +36,9 @@ public class BookingService : IBookingService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly IBlacklistRepository _blacklistRepository;
+
+    private readonly IVNPayGateway _vnpayGateway;
+    private readonly IPricingCalculationService _pricingCalculationService;
 
     // Cấu hình nghiệp vụ (lấy từ Configuration hoặc mặc định)
     private int MinBookingMinutes => int.TryParse(_configuration["BookingSettings:MinBookingMinutes"], out var val) ? val : 15;
@@ -77,7 +82,9 @@ public class BookingService : IBookingService
         IRepository<PaymentEntity> paymentRepositoryMock,
         IUnitOfWork _unitOfWorkMock,
         IConfiguration configuration,
-        IBlacklistRepository blacklistRepository)
+        IBlacklistRepository blacklistRepository,
+        IVNPayGateway vnpayGateway,
+        IPricingCalculationService pricingCalculationService)
     {
         _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
         _vehicleRepository = _vehicleRepositoryMock ?? throw new ArgumentNullException(nameof(_vehicleRepositoryMock));
@@ -91,6 +98,8 @@ public class BookingService : IBookingService
         _unitOfWork = _unitOfWorkMock ?? throw new ArgumentNullException(nameof(_unitOfWorkMock));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _blacklistRepository = blacklistRepository ?? throw new ArgumentNullException(nameof(blacklistRepository));
+        _vnpayGateway = vnpayGateway ?? throw new ArgumentNullException(nameof(vnpayGateway));
+        _pricingCalculationService = pricingCalculationService ?? throw new ArgumentNullException(nameof(pricingCalculationService));
     }
 
     // -----------------------------------------------------------------------
@@ -314,11 +323,11 @@ public class BookingService : IBookingService
             }
 
             // 4. Kiểm tra xem slot đó có đang bận/bị khóa hay không
-            if (slot.Status == SlotStatus.Blocked || slot.Status == SlotStatus.Maintenance)
+            if (slot.Status == SlotStatus.Blocked || slot.Status == SlotStatus.Maintenance || slot.Status == SlotStatus.Reserved)
             {
                 throw new DomainException(
                     errorCode: "SLOT_NOT_AVAILABLE",
-                    message: "Vị trí đỗ xe đã chọn hiện đang bị khóa hoặc bảo trì."
+                    message: "Vị trí đỗ xe đã chọn hiện đang bị khóa, bảo trì hoặc đã được giữ chỗ cố định."
                 );
             }
 
@@ -687,6 +696,8 @@ public class BookingService : IBookingService
             BuildingId = booking.BuildingId,
             BuildingName = buildingName,
             PlannedCheckinTime = booking.PlannedCheckinTime,
+            PlannedCheckoutTime = booking.PlannedCheckoutTime,
+            ExtendedCheckoutTime = booking.ExtendedCheckoutTime,
             DepositAmount = booking.DepositAmount,
             BookingStatus = booking.BookingStatus,
             PaymentDeadline = booking.PaymentDeadline,
@@ -697,6 +708,146 @@ public class BookingService : IBookingService
             CreatedAt = booking.CreatedAt,
             SlotId = booking.SlotId,
             SlotCode = slotCode
+        };
+    }
+
+    /// <summary>
+    /// Yêu cầu gia hạn thời gian đỗ xe (PlannedCheckoutTime) cho Booking.
+    /// Áp dụng khoảng đệm 30 phút với booking tiếp theo của khách hàng khác.
+    /// Trả về DTO chứa kết quả điều chỉnh thời gian tối đa và link thanh toán VNPay bổ sung.
+    /// </summary>
+    public async Task<BookingExtensionResultDto> RequestExtensionAsync(int id, DateTime requestedNewEndTime)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(id);
+        if (booking == null)
+        {
+            throw new DomainException(
+                errorCode: "BOOKING_NOT_FOUND",
+                message: $"Đặt chỗ với ID {id} không tồn tại."
+            );
+        }
+
+        if (booking.BookingStatus != BookingStatus.Confirmed && booking.BookingStatus != BookingStatus.CheckedIn && booking.BookingStatus != BookingStatus.Pending)
+        {
+            throw new DomainException("BOOKING_NOT_ELIGIBLE_FOR_EXTENSION", "Chỉ các đặt chỗ đang chờ thanh toán, đã được xác nhận hoặc đã check-in mới có thể gia hạn.");
+        }
+
+        // Convert requestedNewEndTime to Vietnam Local Time (UTC+7)
+        var requestedEndLocal = requestedNewEndTime.Kind == DateTimeKind.Utc 
+            ? requestedNewEndTime.AddHours(7) 
+            : requestedNewEndTime;
+
+        if (requestedEndLocal <= booking.PlannedCheckoutTime)
+        {
+            throw new DomainException("INVALID_EXTENSION_TIME", "Thời gian kết thúc mới phải sau thời gian checkout hiện tại.");
+        }
+
+        DateTime finalEndTime = requestedEndLocal;
+        bool isCapped = false;
+
+        // Nếu là xe hơi (có Slot cụ thể), kiểm tra xung đột trên slot đó
+        if (booking.SlotId.HasValue)
+        {
+            // Tìm booking CONFIRMED hoặc PENDING tiếp theo của khách hàng khác trên cùng một slot
+            var upcomingBookings = await _bookingRepository.FindAsync(b =>
+                b.SlotId == booking.SlotId &&
+                b.AccountId != booking.AccountId &&
+                b.Id != booking.Id &&
+                (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+                b.PlannedCheckinTime > booking.PlannedCheckoutTime);
+
+            var nextBooking = upcomingBookings
+                .OrderBy(b => b.PlannedCheckinTime)
+                .FirstOrDefault();
+
+            if (nextBooking != null)
+            {
+                // Áp dụng quy tắc khoảng đệm 30 phút
+                var maxAvailableEndTime = nextBooking.PlannedCheckinTime.AddMinutes(-30);
+                if (requestedEndLocal > maxAvailableEndTime)
+                {
+                    finalEndTime = maxAvailableEndTime;
+                    isCapped = true;
+
+                    if (finalEndTime <= booking.PlannedCheckoutTime)
+                    {
+                        return new BookingExtensionResultDto
+                        {
+                            Success = false,
+                            IsCapped = true,
+                            AdjustedEndTime = booking.PlannedCheckoutTime,
+                            AdditionalFee = 0,
+                            Message = "Không thể gia hạn thêm do đã chạm sát mốc đặt chỗ của khách hàng tiếp theo (quy tắc khoảng đệm 30 phút)."
+                        };
+                    }
+                }
+            }
+        }
+
+        // Tính toán chi phí bổ sung bằng pricing engine
+        var oldFeeResult = await _pricingCalculationService.CalculateFeeAsync(booking.VehicleTypeId, booking.PlannedCheckinTime, booking.PlannedCheckoutTime);
+        var newFeeResult = await _pricingCalculationService.CalculateFeeAsync(booking.VehicleTypeId, booking.PlannedCheckinTime, finalEndTime);
+        decimal additionalFee = newFeeResult.TotalAmount - oldFeeResult.TotalAmount;
+
+        if (additionalFee < 0)
+        {
+            additionalFee = 0;
+        }
+
+        // Tạo bản ghi Payment
+        long orderCode = DateTime.UtcNow.Ticks;
+        var payment = new PaymentEntity
+        {
+            BookingId = booking.Id,
+            Amount = additionalFee,
+            PaymentMethod = "ONLINE_BANKING",
+            PaymentStatus = "PENDING",
+            OrderCode = orderCode
+        };
+
+        // Lưu thời gian checkout đề xuất tạm thời vào Booking
+        booking.ExtendedCheckoutTime = finalEndTime;
+        
+        await _paymentRepository.AddAsync(payment);
+        _bookingRepository.Update(booking);
+        await _unitOfWork.SaveChangesAsync();
+
+        string? paymentUrl = null;
+        if (additionalFee > 0)
+        {
+            try
+            {
+                paymentUrl = _vnpayGateway.CreatePaymentUrl(orderCode, additionalFee, $"Gia han dat cho #{booking.Id}", "127.0.0.1");
+            }
+            catch (Exception ex)
+            {
+                // Log or handle gateway error
+            }
+        }
+        else
+        {
+            // Nếu không phát sinh thêm phí, tự động xác nhận gia hạn luôn!
+            payment.PaymentStatus = "PAID";
+            payment.PaymentTime = DateTime.UtcNow.AddHours(7);
+            booking.PlannedCheckoutTime = finalEndTime;
+            booking.ExtendedCheckoutTime = null;
+            
+            _paymentRepository.Update(payment);
+            _bookingRepository.Update(booking);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        return new BookingExtensionResultDto
+        {
+            Success = true,
+            IsCapped = isCapped,
+            AdjustedEndTime = finalEndTime,
+            AdditionalFee = additionalFee,
+            PaymentId = payment.Id,
+            PaymentUrl = paymentUrl,
+            Message = isCapped 
+                ? $"Thời gian yêu cầu bị trùng lịch đặt chỗ khác. Đặt chỗ được điều chỉnh gia hạn tối đa đến {finalEndTime:dd/MM/yyyy HH:mm}."
+                : "Yêu cầu gia hạn của bạn đã được ghi nhận."
         };
     }
 }

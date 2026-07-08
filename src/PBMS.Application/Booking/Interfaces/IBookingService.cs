@@ -89,4 +89,11 @@ public interface IBookingService
     /// Dùng cho background job chạy định kỳ.
     /// </summary>
     Task CleanupExpiredBookingsAsync();
+
+    /// <summary>
+    /// Yêu cầu gia hạn thời gian đỗ xe (PlannedCheckoutTime) cho Booking.
+    /// Áp dụng khoảng đệm 30 phút với booking tiếp theo của khách hàng khác.
+    /// Trả về DTO chứa kết quả điều chỉnh thời gian tối đa và link thanh toán VNPay bổ sung.
+    /// </summary>
+    Task<BookingExtensionResultDto> RequestExtensionAsync(int id, DateTime requestedNewEndTime);
 }

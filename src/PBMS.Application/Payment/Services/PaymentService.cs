@@ -365,12 +365,21 @@ public class PaymentService : IPaymentService
         }
         else if (payment.BookingId.HasValue)
         {
-            // Thanh toán đặt cọc -> Xác nhận đặt cọc thành công
             var booking = await _bookingRepository.GetByIdAsync(payment.BookingId.Value);
             if (booking != null)
             {
-                booking.BookingStatus = "Confirmed";
-                booking.ConfirmedAt = DateTime.UtcNow.AddHours(7);
+                if (booking.ExtendedCheckoutTime.HasValue)
+                {
+                    // Thanh toán gia hạn đặt chỗ -> Cập nhật thời gian checkout mới
+                    booking.PlannedCheckoutTime = booking.ExtendedCheckoutTime.Value;
+                    booking.ExtendedCheckoutTime = null;
+                }
+                else
+                {
+                    // Thanh toán đặt cọc -> Xác nhận đặt cọc thành công
+                    booking.BookingStatus = "Confirmed";
+                    booking.ConfirmedAt = DateTime.UtcNow.AddHours(7);
+                }
                 _bookingRepository.Update(booking);
                 await _bookingRepository.SaveChangesAsync();
             }
