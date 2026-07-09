@@ -88,7 +88,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var startGrace = now.AddMinutes(30);
 
         var zones = _context.Zones
@@ -113,8 +113,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 ReservedBookings = _context.Set<Booking>().Count(b =>
                     b.SlotId != null &&
                     b.ParkingSlot.ZoneId == z.Id &&
-                    (b.BookingStatus == BookingStatus.Confirmed ||
-                     (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                    b.BookingStatus == BookingStatus.Confirmed &&
                     b.PlannedCheckinTime <= startGrace &&
                     b.PlannedCheckoutTime > now)
             })
@@ -127,7 +126,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<ParkingSlot?> FindAvailableGeneralSlotAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var startGrace = now.AddMinutes(30);
 
         var query = _context.ParkingSlots
@@ -148,8 +147,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
         var reservedSlotIds = await _context.Set<Booking>()
             .Where(b =>
                 b.SlotId != null &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
                 b.PlannedCheckoutTime > now)
             .Select(b => b.SlotId!.Value)
@@ -168,7 +166,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<List<ParkingSlot>> FindAllAvailableGeneralSlotsAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(7);
         var startGrace = now.AddMinutes(30);
 
         var query = _context.ParkingSlots
@@ -189,8 +187,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
         var reservedSlotIds = await _context.Set<Booking>()
             .Where(b =>
                 b.SlotId != null &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
                 b.PlannedCheckoutTime > now)
             .Select(b => b.SlotId!.Value)

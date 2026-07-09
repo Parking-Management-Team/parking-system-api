@@ -78,15 +78,13 @@ public class BookingRepository : BaseRepository<BookingEntity>, IBookingReposito
     /// </summary>
     public async Task<int> GetActiveBookingsCountAsync(int buildingId, int vehicleTypeId, DateTime start, DateTime end)
     {
-        var now = DateTime.UtcNow;
         return await _dbContext.Set<BookingEntity>()
             .Include(b => b.Vehicle)
             .CountAsync(b =>
                 b.BuildingId == buildingId &&
                 b.Vehicle.VehicleTypeId == vehicleTypeId &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                b.PlannedCheckinTime < end &&
-                b.PlannedCheckoutTime > start);
+                b.BookingStatus == BookingStatus.Confirmed &&
+                b.PlannedCheckoutTime.AddMinutes(30) > start &&
+                end.AddMinutes(30) > b.PlannedCheckinTime);
     }
 }

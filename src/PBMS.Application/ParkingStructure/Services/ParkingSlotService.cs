@@ -144,17 +144,39 @@ public class ParkingSlotService : IParkingSlotService
 
         if (plannedCheckinTime.HasValue && plannedCheckoutTime.HasValue)
         {
-            var now = DateTime.UtcNow;
-            var start = plannedCheckinTime.Value.Kind == DateTimeKind.Utc ? plannedCheckinTime.Value : plannedCheckinTime.Value.ToUniversalTime();
-            var end = plannedCheckoutTime.Value.Kind == DateTimeKind.Utc ? plannedCheckoutTime.Value : plannedCheckoutTime.Value.ToUniversalTime();
+            var now = DateTime.UtcNow.AddHours(7);
+            // Convert to Vietnam Local Time (UTC+7) safely regardless of incoming Kind
+            var startUtc = plannedCheckinTime.Value.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(plannedCheckinTime.Value, DateTimeKind.Utc)
+                : plannedCheckinTime.Value.ToUniversalTime();
+            var start = startUtc.AddHours(7);
 
-            // Lấy danh sách Booking bị trùng lịch đặt chỗ
+            var endUtc = plannedCheckoutTime.Value.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(plannedCheckoutTime.Value, DateTimeKind.Utc)
+                : plannedCheckoutTime.Value.ToUniversalTime();
+            var end = endUtc.AddHours(7);
+
+            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm 30 phút, chỉ tính booking đã Confirmed)
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
-                (b.BookingStatus == BookingStatus.Confirmed ||
-                 (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                b.PlannedCheckinTime < end &&
-                b.PlannedCheckoutTime > start);
+                b.BookingStatus == BookingStatus.Confirmed &&
+                b.PlannedCheckoutTime.AddMinutes(30) > start &&
+                end.AddMinutes(30) > b.PlannedCheckinTime);
+
+            reservedSlotIds = activeBookings
+                .Select(b => b.SlotId!.Value)
+                .ToHashSet();
+        }
+        else
+        {
+            // Nếu không truyền khoảng thời gian, mặc định kiểm tra các booking đang diễn ra HOẶC chuẩn bị check-in (trong vòng 15 phút tới) ngay thời điểm hiện tại
+            var nowLocal = DateTime.UtcNow.AddHours(7);
+            var startGrace = nowLocal.AddMinutes(15);
+            var activeBookings = await _bookingRepository.FindAsync(b =>
+                b.SlotId != null &&
+                b.BookingStatus == BookingStatus.Confirmed &&
+                b.PlannedCheckinTime <= startGrace &&
+                b.PlannedCheckoutTime > nowLocal);
 
             reservedSlotIds = activeBookings
                 .Select(b => b.SlotId!.Value)
@@ -170,6 +192,7 @@ public class ParkingSlotService : IParkingSlotService
                 if (reservedSlotIds.Contains(dto.Id))
                 {
                     dto.IsReserved = true;
+                    dto.Status = SlotStatus.Reserved;
                 }
             }
         }

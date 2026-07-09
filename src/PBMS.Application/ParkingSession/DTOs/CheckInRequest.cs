@@ -24,6 +24,8 @@ public class CheckInRequest
 
     public int? MonthlySubscriptionId { get; set; }
 
+    public int? OverrideSlotId { get; set; }
+
     /// <summary>
     /// When true, randomly assigns an available slot instead of the first one found.
     /// Applies only to CAR walk-in/booking check-in without a reserved slot.

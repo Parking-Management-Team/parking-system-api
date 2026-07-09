@@ -292,7 +292,7 @@ public class ParkingSessionService : IParkingSessionService
                 return BaseResponse<ParkingSessionDto>.Fail("MONTHLY_SLOT_INVALID", "Monthly subscription assigned slot is not valid for this vehicle and building.");
             }
 
-            if (assignedSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance ||
+            if (assignedSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance or SlotStatus.Reserved ||
                 await _sessionRepository.HasActiveSessionForSlotAsync(assignedSlot.Id))
             {
                 return BaseResponse<ParkingSessionDto>.Fail("MONTHLY_SLOT_NOT_AVAILABLE", "Monthly subscription assigned slot is not available for check-in.");
@@ -315,18 +315,52 @@ public class ParkingSessionService : IParkingSessionService
         }
         else if (IsCar(vehicleType))
         {
-            if (booking != null && booking.SlotId.HasValue)
+            if (booking != null && (request.OverrideSlotId.HasValue || booking.SlotId.HasValue))
             {
-                assignedSlot = await _parkingSlotRepository.GetSlotWithDetailsAsync(booking.SlotId.Value);
+                var targetSlotId = request.OverrideSlotId ?? booking.SlotId!.Value;
+                assignedSlot = await _parkingSlotRepository.GetSlotWithDetailsAsync(targetSlotId);
                 if (assignedSlot == null)
                 {
-                    return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_FOUND", "Reserved slot was not found.");
+                    return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_FOUND", "Vị trí đỗ được chọn không tồn tại.");
                 }
 
-                if (assignedSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance ||
-                    await _sessionRepository.HasActiveSessionForSlotAsync(assignedSlot.Id))
+                // Nếu là vị trí đỗ được staff ghi đè (OverrideSlotId) thì phải kiểm tra xem vị trí đỗ đó có trống và không trùng lịch không
+                if (request.OverrideSlotId.HasValue)
                 {
-                    return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Reserved slot is currently occupied or unavailable.");
+                    // 1. Kiểm tra xem slot này hiện tại có đang bận không
+                    if (assignedSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance or SlotStatus.Reserved ||
+                        await _sessionRepository.HasActiveSessionForSlotAsync(assignedSlot.Id))
+                    {
+                        return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Vị trí đỗ được chọn để đổi hiện đang bị chiếm dụng hoặc không khả dụng.");
+                    }
+
+                    // 2. Kiểm tra xem slot mới có bị trùng với booking nào khác của slot đó trong khoảng thời gian đỗ của booking này không (bao gồm 30m đệm)
+                    var isSlotOverlap = await _bookingRepository.AnyAsync(b =>
+                        b.Id != booking.Id &&
+                        b.SlotId == assignedSlot.Id &&
+                        b.BuildingId == booking.BuildingId &&
+                        (b.BookingStatus == BookingStatus.Confirmed || 
+                         (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > checkInTime)) &&
+                        b.PlannedCheckoutTime.AddMinutes(30) > booking.PlannedCheckinTime &&
+                        booking.PlannedCheckoutTime.AddMinutes(30) > b.PlannedCheckinTime);
+
+                    if (isSlotOverlap)
+                    {
+                        return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Vị trí đỗ được chọn để đổi đã được đặt trước bởi tài xế khác trong khung giờ này.");
+                    }
+
+                    // Hợp lệ -> Gán lại Slot cho Booking
+                    booking.SlotId = assignedSlot.Id;
+                    _bookingRepository.Update(booking);
+                }
+                else
+                {
+                    // Nếu là slot đặt trước thông thường mà bị bận -> Trả về lỗi bận để Frontend xử lý đổi slot
+                    if (assignedSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance or SlotStatus.Reserved ||
+                        await _sessionRepository.HasActiveSessionForSlotAsync(assignedSlot.Id))
+                    {
+                        return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Vị trí đỗ đặt trước hiện đang bị chiếm dụng hoặc không khả dụng.");
+                    }
                 }
 
                 assignedZone = assignedSlot.Zone;
@@ -621,9 +655,9 @@ public class ParkingSessionService : IParkingSessionService
                 return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_FOUND", $"Parking slot with ID {request.SlotId.Value} not found.");
             }
 
-            if (newSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance)
+            if (newSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance or SlotStatus.Reserved)
             {
-                return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Selected slot is currently blocked or under maintenance.");
+                return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Selected slot is currently blocked, under maintenance, or reserved.");
             }
 
             if (session.Vehicle != null && newSlot.VehicleTypeId != session.Vehicle.VehicleTypeId)
@@ -792,9 +826,9 @@ public class ParkingSessionService : IParkingSessionService
             {
                 return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_FOUND", $"Parking slot with ID {request.SlotId.Value} not found.");
             }
-            if (newSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance)
+            if (newSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance or SlotStatus.Reserved)
             {
-                return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Selected slot is currently blocked or under maintenance.");
+                return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Selected slot is currently blocked, under maintenance, or reserved.");
             }
 
             // Kiểm tra khớp loại phương tiện (Vehicle Type)

@@ -11,6 +11,8 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Xunit;
+using PBMS.Application.Payment.Interfaces;
+using PBMS.Application.Pricing.Interfaces;
 using BookingEntity = PBMS.Domain.Entities.Booking;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 using VehicleTypeEntity = PBMS.Domain.Entities.VehicleType;
@@ -35,6 +37,8 @@ public class BookingServiceTests
     private readonly IUnitOfWork _unitOfWorkMock;
     private readonly IConfiguration _configurationMock;
     private readonly IBlacklistRepository _blacklistRepositoryMock;
+    private readonly IVNPayGateway _vnpayGatewayMock;
+    private readonly IPricingCalculationService _pricingCalculationServiceMock;
     private readonly BookingService _service;
 
     public BookingServiceTests()
@@ -51,10 +55,12 @@ public class BookingServiceTests
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
         _configurationMock = Substitute.For<IConfiguration>();
         _blacklistRepositoryMock = Substitute.For<IBlacklistRepository>();
-
+        _vnpayGatewayMock = Substitute.For<IVNPayGateway>();
+        _pricingCalculationServiceMock = Substitute.For<IPricingCalculationService>();
+ 
         // Thiết lập mặc định không nằm trong blacklist
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<PBMS.Domain.Entities.Blacklist, bool>>>()).Returns(false);
-
+ 
         _service = new BookingService(
             _bookingRepositoryMock,
             _vehicleRepositoryMock,
@@ -67,7 +73,9 @@ public class BookingServiceTests
             _paymentRepositoryMock,
             _unitOfWorkMock,
             _configurationMock,
-            _blacklistRepositoryMock
+            _blacklistRepositoryMock,
+            _vnpayGatewayMock,
+            _pricingCalculationServiceMock
         );
     }
 
