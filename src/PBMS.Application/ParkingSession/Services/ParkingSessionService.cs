@@ -34,6 +34,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IRepository<PenaltyConfig> _penaltyConfigRepository;
     private readonly IBlacklistRepository _blacklistRepository;
     private readonly IRepository<Notification> _notificationRepository;
+    private readonly IPricingPolicyRepository _pricingPolicyRepository;
 
     public ParkingSessionService(
         IParkingSessionRepository sessionRepository,
@@ -48,7 +49,8 @@ public class ParkingSessionService : IParkingSessionService
         IRepository<IncidentType> incidentTypeRepository,
         IRepository<PenaltyConfig> penaltyConfigRepository,
         IBlacklistRepository blacklistRepository,
-        IRepository<Notification> notificationRepository)
+        IRepository<Notification> notificationRepository,
+        IPricingPolicyRepository pricingPolicyRepository)
     {
         _sessionRepository = sessionRepository;
         _vehicleRepository = vehicleRepository;
@@ -63,6 +65,7 @@ public class ParkingSessionService : IParkingSessionService
         _penaltyConfigRepository = penaltyConfigRepository;
         _blacklistRepository = blacklistRepository;
         _notificationRepository = notificationRepository;
+        _pricingPolicyRepository = pricingPolicyRepository;
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
@@ -80,6 +83,22 @@ public class ParkingSessionService : IParkingSessionService
         if (vehicleType == null)
         {
             return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Vehicle type with ID {request.VehicleTypeId} not found.");
+        }
+
+        // Validate active pricing policy exists
+        var activePolicies = await _pricingPolicyRepository.GetAllWithWindowsAsync(request.VehicleTypeId, "Active");
+        var applicablePolicies = activePolicies.Where(pp =>
+            pp.EffectiveStart <= checkInTime.Date &&
+            (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= checkInTime.Date)
+        ).ToList();
+
+        if (applicablePolicies.Count == 0)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("PRICING_POLICY_NOT_FOUND", $"No active pricing policy found for vehicle type ID {request.VehicleTypeId} at check-in time.");
+        }
+        if (applicablePolicies.Count > 1)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("MULTIPLE_PRICING_POLICIES", $"Multiple active pricing policies found for vehicle type ID {request.VehicleTypeId} at check-in time.");
         }
 
         var card = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
@@ -520,8 +539,13 @@ public class ParkingSessionService : IParkingSessionService
         }
 
         // 7. Check pricing policy validity
-        var pricingCheck = await _sessionRepository.AnyAsync(_ => true); // placeholder — pricing policy existence check
-        result.PricingPolicyValid = true; // pricing policy always valid if zone is available
+        var checkInTime = DateTime.UtcNow.AddHours(7);
+        var activePolicies = await _pricingPolicyRepository.GetAllWithWindowsAsync(request.VehicleTypeId, "Active");
+        var applicablePolicies = activePolicies.Where(pp =>
+            pp.EffectiveStart <= checkInTime.Date &&
+            (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= checkInTime.Date)
+        ).ToList();
+        result.PricingPolicyValid = applicablePolicies.Count == 1;
 
         // Determine overall result
         result.Allowed = result.CardAvailable && result.NotBlacklisted && result.NotAlreadyParked && result.ZoneAvailable && result.PricingPolicyValid;
@@ -533,6 +557,7 @@ public class ParkingSessionService : IParkingSessionService
             if (!result.NotBlacklisted) failures.Add("card or vehicle is blacklisted");
             if (!result.NotAlreadyParked) failures.Add("vehicle already has an active session");
             if (!result.ZoneAvailable) failures.Add("no available zone/slot for this vehicle type");
+            if (!result.PricingPolicyValid) failures.Add("no active pricing policy or multiple active pricing policies found");
             result.Reason = $"Entry conditions not met: {string.Join("; ", failures)}.";
         }
         else if (result.Allowed)
@@ -748,7 +773,7 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync()
     {
-        var sessions = await _sessionRepository.FindAsync(s => s.SessionStatus.ToUpper() == ActiveStatus);
+        var sessions = await _sessionRepository.GetActiveSessionsWithDetailsAsync();
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
     }
 
@@ -1147,7 +1172,9 @@ public class ParkingSessionService : IParkingSessionService
         SessionStatus = session.SessionStatus,
         CardCode = session.Card?.CardCode,
         ZoneCode = session.Zone?.Code,
-        SlotCode = session.ParkingSlot?.Code
+        SlotCode = session.ParkingSlot?.Code,
+        VehicleType = session.Vehicle?.VehicleType?.TypeName,
+        CustomerType = session.BookingId.HasValue ? "BOOKING" : session.MonthlySubscriptionId.HasValue ? "MONTHLY" : "WALK_IN"
     };
 
     public async Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode)

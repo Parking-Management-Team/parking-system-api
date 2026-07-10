@@ -8,6 +8,7 @@ using PBMS.Infrastructure.Data;
 using PBMS.Infrastructure.ExternalServices;
 using PBMS.Infrastructure.Repositories;
 using PBMS.Application.Payment.Interfaces;
+using PBMS.Application.Common.Interfaces;
 
 
 namespace PBMS.Infrastructure;
@@ -91,7 +92,8 @@ public static class DependencyInjection
         services.AddTransient<IEmailService, EmailService>();
         services.AddTransient<IOtpService, OtpService>();
 
-
+        // Đăng ký dịch vụ nhận diện biển số xe
+        services.AddHttpClient<ILicensePlateOcrService, PlateRecognizerOcrService>();
 
         return services;
     }

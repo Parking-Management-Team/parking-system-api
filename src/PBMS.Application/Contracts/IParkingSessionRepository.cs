@@ -43,4 +43,9 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     /// Tìm các lượt gửi xe active có liên kết booking sắp đến hạn planned checkout (trong vòng warningTimeLimit).
     /// </summary>
     Task<IEnumerable<ParkingSessionEntity>> GetOvertimeWarningSessionsAsync(DateTime warningTimeLimit, DateTime now);
+
+    /// <summary>
+    /// Lấy tất cả phiên đỗ xe đang hoạt động kèm thông tin chi tiết (Vehicle, Card, v.v.).
+    /// </summary>
+    Task<IEnumerable<ParkingSessionEntity>> GetActiveSessionsWithDetailsAsync();
 }

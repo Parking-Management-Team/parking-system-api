@@ -28,4 +28,7 @@ public class ParkingSessionDto
 
     public string? ImageIn { get; set; }
     public string? ImageOut { get; set; }
+    
+    public string? VehicleType { get; set; }
+    public string? CustomerType { get; set; }
 }
