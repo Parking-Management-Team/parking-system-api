@@ -48,4 +48,9 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     /// Lấy tất cả phiên gửi xe thuộc về các xe đăng ký dưới AccountId chỉ định.
     /// </summary>
     Task<IEnumerable<ParkingSessionEntity>> GetByAccountIdAsync(int accountId);
+
+    /// <summary>
+    /// Lấy tất cả phiên đỗ xe đang hoạt động kèm thông tin chi tiết (Vehicle, Card, v.v.).
+    /// </summary>
+    Task<IEnumerable<ParkingSessionEntity>> GetActiveSessionsWithDetailsAsync();
 }

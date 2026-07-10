@@ -238,4 +238,16 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .OrderByDescending(s => s.CheckInTime)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<ParkingSessionEntity>> GetActiveSessionsWithDetailsAsync()
+    {
+        return await _context.ParkingSessions
+            .Include(s => s.Vehicle)
+                .ThenInclude(v => v.VehicleType)
+            .Include(s => s.Card)
+            .Include(s => s.Zone)
+            .Include(s => s.ParkingSlot)
+            .Where(s => s.SessionStatus.ToUpper() == "ACTIVE")
+            .ToListAsync();
+    }
 }

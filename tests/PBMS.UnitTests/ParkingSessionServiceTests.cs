@@ -34,6 +34,7 @@ public class ParkingSessionServiceTests
     private readonly IBlacklistRepository _blacklistRepositoryMock;
     private readonly IRepository<Notification> _notificationRepositoryMock;
     private readonly IAccountRepository _accountRepositoryMock;
+    private readonly IPricingPolicyRepository _pricingPolicyRepositoryMock;
     private readonly ParkingSessionService _service;
 
     public ParkingSessionServiceTests()
@@ -52,6 +53,21 @@ public class ParkingSessionServiceTests
         _blacklistRepositoryMock = Substitute.For<IBlacklistRepository>();
         _notificationRepositoryMock = Substitute.For<IRepository<Notification>>();
         _accountRepositoryMock = Substitute.For<IAccountRepository>();
+        _pricingPolicyRepositoryMock = Substitute.For<IPricingPolicyRepository>();
+
+        // Default behavior: return exactly one active pricing policy covering all dates
+        _pricingPolicyRepositoryMock.GetAllWithWindowsAsync(Arg.Any<int?>(), Arg.Any<string>())
+            .Returns(new List<PricingPolicy>
+            {
+                new PricingPolicy
+                {
+                    Id = 1,
+                    VehicleTypeId = 1,
+                    PricingPolicyStatus = "Active",
+                    EffectiveStart = DateTime.MinValue,
+                    EffectiveEnd = DateTime.MaxValue
+                }
+            });
 
         _service = new ParkingSessionService(
             _sessionRepositoryMock,
@@ -67,7 +83,8 @@ public class ParkingSessionServiceTests
             _penaltyConfigRepositoryMock,
             _blacklistRepositoryMock,
             _notificationRepositoryMock,
-            _accountRepositoryMock
+            _accountRepositoryMock,
+            _pricingPolicyRepositoryMock
         );
     }
 
