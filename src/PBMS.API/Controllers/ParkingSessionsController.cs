@@ -132,6 +132,46 @@ public class ParkingSessionsController : ControllerBase
     }
 
     /// <summary>
+    /// Hoàn tất checkout cho xe không thanh toán (ghi nhận công nợ và đưa vào Blacklist).
+    /// </summary>
+    [HttpPost("{id:int}/unpaid-checkout")]
+    public async Task<IActionResult> UnpaidCheckout(int id, [FromBody] UnpaidCheckoutRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.UnpaidCheckoutAsync(id, request);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    /// <summary>
+    /// Báo mất thẻ gửi xe và áp dụng phí phạt.
+    /// </summary>
+    [HttpPost("{id:int}/lost-card")]
+    public async Task<IActionResult> ReportLostCard(int id, [FromBody] LostCardRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.ReportLostCardAsync(id, request);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    /// <summary>
+    /// Hoàn tác/Khôi phục báo mất thẻ (gỡ bỏ các lệnh chặn blacklist của thẻ/xe và xóa sự cố).
+    /// </summary>
+    [HttpPost("{id:int}/lost-card/rollback")]
+    public async Task<IActionResult> RollbackLostCard(int id)
+    {
+        var result = await _service.RollbackLostCardAsync(id);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    /// <summary>
     /// Thay đổi thẻ gửi xe mới cho phiên gửi xe khi bị mất thẻ.
     /// </summary>
     [HttpPatch("{id:int}/replace-card")]

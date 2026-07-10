@@ -90,6 +90,9 @@ public static class DependencyInjection
         // Dashboard module
         services.AddScoped<PBMS.Application.Common.Interfaces.IDashboardService, PBMS.Application.Common.Services.DashboardService>();
 
+        // Shift Report module
+        services.AddScoped<PBMS.Application.ShiftReport.Interfaces.IShiftReportService, PBMS.Application.ShiftReport.Services.ShiftReportService>();
+
         return services;
 
 

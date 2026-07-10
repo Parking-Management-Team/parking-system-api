@@ -79,4 +79,14 @@ public class BlacklistController : ControllerBase
         var result = await _blacklistService.IsCardBlockedAsync(cardId);
         return Ok(BaseResponse<bool>.Ok(result));
     }
+
+    /// <summary>
+    /// Kiểm tra xem biển số xe có bị chặn không.
+    /// </summary>
+    [HttpGet("check-license-plate/{licensePlate}")]
+    public async Task<IActionResult> IsVehicleBlockedByPlate(string licensePlate)
+    {
+        var result = await _blacklistService.IsVehicleBlockedByPlateAsync(licensePlate);
+        return Ok(BaseResponse<bool>.Ok(result));
+    }
 }

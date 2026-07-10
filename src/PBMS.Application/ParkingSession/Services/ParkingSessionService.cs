@@ -34,6 +34,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IRepository<PenaltyConfig> _penaltyConfigRepository;
     private readonly IBlacklistRepository _blacklistRepository;
     private readonly IRepository<Notification> _notificationRepository;
+    private readonly IAccountRepository _accountRepository;
 
     public ParkingSessionService(
         IParkingSessionRepository sessionRepository,
@@ -48,7 +49,8 @@ public class ParkingSessionService : IParkingSessionService
         IRepository<IncidentType> incidentTypeRepository,
         IRepository<PenaltyConfig> penaltyConfigRepository,
         IBlacklistRepository blacklistRepository,
-        IRepository<Notification> notificationRepository)
+        IRepository<Notification> notificationRepository,
+        IAccountRepository accountRepository)
     {
         _sessionRepository = sessionRepository;
         _vehicleRepository = vehicleRepository;
@@ -63,6 +65,7 @@ public class ParkingSessionService : IParkingSessionService
         _penaltyConfigRepository = penaltyConfigRepository;
         _blacklistRepository = blacklistRepository;
         _notificationRepository = notificationRepository;
+        _accountRepository = accountRepository;
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
@@ -1042,17 +1045,14 @@ public class ParkingSessionService : IParkingSessionService
 
         // Cập nhật trạng thái Booking nếu có (đã xử lý CheckedIn tại Check-in)
 
-        // Tự động giải quyết sự cố "Mất thẻ" (Lost Card) và "Đỗ xe quá giờ" (Late Checkout) nếu có
+        // Tự động giải quyết tất cả sự cố chưa hoàn thành (Open / Processing) của session sau khi thanh toán/hoàn tất thành công
         var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(id);
         if (sessionIncidents != null)
         {
-            var targetCodes = new[] { "LOST_CARD", "LATE_CHECKOUT" };
-            var openIncidents = sessionIncidents.Where(i => 
-                i.Status == IncidentStatus.Open && 
-                i.IncidentType != null && 
-                targetCodes.Contains(i.IncidentType.IncidentCode.ToUpper()));
+            var activeIncidents = sessionIncidents.Where(i => 
+                (i.Status == IncidentStatus.Open || i.Status == IncidentStatus.Processing) && !i.IsDeleted);
 
-            foreach (var incident in openIncidents)
+            foreach (var incident in activeIncidents)
             {
                 incident.Status = IncidentStatus.Resolved;
                 incident.ResolvedAt = DateTime.UtcNow.AddHours(7);
@@ -1250,5 +1250,245 @@ public class ParkingSessionService : IParkingSessionService
         // Load details for mapping
         var updatedSession = await _sessionRepository.GetSessionWithDetailsAsync(session.Id);
         return BaseResponse<ParkingSessionDto>.Ok(Map(updatedSession ?? session));
+    }
+
+    public async Task<BaseResponse<ParkingSessionDto>> UnpaidCheckoutAsync(int sessionId, UnpaidCheckoutRequest request)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {sessionId} not found.");
+        }
+
+        if (!IsActive(session))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be checked out as unpaid.");
+        }
+
+        // 1. Cập nhật trạng thái Session thành UNPAID và thời gian out
+        session.CheckOutTime = DateTime.UtcNow.AddHours(7);
+        session.LicensePlateOut ??= session.LicensePlateIn;
+        session.SessionStatus = "UNPAID";
+        session.OutStaffId = request.StaffId;
+
+        // 2. Giải phóng slot nếu có
+        if (session.SlotId.HasValue)
+        {
+            var slot = await _parkingSlotRepository.GetByIdAsync(session.SlotId.Value);
+            if (slot != null)
+            {
+                slot.Status = SlotStatus.Available;
+                _parkingSlotRepository.Update(slot);
+            }
+        }
+
+        // 3. Giải phóng Card (đưa Card về Available nếu không phải thẻ tháng)
+        var card = await _cardRepository.GetByIdAsync(session.CardId);
+        if (card != null && card.CardStatus == CardStatus.Active.ToString())
+        {
+            card.CardStatus = CardStatus.Available.ToString();
+            _cardRepository.Update(card);
+        }
+
+        // 4. Tạo sự cố UNPAID_VEHICLE
+        var unpaidIncidentType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "UNPAID_VEHICLE");
+        if (unpaidIncidentType == null)
+        {
+            // Tạo mới IncidentType nếu chưa có
+            unpaidIncidentType = new IncidentType
+            {
+                IncidentCode = "UNPAID_VEHICLE",
+                IncidentName = "Check-out chưa thanh toán",
+                Description = "Phương tiện ra khỏi bãi đỗ xe nhưng chưa hoàn tất thanh toán"
+            };
+            await _incidentTypeRepository.AddAsync(unpaidIncidentType);
+            await _incidentTypeRepository.SaveChangesAsync();
+        }
+
+        var incident = new IncidentEntity
+        {
+            SessionId = session.Id,
+            IncidentTypeId = unpaidIncidentType.Id,
+            Description = request.Reason,
+            Status = IncidentStatus.Open, // Giữ Open vì khách chưa trả tiền
+            CreatedAt = DateTime.UtcNow.AddHours(7)
+        };
+        await _incidentRepository.AddAsync(incident);
+        await _incidentRepository.SaveChangesAsync();
+
+        // 5. Đưa xe vào Blacklist
+        var existingBlacklist = await _blacklistRepository.AnyAsync(b => b.VehicleId == session.VehicleId && !b.IsDeleted);
+        if (!existingBlacklist)
+        {
+            var blacklist = new PBMS.Domain.Entities.Blacklist
+            {
+                VehicleId = session.VehicleId,
+                CardId = card?.Id,
+                IncidentId = incident.Id,
+                Reason = $"Quỵt tiền/Chưa thanh toán cho phiên gửi xe #{session.Id}. Lý do: {request.Reason}"
+            };
+            await _blacklistRepository.AddAsync(blacklist);
+        }
+
+        _sessionRepository.Update(session);
+        await _sessionRepository.SaveChangesAsync();
+
+        // 6. Gửi thông báo cho toàn bộ Managers trong hệ thống về việc xe quỵt tiền
+        try
+        {
+            var allAccounts = await _accountRepository.GetAllWithRolesAsync();
+            var managers = allAccounts.Where(a => string.Equals(a.Role?.RoleName, "Manager", StringComparison.OrdinalIgnoreCase));
+
+            foreach (var manager in managers)
+            {
+                var notification = new Notification
+                {
+                    AccountId = manager.Id,
+                    Title = "Xe quỵt tiền thanh toán check-out",
+                    Message = $"Xe biển số {session.LicensePlateIn} thực hiện check-out không thanh toán lúc {session.CheckOutTime:dd/MM/yyyy HH:mm:ss} và đã bị đưa vào Blacklist.",
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                };
+                await _notificationRepository.AddAsync(notification);
+            }
+            await _notificationRepository.SaveChangesAsync();
+        }
+        catch (Exception)
+        {
+            // Bỏ qua lỗi gửi thông báo để tránh rollback transaction chính
+        }
+
+        var updatedSession = await _sessionRepository.GetSessionWithDetailsAsync(session.Id);
+        return BaseResponse<ParkingSessionDto>.Ok(Map(updatedSession ?? session), "Checked out as unpaid successfully. Vehicle has been blacklisted.");
+    }
+
+    public async Task<BaseResponse<ParkingSessionDto>> ReportLostCardAsync(int sessionId, LostCardRequest request)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {sessionId} not found.");
+        }
+
+        if (!IsActive(session))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be reported as lost card.");
+        }
+
+        // 1. Tìm thẻ và chuyển sang trạng thái Lost
+        var card = await _cardRepository.GetByIdAsync(session.CardId);
+        if (card == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Card linked to session {sessionId} not found.");
+        }
+
+        card.CardStatus = CardStatus.Lost.ToString();
+        card.LostAt = DateTime.UtcNow.AddHours(7);
+        _cardRepository.Update(card);
+
+        // 2. Tạo sự cố LOST_CARD
+        var lostCardType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LOST_CARD");
+        if (lostCardType == null)
+        {
+            lostCardType = new IncidentType
+            {
+                IncidentCode = "LOST_CARD",
+                IncidentName = "Mất thẻ gửi xe",
+                Description = "Khách hàng báo mất thẻ tại cổng ra hoặc trong bãi"
+            };
+            await _incidentTypeRepository.AddAsync(lostCardType);
+            await _incidentTypeRepository.SaveChangesAsync();
+        }
+
+        var openLostIncidents = await _incidentRepository.FindAsync(i => i.SessionId == session.Id && i.IncidentTypeId == lostCardType.Id && i.Status == IncidentStatus.Open);
+        if (!openLostIncidents.Any())
+        {
+            var activePenalty = await _penaltyConfigRepository.FirstOrDefaultAsync(pc => pc.IncidentTypeId == lostCardType.Id && pc.IsActive && !pc.IsDeleted);
+            var incident = new IncidentEntity
+            {
+                SessionId = session.Id,
+                IncidentTypeId = lostCardType.Id,
+                Description = request.Description,
+                Status = IncidentStatus.Open,
+                PenaltyFee = activePenalty?.PenaltyFee ?? 100000,
+                CreatedAt = DateTime.UtcNow.AddHours(7)
+            };
+            await _incidentRepository.AddAsync(incident);
+        }
+
+        await _sessionRepository.SaveChangesAsync();
+
+        var updatedSession = await _sessionRepository.GetSessionWithDetailsAsync(session.Id);
+        return BaseResponse<ParkingSessionDto>.Ok(Map(updatedSession ?? session), "Reported lost card successfully. Card status set to Lost and incident penalty applied.");
+    }
+
+    public async Task<BaseResponse<ParkingSessionDto>> RollbackLostCardAsync(int sessionId)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {sessionId} not found.");
+        }
+
+        var card = await _cardRepository.GetByIdAsync(session.CardId);
+        if (card == null)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Card linked to session {sessionId} not found.");
+        }
+
+        // 1. Tìm các incident LOST_CARD của session này
+        var lostCardType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LOST_CARD");
+        if (lostCardType != null)
+        {
+            var activeIncidents = await _incidentRepository.FindAsync(i => 
+                i.SessionId == session.Id && 
+                i.IncidentTypeId == lostCardType.Id && 
+                (i.Status == IncidentStatus.Open || i.Status == IncidentStatus.Processing) && 
+                !i.IsDeleted);
+
+            foreach (var incident in activeIncidents)
+            {
+                // Chuyển incident sang Cancelled
+                incident.Status = IncidentStatus.Cancelled;
+                _incidentRepository.Update(incident);
+
+                // Gỡ Blacklist liên kết với incident này (nếu có)
+                var incidentBlacklists = await _blacklistRepository.FindAsync(b => b.IncidentId == incident.Id && !b.IsDeleted);
+                foreach (var b in incidentBlacklists)
+                {
+                    await _blacklistRepository.RemoveAsync(b);
+                }
+            }
+        }
+
+        // 2. Gỡ bỏ Blacklist trực tiếp của Xe và Thẻ liên quan
+        var vehicleBlacklists = await _blacklistRepository.FindAsync(b => b.VehicleId == session.VehicleId && !b.IsDeleted);
+        foreach (var b in vehicleBlacklists)
+        {
+            await _blacklistRepository.RemoveAsync(b);
+        }
+
+        var cardBlacklists = await _blacklistRepository.FindAsync(b => b.CardId == card.Id && !b.IsDeleted);
+        foreach (var b in cardBlacklists)
+        {
+            await _blacklistRepository.RemoveAsync(b);
+        }
+
+        // 3. Khôi phục trạng thái Thẻ
+        var isMonthlyCard = await _subscriptionRepository.GetActiveSubscriptionByCardIdAsync(card.Id);
+        if (isMonthlyCard != null)
+        {
+            card.CardStatus = CardStatus.Assigned.ToString();
+        }
+        else
+        {
+            card.CardStatus = CardStatus.Active.ToString(); // Vì session đỗ xe này vẫn đang diễn ra
+        }
+        card.LostAt = null;
+        _cardRepository.Update(card);
+
+        await _sessionRepository.SaveChangesAsync();
+
+        var updatedSession = await _sessionRepository.GetSessionWithDetailsAsync(session.Id);
+        return BaseResponse<ParkingSessionDto>.Ok(Map(updatedSession ?? session), "Rollback lost card successfully. Card status restored and blacklist blocks removed.");
     }
 }

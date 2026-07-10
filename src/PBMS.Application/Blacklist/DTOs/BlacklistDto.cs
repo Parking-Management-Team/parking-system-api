@@ -15,4 +15,5 @@ public class BlacklistDto
     public int? IncidentId { get; set; }
     public string Reason { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
+    public bool IsNewVehicle { get; set; }
 }
