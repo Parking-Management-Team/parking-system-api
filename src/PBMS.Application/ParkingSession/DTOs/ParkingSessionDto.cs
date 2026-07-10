@@ -25,4 +25,7 @@ public class ParkingSessionDto
     public decimal? TotalFee { get; set; }
     public decimal? PenaltyFee { get; set; }
     public decimal? AmountDue { get; set; }
+
+    public string? ImageIn { get; set; }
+    public string? ImageOut { get; set; }
 }

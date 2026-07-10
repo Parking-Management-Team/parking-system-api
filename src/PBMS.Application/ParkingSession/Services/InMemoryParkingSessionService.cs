@@ -176,6 +176,11 @@ public class InMemoryParkingSessionService : IParkingSessionService
                 return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {id} not found."));
             }
 
+            if (session.SessionStatus == "COMPLETED")
+            {
+                return Task.FromResult(BaseResponse<ParkingSessionDto>.Ok(session, "Parking session is already completed."));
+            }
+
             if (!IsActive(session))
             {
                 return Task.FromResult(BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be completed."));

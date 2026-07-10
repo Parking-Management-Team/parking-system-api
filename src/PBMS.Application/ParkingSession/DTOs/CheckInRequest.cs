@@ -29,4 +29,6 @@ public class CheckInRequest
     /// Applies only to CAR walk-in/booking check-in without a reserved slot.
     /// </summary>
     public bool RandomizeSlot { get; set; }
+
+    public string? ImageIn { get; set; }
 }

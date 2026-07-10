@@ -416,6 +416,7 @@ public class ParkingSessionService : IParkingSessionService
             CheckInTime = checkInTime,
             InStaffId = request.StaffId,
             LicensePlateIn = normalizedPlate,
+            ImageIn = request.ImageIn,
             SessionStatus = ActiveStatus
         };
 
@@ -864,6 +865,7 @@ public class ParkingSessionService : IParkingSessionService
             ? session.LicensePlateIn
             : Normalize(request.LicensePlateOut);
         session.OutStaffId = request.OutStaffId;
+        session.ImageOut = request.ImageOut;
 
         // Tạo sự cố LATE_CHECKOUT nếu đỗ xe quá giờ (Booking)
         if (session.BookingId.HasValue)
@@ -972,6 +974,11 @@ public class ParkingSessionService : IParkingSessionService
         if (session == null)
         {
             return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Parking session with ID {id} not found.");
+        }
+
+        if (session.SessionStatus == CompletedStatus)
+        {
+            return BaseResponse<ParkingSessionDto>.Ok(Map(session), "Parking session is already completed.");
         }
 
         if (!IsActive(session))
@@ -1135,6 +1142,8 @@ public class ParkingSessionService : IParkingSessionService
         CheckOutTime = session.CheckOutTime,
         LicensePlateIn = session.LicensePlateIn,
         LicensePlateOut = session.LicensePlateOut,
+        ImageIn = session.ImageIn,
+        ImageOut = session.ImageOut,
         SessionStatus = session.SessionStatus,
         CardCode = session.Card?.CardCode,
         ZoneCode = session.Zone?.Code,

@@ -28,6 +28,10 @@ public class ParkingSession : BaseEntity
 
     public string? LicensePlateOut { get; set; }
 
+    public string? ImageIn { get; set; }
+
+    public string? ImageOut { get; set; }
+
     public string SessionStatus { get; set; } = "ACTIVE";
 
     public virtual Vehicle Vehicle { get; set; } = null!;
