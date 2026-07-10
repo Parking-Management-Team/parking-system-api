@@ -54,7 +54,7 @@ public class PricingCalculationService : IPricingCalculationService
         {
             // Lấy danh sách các sự cố chưa được xử lý (hoặc đang Open) của session
             var allIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(parkingSessionId.Value);
-            incidents = allIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open && !i.IsDeleted).ToList();
+            incidents = allIncidents.Where(i => (i.Status == PBMS.Domain.Enums.IncidentStatus.Open || i.Status == PBMS.Domain.Enums.IncidentStatus.Processing) && !i.IsDeleted).ToList();
 
             if (incidents.Any())
             {
@@ -88,7 +88,7 @@ public class PricingCalculationService : IPricingCalculationService
         if (parkingSessionId.HasValue)
         {
             var allIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(parkingSessionId.Value);
-            incidents = allIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open && !i.IsDeleted).ToList();
+            incidents = allIncidents.Where(i => (i.Status == PBMS.Domain.Enums.IncidentStatus.Open || i.Status == PBMS.Domain.Enums.IncidentStatus.Processing) && !i.IsDeleted).ToList();
 
             if (incidents.Any())
             {

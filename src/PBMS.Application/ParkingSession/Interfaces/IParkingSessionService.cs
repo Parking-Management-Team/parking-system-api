@@ -18,6 +18,9 @@ public interface IParkingSessionService
     Task<BaseResponse<ParkingSessionDto>> StartCheckoutAsync(int id, StartCheckoutRequest request);
     Task<BaseResponse<ParkingSessionDto>> CompleteAsync(int id);
     Task<BaseResponse<ParkingSessionDto>> RollbackCheckoutAsync(int id);
+    Task<BaseResponse<ParkingSessionDto>> UnpaidCheckoutAsync(int sessionId, UnpaidCheckoutRequest request);
+    Task<BaseResponse<ParkingSessionDto>> ReportLostCardAsync(int sessionId, LostCardRequest request);
+    Task<BaseResponse<ParkingSessionDto>> RollbackLostCardAsync(int sessionId);
     Task SendOvertimeWarningsAsync();
     Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode);
 }

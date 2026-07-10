@@ -75,6 +75,9 @@ public static class DependencyInjection
         // Đăng ký repository Booking
         services.AddScoped<IBookingRepository, BookingRepository>();
 
+        // Đăng ký repository ShiftReport
+        services.AddScoped<IShiftReportRepository, ShiftReportRepository>();
+
 
         // Pricing — Repository
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();

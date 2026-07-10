@@ -37,4 +37,9 @@ public interface IBlacklistService
     /// Kiểm tra xem một thẻ có đang bị chặn không.
     /// </summary>
     Task<bool> IsCardBlockedAsync(int cardId);
+
+    /// <summary>
+    /// Kiểm tra xem một xe có đang bị chặn không dựa theo biển số.
+    /// </summary>
+    Task<bool> IsVehicleBlockedByPlateAsync(string licensePlate);
 }

@@ -162,6 +162,11 @@ public class AppDbContext : DbContext
     /// Tập hợp dữ liệu bảng Cấu hình giá phạt sự cố (PenaltyConfigs).
     /// </summary>
     public DbSet<PenaltyConfig> PenaltyConfigs { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Báo cáo ca trực (ShiftReports).
+    /// </summary>
+    public DbSet<ShiftReport> ShiftReports { get; set; } = null!;
     
     // =======================================================
 

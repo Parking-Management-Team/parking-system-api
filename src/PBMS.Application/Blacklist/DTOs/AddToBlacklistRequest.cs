@@ -18,6 +18,11 @@ public class AddToBlacklistRequest : IValidatableObject
     [MaxLength(20, ErrorMessage = "Card code cannot exceed 20 characters.")]
     public string? CardCode { get; set; }
 
+    /// <summary>
+    /// Loại xe (cần thiết khi tạo xe mới nếu LicensePlate chưa tồn tại trong DB, mặc định là 1 nếu không truyền)
+    /// </summary>
+    public int? VehicleTypeId { get; set; }
+
     [Required(ErrorMessage = "Reason is required.")]
     [MaxLength(100, ErrorMessage = "Reason cannot exceed 100 characters.")]
     public string Reason { get; set; } = null!;

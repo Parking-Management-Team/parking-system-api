@@ -109,6 +109,9 @@ public class PaymentService : IPaymentService
 
         decimal originalAmount = 0;
         string description = "Transaction payment";
+        decimal baseParkingFee = 0;
+        decimal incidentFeeTotal = 0;
+        var breakdownItems = new System.Collections.Generic.List<PaymentBreakdownItemDto>();
 
         // 2. Xác định số tiền gốc cần thanh toán theo từng nguồn nghiệp vụ
         if (request.SessionId.HasValue)
@@ -145,6 +148,16 @@ public class PaymentService : IPaymentService
             decimal totalPenaltyFee = feeResult.PenaltyAmount;
             originalAmount = feeResult.TotalAmount;
 
+            baseParkingFee = finalFee;
+            incidentFeeTotal = totalPenaltyFee;
+
+            breakdownItems.Add(new PaymentBreakdownItemDto
+            {
+                Type = "PARKING_FEE",
+                Name = "Phí gửi xe",
+                Amount = finalFee
+            });
+
             // Nếu lượt gửi xe có liên kết với đặt chỗ, thực hiện khấu trừ tiền đặt cọc vào tổng tiền thanh toán
             if (session.BookingId.HasValue)
             {
@@ -153,7 +166,27 @@ public class PaymentService : IPaymentService
                 {
                     originalAmount = Math.Max(0, originalAmount - booking.DepositAmount);
                     finalFee = Math.Max(0, finalFee - booking.DepositAmount);
+                    breakdownItems.Add(new PaymentBreakdownItemDto
+                    {
+                        Type = "DEPOSIT_DEDUCTION",
+                        Name = "Khấu trừ đặt cọc",
+                        Amount = -booking.DepositAmount
+                    });
                 }
+            }
+
+            var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
+            var activeIncidents = sessionIncidents.Where(i => (i.Status == PBMS.Domain.Enums.IncidentStatus.Open || i.Status == PBMS.Domain.Enums.IncidentStatus.Processing) && !i.IsDeleted).ToList();
+            foreach (var incident in activeIncidents)
+            {
+                decimal penaltyAmt = incident.PenaltyFee ?? incident.PenaltyConfig?.PenaltyFee ?? 0;
+                breakdownItems.Add(new PaymentBreakdownItemDto
+                {
+                    Type = "INCIDENT_PENALTY",
+                    IncidentId = incident.Id,
+                    Name = incident.IncidentType?.IncidentName ?? "Phí phạt sự cố",
+                    Amount = penaltyAmt
+                });
             }
 
             description = $"Parking fee payment for session {session.Id}";
@@ -202,7 +235,15 @@ public class PaymentService : IPaymentService
             // Hoàn tất nghiệp vụ logic sau khi thanh toán thành công
             await CompleteBusinessFlowAsync(payment);
 
-            return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Payment successful (Zero amount due, automatically marked as PAID).");
+            var responseDto = MapToDto(payment);
+            if (payment.SessionId.HasValue)
+            {
+                responseDto.BaseParkingFee = baseParkingFee;
+                responseDto.IncidentFeeTotal = incidentFeeTotal;
+                responseDto.Items = breakdownItems;
+            }
+
+            return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Payment successful (Zero amount due, automatically marked as PAID).");
         }
 
         // 3. Xử lý logic theo Phương thức thanh toán
@@ -235,7 +276,15 @@ public class PaymentService : IPaymentService
             // Hoàn tất nghiệp vụ logic sau khi thanh toán thành công
             await CompleteBusinessFlowAsync(payment);
 
-            return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Cash payment successful (Cash rounding applied).");
+            var responseDto = MapToDto(payment);
+            if (payment.SessionId.HasValue)
+            {
+                responseDto.BaseParkingFee = baseParkingFee;
+                responseDto.IncidentFeeTotal = incidentFeeTotal;
+                responseDto.Items = breakdownItems;
+            }
+
+            return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Cash payment successful (Cash rounding applied).");
         }
         else if (method == "ONLINE_BANKING")
         {
@@ -264,6 +313,12 @@ public class PaymentService : IPaymentService
                 string paymentUrl = _vnpayGateway.CreatePaymentUrl(orderCode, originalAmount, description, "127.0.0.1");
 
                 var responseDto = MapToDto(payment);
+                if (payment.SessionId.HasValue)
+                {
+                    responseDto.BaseParkingFee = baseParkingFee;
+                    responseDto.IncidentFeeTotal = incidentFeeTotal;
+                    responseDto.Items = breakdownItems;
+                }
                 responseDto.PaymentUrl = paymentUrl;
                 responseDto.QrCodeUrl = ""; // VNPay đã tích hợp sẵn QR trong trang thanh toán
 

@@ -34,14 +34,33 @@ public class BlacklistService : IBlacklistService
     {
         int? vehicleId = request.VehicleId;
         int? cardId = request.CardId;
+        bool isNewVehicle = false;
 
-        // 1. Tìm Vehicle theo LicensePlate nếu không có VehicleId
+        // 1. Tìm hoặc tạo Vehicle theo LicensePlate nếu không có VehicleId
         if (!vehicleId.HasValue && !string.IsNullOrWhiteSpace(request.LicensePlate))
         {
+            var normalizedPlate = request.LicensePlate.Trim().ToUpper();
             var vehicle = await _vehicleRepository.FirstOrDefaultAsync(
-                v => v.LicensePlate.ToUpper() == request.LicensePlate.Trim().ToUpper());
+                v => v.LicensePlate.ToUpper() == normalizedPlate);
+            
             if (vehicle == null)
-                throw new NotFoundException("Vehicle", $"LicensePlate '{request.LicensePlate}'");
+            {
+                // Xác định VehicleTypeId (mặc định lấy giá trị đầu tiên trong DB hoặc 1 nếu không truyền)
+                int typeId = request.VehicleTypeId ?? 1;
+                
+                vehicle = new PBMS.Domain.Entities.Vehicle
+                {
+                    LicensePlate = normalizedPlate,
+                    VehicleTypeId = typeId,
+                    VehicleStatus = PBMS.Domain.Entities.Vehicle.StatusActive,
+                    RegisteredDay = DateTime.UtcNow.AddHours(7).Date
+                };
+
+                await _vehicleRepository.AddAsync(vehicle);
+                await _vehicleRepository.SaveChangesAsync();
+                isNewVehicle = true;
+            }
+            
             vehicleId = vehicle.Id;
         }
 
@@ -54,7 +73,7 @@ public class BlacklistService : IBlacklistService
             cardId = card.Id;
         }
 
-        // 3. Validate至少 có 1 đối tượng bị chặn
+        // 3. Validate ít nhất có 1 đối tượng bị chặn
         if (!vehicleId.HasValue && !cardId.HasValue && !request.IncidentId.HasValue)
         {
             throw new ValidationException("You must provide at least a Vehicle, Card, or Incident to blacklist.");
@@ -91,7 +110,12 @@ public class BlacklistService : IBlacklistService
         await _blacklistRepository.AddAsync(blacklist);
         await _blacklistRepository.SaveChangesAsync();
 
-        return _mapper.Map<BlacklistDto>(blacklist);
+        var dto = _mapper.Map<BlacklistDto>(blacklist);
+        if (dto != null)
+        {
+            dto.IsNewVehicle = isNewVehicle;
+        }
+        return dto!;
     }
 
     public async Task RemoveFromBlacklistAsync(int id)
@@ -136,5 +160,20 @@ public class BlacklistService : IBlacklistService
     public async Task<bool> IsCardBlockedAsync(int cardId)
     {
         return await _blacklistRepository.AnyAsync(b => b.CardId == cardId);
+    }
+
+    public async Task<bool> IsVehicleBlockedByPlateAsync(string licensePlate)
+    {
+        if (string.IsNullOrWhiteSpace(licensePlate)) return false;
+        var normalizedPlate = licensePlate.Trim().ToUpper();
+        
+        // Tìm xe theo biển số
+        var vehicle = await _vehicleRepository.FirstOrDefaultAsync(
+            v => v.LicensePlate.ToUpper() == normalizedPlate);
+            
+        if (vehicle == null) return false;
+        
+        // Check xem VehicleId có nằm trong Blacklist không
+        return await _blacklistRepository.AnyAsync(b => b.VehicleId == vehicle.Id);
     }
 }

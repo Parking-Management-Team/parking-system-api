@@ -33,6 +33,7 @@ public class ParkingSessionServiceTests
     private readonly IRepository<PenaltyConfig> _penaltyConfigRepositoryMock;
     private readonly IBlacklistRepository _blacklistRepositoryMock;
     private readonly IRepository<Notification> _notificationRepositoryMock;
+    private readonly IAccountRepository _accountRepositoryMock;
     private readonly ParkingSessionService _service;
 
     public ParkingSessionServiceTests()
@@ -50,6 +51,7 @@ public class ParkingSessionServiceTests
         _penaltyConfigRepositoryMock = Substitute.For<IRepository<PenaltyConfig>>();
         _blacklistRepositoryMock = Substitute.For<IBlacklistRepository>();
         _notificationRepositoryMock = Substitute.For<IRepository<Notification>>();
+        _accountRepositoryMock = Substitute.For<IAccountRepository>();
 
         _service = new ParkingSessionService(
             _sessionRepositoryMock,
@@ -64,7 +66,8 @@ public class ParkingSessionServiceTests
             _incidentTypeRepositoryMock,
             _penaltyConfigRepositoryMock,
             _blacklistRepositoryMock,
-            _notificationRepositoryMock
+            _notificationRepositoryMock,
+            _accountRepositoryMock
         );
     }
 
