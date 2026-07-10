@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Common;
+using PBMS.Application.Common.Interfaces;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
 
@@ -10,10 +11,12 @@ namespace PBMS.API.Controllers;
 public class ParkingSessionsController : ControllerBase
 {
     private readonly IParkingSessionService _service;
+    private readonly ILicensePlateOcrService _ocrService;
 
-    public ParkingSessionsController(IParkingSessionService service)
+    public ParkingSessionsController(IParkingSessionService service, ILicensePlateOcrService ocrService)
     {
         _service = service;
+        _ocrService = ocrService;
     }
 
     [HttpPost("check-entry")]
@@ -25,6 +28,18 @@ public class ParkingSessionsController : ControllerBase
         }
 
         var result = await _service.CheckEntryConditionsAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("ocr")]
+    public async Task<IActionResult> ScanLicensePlate([FromBody] OcrScanRequest request)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Image))
+        {
+            return BadRequest("Image data is required.");
+        }
+
+        var result = await _ocrService.ScanLicensePlateAsync(request.Image);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
