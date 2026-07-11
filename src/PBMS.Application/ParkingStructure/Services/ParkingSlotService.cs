@@ -144,24 +144,20 @@ public class ParkingSlotService : IParkingSlotService
 
         if (plannedCheckinTime.HasValue && plannedCheckoutTime.HasValue)
         {
-            var now = DateTime.UtcNow.AddHours(7);
-            // Convert to Vietnam Local Time (UTC+7) safely regardless of incoming Kind
             var startUtc = plannedCheckinTime.Value.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(plannedCheckinTime.Value, DateTimeKind.Utc)
                 : plannedCheckinTime.Value.ToUniversalTime();
-            var start = startUtc.AddHours(7);
 
             var endUtc = plannedCheckoutTime.Value.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(plannedCheckoutTime.Value, DateTimeKind.Utc)
                 : plannedCheckoutTime.Value.ToUniversalTime();
-            var end = endUtc.AddHours(7);
 
             // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm 30 phút, chỉ tính booking đã Confirmed)
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
                 b.BookingStatus == BookingStatus.Confirmed &&
-                b.PlannedCheckoutTime.AddMinutes(30) > start &&
-                end.AddMinutes(30) > b.PlannedCheckinTime);
+                b.PlannedCheckoutTime.AddMinutes(30) > startUtc &&
+                endUtc.AddMinutes(30) > b.PlannedCheckinTime);
 
             reservedSlotIds = activeBookings
                 .Select(b => b.SlotId!.Value)
@@ -170,13 +166,13 @@ public class ParkingSlotService : IParkingSlotService
         else
         {
             // Nếu không truyền khoảng thời gian, mặc định kiểm tra các booking đang diễn ra HOẶC chuẩn bị check-in (trong vòng 15 phút tới) ngay thời điểm hiện tại
-            var nowLocal = DateTime.UtcNow.AddHours(7);
-            var startGrace = nowLocal.AddMinutes(15);
+            var nowUtc = DateTime.UtcNow;
+            var startGrace = nowUtc.AddMinutes(15);
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
                 b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
-                b.PlannedCheckoutTime > nowLocal);
+                b.PlannedCheckoutTime > nowUtc);
 
             reservedSlotIds = activeBookings
                 .Select(b => b.SlotId!.Value)
@@ -374,5 +370,89 @@ public class ParkingSlotService : IParkingSlotService
         return string.Equals(vehicleType.TypeName, VehicleType.CarTypeName, StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("CAR", StringComparison.OrdinalIgnoreCase)
             || vehicleType.TypeName.Contains("AUTO", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public async Task<SlotFutureBookingsDto> GetFutureBookingsAndRecommendationsAsync(int slotId)
+    {
+        var slot = await _slotRepository.GetByIdAsync(slotId);
+        if (slot == null)
+        {
+            throw new NotFoundException("ParkingSlot", slotId);
+        }
+
+        var now = DateTime.UtcNow;
+
+        // 1. Lấy các Booking tương lai
+        var bookings = await _bookingRepository.FindAsync(b =>
+            b.SlotId == slotId &&
+            (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+            b.PlannedCheckinTime > now);
+
+        var sortedBookings = bookings.OrderBy(b => b.PlannedCheckinTime).ToList();
+        var bookingDtos = sortedBookings.Select(b => new PBMS.Application.Booking.DTOs.BookingDto
+        {
+            Id = b.Id,
+            PlannedCheckinTime = b.PlannedCheckinTime,
+            PlannedCheckoutTime = b.PlannedCheckoutTime,
+            BookingStatus = b.BookingStatus,
+            DepositAmount = b.DepositAmount,
+            SlotId = b.SlotId,
+            SlotCode = slot.Code
+        }).ToList();
+
+        // 2. Tìm các slot đề xuất trong cùng Zone
+        var siblingSlots = await _slotRepository.GetSlotsByZoneIdAsync(slot.ZoneId);
+        var availableSiblings = siblingSlots
+            .Where(s => s.Id != slotId && s.Status == SlotStatus.Available)
+            .ToList();
+
+        var recommendations = new List<(RecommendedSlotDto Dto, DateTime? NextCheckin)>();
+        foreach (var s in availableSiblings)
+        {
+            var siblingBookings = (await _bookingRepository.FindAsync(b =>
+                b.SlotId == s.Id &&
+                (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+                b.PlannedCheckinTime > now)).ToList();
+
+            var nextBooking = siblingBookings.OrderBy(b => b.PlannedCheckinTime).FirstOrDefault();
+            var count = siblingBookings.Count;
+
+            string message = "Trống hoàn toàn (Không có lịch đặt trước)";
+            if (nextBooking != null)
+            {
+                var diff = nextBooking.PlannedCheckinTime - now;
+                int hours = (int)diff.TotalHours;
+                int minutes = diff.Minutes;
+                message = $"Có {count} lượt đặt trước (Sắp tới sau {hours} giờ {minutes} phút)";
+            }
+
+            var recDto = new RecommendedSlotDto
+            {
+                SlotId = s.Id,
+                SlotCode = s.Code ?? $"SLOT-{s.Id}",
+                FutureBookingCount = count,
+                Message = message
+            };
+
+            recommendations.Add((recDto, nextBooking?.PlannedCheckinTime));
+        }
+
+        // Sắp xếp đề xuất:
+        // 1. Số lượng booking tương lai ít nhất (0 là tốt nhất)
+        // 2. Booking tiếp theo cách xa thời điểm hiện tại nhất (NextCheckin càng lớn càng tốt, null lên trước)
+        var top3Recommended = recommendations
+            .OrderBy(r => r.Dto.FutureBookingCount)
+            .ThenByDescending(r => r.NextCheckin ?? DateTime.MaxValue)
+            .Select(r => r.Dto)
+            .Take(3)
+            .ToList();
+
+        return new SlotFutureBookingsDto
+        {
+            SlotId = slot.Id,
+            SlotCode = slot.Code ?? $"SLOT-{slot.Id}",
+            FutureBookings = bookingDtos,
+            RecommendedSlots = top3Recommended
+        };
     }
 }

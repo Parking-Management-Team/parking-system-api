@@ -96,8 +96,11 @@ public class PricingEngine : IPricingEngine
         {
             var config = dailyCapRule.DailyCapRuleConfig;
             
-            var startDate = checkIn.Date;
-            var endDate = checkOut.Date;
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var localCheckIn = checkIn.Kind == DateTimeKind.Utc ? TimeZoneInfo.ConvertTimeFromUtc(checkIn, tz) : checkIn;
+            var localCheckOut = checkOut.Kind == DateTimeKind.Utc ? TimeZoneInfo.ConvertTimeFromUtc(checkOut, tz) : checkOut;
+            var startDate = localCheckIn.Date;
+            var endDate = localCheckOut.Date;
             var totalDays = (endDate - startDate).Days + 1;
             
             var maxCap = config.MaximumDailyAmount * (decimal)totalDays;

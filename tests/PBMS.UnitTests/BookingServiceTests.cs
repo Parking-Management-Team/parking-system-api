@@ -5,6 +5,7 @@ using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
+using PBMS.Domain.Engine;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -60,6 +61,9 @@ public class BookingServiceTests
  
         // Thiết lập mặc định không nằm trong blacklist
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<PBMS.Domain.Entities.Blacklist, bool>>>()).Returns(false);
+ 
+        _pricingCalculationServiceMock.CalculateFeeAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<int?>())
+            .Returns(Task.FromResult(new PricingResult { TotalAmount = 20000 }));
  
         _service = new BookingService(
             _bookingRepositoryMock,

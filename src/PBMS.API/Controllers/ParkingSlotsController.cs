@@ -42,6 +42,16 @@ public class ParkingSlotsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy danh sách lịch đặt trước tương lai và đề xuất vị trí đỗ thay thế.
+    /// </summary>
+    [HttpGet("{id:int}/future-bookings")]
+    public async Task<IActionResult> GetFutureBookings(int id)
+    {
+        var result = await _slotService.GetFutureBookingsAndRecommendationsAsync(id);
+        return Ok(BaseResponse<SlotFutureBookingsDto>.Ok(result));
+    }
+
+    /// <summary>
     /// Lấy danh sách tất cả các vị trí đỗ xe.
     /// </summary>
     [HttpGet]

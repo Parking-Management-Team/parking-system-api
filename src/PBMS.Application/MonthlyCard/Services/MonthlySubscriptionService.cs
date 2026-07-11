@@ -493,7 +493,7 @@ public class MonthlySubscriptionService : IMonthlySubscriptionService
             if (oldCard != null)
             {
                 oldCard.CardStatus = CardStatus.Lost.ToString();
-                oldCard.LostAt = DateTime.UtcNow.AddHours(7);
+                oldCard.LostAt = DateTime.UtcNow;
                 _cardRepository.Update(oldCard);
             }
         }

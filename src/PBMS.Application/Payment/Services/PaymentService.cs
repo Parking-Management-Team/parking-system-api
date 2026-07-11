@@ -126,7 +126,7 @@ public class PaymentService : IPaymentService
                 return BaseResponse<PaymentResponseDto>.Fail("VEHICLE_NOT_FOUND", "Vehicle information not found.");
 
             // Tính toán tiền đỗ xe thực tế dựa vào thời điểm check-in & check-out
-            var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow.AddHours(7);
+            var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
             var calculationStartTime = session.CheckInTime;
 
             if (session.MonthlySubscriptionId.HasValue)
@@ -193,7 +193,7 @@ public class PaymentService : IPaymentService
                 Amount = 0,
                 PaymentMethod = request.PaymentMethod.ToUpperInvariant(),
                 PaymentStatus = "PAID",
-                PaymentTime = DateTime.UtcNow.AddHours(7)
+                PaymentTime = DateTime.UtcNow
             };
 
             await _paymentRepository.AddAsync(payment);
@@ -226,7 +226,7 @@ public class PaymentService : IPaymentService
                 Amount = roundedAmount,
                 PaymentMethod = "CASH",
                 PaymentStatus = "PAID",
-                PaymentTime = DateTime.UtcNow.AddHours(7)
+                PaymentTime = DateTime.UtcNow
             };
 
             await _paymentRepository.AddAsync(payment);
@@ -331,7 +331,7 @@ public class PaymentService : IPaymentService
             if (responseCode == "00" && transactionStatus == "00")
             {
                 payment.PaymentStatus = "PAID";
-                payment.PaymentTime = DateTime.UtcNow.AddHours(7);
+                payment.PaymentTime = DateTime.UtcNow;
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
@@ -370,15 +370,16 @@ public class PaymentService : IPaymentService
             {
                 if (booking.ExtendedCheckoutTime.HasValue)
                 {
-                    // Thanh toán gia hạn đặt chỗ -> Cập nhật thời gian checkout mới
+                    // Thanh toán gia hạn đặt chỗ -> Cập nhật thời gian checkout mới và cộng dồn số tiền
                     booking.PlannedCheckoutTime = booking.ExtendedCheckoutTime.Value;
+                    booking.DepositAmount += payment.Amount;
                     booking.ExtendedCheckoutTime = null;
                 }
                 else
                 {
                     // Thanh toán đặt cọc -> Xác nhận đặt cọc thành công
                     booking.BookingStatus = "Confirmed";
-                    booking.ConfirmedAt = DateTime.UtcNow.AddHours(7);
+                    booking.ConfirmedAt = DateTime.UtcNow;
                 }
                 _bookingRepository.Update(booking);
                 await _bookingRepository.SaveChangesAsync();
@@ -392,7 +393,7 @@ public class PaymentService : IPaymentService
             {
                 subscription.MonthlySubscriptionStatus = PBMS.Domain.Enums.MonthlySubscriptionStatus.Active;
                 
-                var now = DateTime.UtcNow.AddHours(7);
+                var now = DateTime.UtcNow;
                 if (subscription.ActivatedAt == null)
                 {
                     subscription.ActivatedAt = now;
@@ -467,7 +468,7 @@ public class PaymentService : IPaymentService
 
         // Thực hiện hoàn cọc thực tế (Giả lập chuyển khoản/hoàn trả qua VNPay thành công)
         payment.PaymentStatus = "REFUNDED";
-        payment.PaymentTime = DateTime.UtcNow.AddHours(7);
+        payment.PaymentTime = DateTime.UtcNow;
         
         _paymentRepository.Update(payment);
         await _paymentRepository.SaveChangesAsync();
