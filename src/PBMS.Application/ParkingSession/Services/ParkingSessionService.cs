@@ -80,7 +80,7 @@ public class ParkingSessionService : IParkingSessionService
 
         var normalizedPlate = Normalize(request.LicensePlate);
         var normalizedCardCode = Normalize(request.CardCode);
-        var checkInTime = DateTime.UtcNow.AddHours(7);
+        var checkInTime = DateTime.UtcNow;
 
         var vehicleType = await _vehicleTypeRepository.GetByIdAsync(request.VehicleTypeId);
         if (vehicleType == null)
@@ -282,7 +282,7 @@ public class ParkingSessionService : IParkingSessionService
             LicensePlate = normalizedPlate,
             VehicleTypeId = request.VehicleTypeId,
             VehicleStatus = VehicleEntity.StatusActive,
-            RegisteredDay = DateTime.UtcNow.AddHours(7).Date
+            RegisteredDay = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).Date
         };
 
         if (vehicle.Id == 0)
@@ -441,7 +441,7 @@ public class ParkingSessionService : IParkingSessionService
         BookingEntity? activeBooking = booking;
         if (!isMonthly && activeBooking == null)
         {
-            var now = DateTime.UtcNow.AddHours(7);
+            var now = DateTime.UtcNow;
             activeBooking = await _bookingRepository.FirstOrDefaultAsync(b =>
                 b.Vehicle.LicensePlate.ToUpper() == normalizedPlate &&
                 b.BuildingId == buildingId &&
@@ -792,7 +792,7 @@ public class ParkingSessionService : IParkingSessionService
             BookingId = request.BookingId,
             MonthlySubscriptionId = request.MonthlySubscriptionId,
             InStaffId = request.InStaffId,
-            CheckInTime = ToUtc(request.CheckInTime ?? DateTime.UtcNow.AddHours(7)),
+            CheckInTime = ToUtc(request.CheckInTime ?? DateTime.UtcNow),
             LicensePlateIn = Normalize(request.LicensePlateIn),
             SessionStatus = ActiveStatus
         };
@@ -927,7 +927,7 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can start checkout.");
         }
 
-        var checkOutTime = ToUtc(request.CheckOutTime ?? DateTime.UtcNow.AddHours(7));
+        var checkOutTime = ToUtc(request.CheckOutTime ?? DateTime.UtcNow);
         session.CheckOutTime = checkOutTime;
         session.LicensePlateOut = string.IsNullOrWhiteSpace(request.LicensePlateOut)
             ? session.LicensePlateIn
@@ -1054,7 +1054,7 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can be completed.");
         }
 
-        session.CheckOutTime ??= DateTime.UtcNow.AddHours(7);
+        session.CheckOutTime ??= DateTime.UtcNow;
         session.LicensePlateOut ??= session.LicensePlateIn;
         session.SessionStatus = CompletedStatus;
 
@@ -1087,7 +1087,7 @@ public class ParkingSessionService : IParkingSessionService
             foreach (var incident in activeIncidents)
             {
                 incident.Status = IncidentStatus.Resolved;
-                incident.ResolvedAt = DateTime.UtcNow.AddHours(7);
+                incident.ResolvedAt = DateTime.UtcNow;
                 _incidentRepository.Update(incident);
             }
         }
@@ -1248,7 +1248,7 @@ public class ParkingSessionService : IParkingSessionService
         if (oldCard != null)
         {
             oldCard.CardStatus = CardStatus.Lost.ToString();
-            oldCard.LostAt = DateTime.UtcNow.AddHours(7);
+            oldCard.LostAt = DateTime.UtcNow;
             _cardRepository.Update(oldCard);
         }
 
@@ -1275,7 +1275,7 @@ public class ParkingSessionService : IParkingSessionService
                     Description = $"Báo mất thẻ gửi xe (Thẻ cũ: {oldCard?.CardCode})",
                     Status = IncidentStatus.Open,
                     PenaltyFee = activePenalty?.PenaltyFee ?? 100000,
-                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                    CreatedAt = DateTime.UtcNow
                 };
                 await _incidentRepository.AddAsync(incident);
             }

@@ -93,6 +93,11 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
     /// </summary>
     public async Task<PricingPolicy?> GetActivePolicyAsync(int vehicleTypeId, DateTime atTime)
     {
+        var localTime = atTime.Kind == DateTimeKind.Utc 
+            ? TimeZoneInfo.ConvertTimeFromUtc(atTime, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")) 
+            : atTime;
+        var localDate = localTime.Date;
+
         return await _dbSet
             .Include(pp => pp.PricingWindows)
             .Include(pp => pp.PricingRules)
@@ -106,8 +111,8 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
             .Where(pp =>
                 pp.VehicleTypeId == vehicleTypeId &&
                 pp.PricingPolicyStatus == "Active" &&
-                pp.EffectiveStart <= atTime.Date &&
-                (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= atTime.Date)
+                pp.EffectiveStart <= localDate &&
+                (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= localDate)
             )
             .OrderByDescending(pp => pp.EffectiveStart)
             .FirstOrDefaultAsync();

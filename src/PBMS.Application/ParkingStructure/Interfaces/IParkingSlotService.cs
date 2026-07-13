@@ -25,4 +25,5 @@ public interface IParkingSlotService
     Task<ParkingSlotDto> BlockSlotAsync(int id, SlotStatusChangeRequest request);
     Task<ParkingSlotDto> UnblockSlotAsync(int id, SlotStatusChangeRequest request);
     Task<ParkingSlotDto> SetMaintenanceSlotAsync(int id, SlotStatusChangeRequest request);
+    Task<SlotFutureBookingsDto> GetFutureBookingsAndRecommendationsAsync(int slotId);
 }

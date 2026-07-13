@@ -175,9 +175,10 @@ public class BookingsController : ControllerBase
     [HttpPost("{id:int}/extend")]
     public async Task<ActionResult<BaseResponse<BookingExtensionResultDto>>> RequestExtension(
         int id,
-        [FromQuery] DateTime requestedNewEndTime)
+        [FromQuery] DateTime requestedNewEndTime,
+        [FromQuery] bool payLater = false)
     {
-        var result = await _bookingService.RequestExtensionAsync(id, requestedNewEndTime);
+        var result = await _bookingService.RequestExtensionAsync(id, requestedNewEndTime, payLater);
         return Ok(BaseResponse<BookingExtensionResultDto>.Ok(result));
     }
 
