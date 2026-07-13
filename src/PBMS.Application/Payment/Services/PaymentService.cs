@@ -23,7 +23,6 @@ public class PaymentService : IPaymentService
     private readonly IPaymentRepository _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
     private readonly IRepository<BookingEntity> _bookingRepository;
-    private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
     private readonly ICardRepository _cardRepository;
     private readonly IVNPayGateway _vnpayGateway;
@@ -38,7 +37,6 @@ public class PaymentService : IPaymentService
         IPaymentRepository paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
         IRepository<BookingEntity> bookingRepository,
-        IMonthlySubscriptionRepository subscriptionRepository,
         IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
         ICardRepository cardRepository,
         IVNPayGateway vnpayGateway,
@@ -51,7 +49,6 @@ public class PaymentService : IPaymentService
         _paymentRepository = paymentRepository;
         _sessionRepository = sessionRepository;
         _bookingRepository = bookingRepository;
-        _subscriptionRepository = subscriptionRepository;
         _vehicleRepository = vehicleRepository;
         _cardRepository = cardRepository;
         _vnpayGateway = vnpayGateway;
@@ -70,12 +67,11 @@ public class PaymentService : IPaymentService
     {
         // 1. Kiểm tra ràng buộc duy nhất nguồn thanh toán
         int sourceCount = (request.SessionId.HasValue ? 1 : 0) +
-                          (request.BookingId.HasValue ? 1 : 0) +
-                          (request.MonthlySubscriptionId.HasValue ? 1 : 0);
+                          (request.BookingId.HasValue ? 1 : 0);
 
         if (sourceCount != 1)
         {
-            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId, BookingId, or MonthlySubscriptionId.");
+            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId or BookingId.");
         }
 
         // Hủy (chuyển sang FAILED) toàn bộ các giao dịch PENDING cũ liên quan đến nguồn thanh toán này
@@ -97,15 +93,7 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(pendingPayment);
             }
         }
-        else if (request.MonthlySubscriptionId.HasValue)
-        {
-            var pendingPayments = await _paymentRepository.FindAsync(p => p.MonthlySubscriptionId == request.MonthlySubscriptionId.Value && p.PaymentStatus == "PENDING");
-            foreach (var pendingPayment in pendingPayments)
-            {
-                pendingPayment.PaymentStatus = "FAILED";
-                _paymentRepository.Update(pendingPayment);
-            }
-        }
+
 
         decimal originalAmount = 0;
         string description = "Transaction payment";
@@ -132,14 +120,7 @@ public class PaymentService : IPaymentService
             var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
             var calculationStartTime = session.CheckInTime;
 
-            if (session.MonthlySubscriptionId.HasValue)
-            {
-                var subscription = await _subscriptionRepository.GetByIdAsync(session.MonthlySubscriptionId.Value);
-                if (subscription != null && subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value < checkOutTime)
-                {
-                    calculationStartTime = subscription.ExpiredAt.Value;
-                }
-            }
+
 
             // Gộp tính toán phí đỗ xe và phí phạt qua PricingEngine thống nhất
             var feeResult = await _pricingCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime, session.Id);
@@ -205,15 +186,7 @@ public class PaymentService : IPaymentService
             originalAmount = booking.DepositAmount;
             description = $"Deposit payment for booking {booking.Id}";
         }
-        else if (request.MonthlySubscriptionId.HasValue)
-        {
-            var subscription = await _subscriptionRepository.GetByIdAsync(request.MonthlySubscriptionId.Value);
-            if (subscription == null)
-                return BaseResponse<PaymentResponseDto>.Fail("SUBSCRIPTION_NOT_FOUND", "Monthly subscription information not found.");
 
-            originalAmount = subscription.MonthlyPrice;
-            description = $"Monthly subscription payment for subscription {subscription.Id}";
-        }
 
         // Nếu số tiền cần thanh toán thực tế là 0đ (do trong grace period hoặc được khấu trừ hết)
         if (originalAmount <= 0)
@@ -222,7 +195,7 @@ public class PaymentService : IPaymentService
             {
                 SessionId = request.SessionId,
                 BookingId = request.BookingId,
-                MonthlySubscriptionId = request.MonthlySubscriptionId,
+                MonthlySubscriptionId = null,
                 Amount = 0,
                 PaymentMethod = request.PaymentMethod.ToUpperInvariant(),
                 PaymentStatus = "PAID",
@@ -263,7 +236,7 @@ public class PaymentService : IPaymentService
             {
                 SessionId = request.SessionId,
                 BookingId = request.BookingId,
-                MonthlySubscriptionId = request.MonthlySubscriptionId,
+                MonthlySubscriptionId = null,
                 Amount = roundedAmount,
                 PaymentMethod = "CASH",
                 PaymentStatus = "PAID",
@@ -296,7 +269,7 @@ public class PaymentService : IPaymentService
             {
                 SessionId = request.SessionId,
                 BookingId = request.BookingId,
-                MonthlySubscriptionId = request.MonthlySubscriptionId,
+                MonthlySubscriptionId = null,
                 Amount = originalAmount,
                 PaymentMethod = "ONLINE_BANKING",
                 PaymentStatus = "PENDING",
@@ -440,46 +413,7 @@ public class PaymentService : IPaymentService
                 await _bookingRepository.SaveChangesAsync();
             }
         }
-        else if (payment.MonthlySubscriptionId.HasValue)
-        {
-            // Thanh toán vé tháng -> Kích hoạt/Gia hạn vé tháng và tính thời điểm hết hạn
-            var subscription = await _subscriptionRepository.GetByIdAsync(payment.MonthlySubscriptionId.Value);
-            if (subscription != null)
-            {
-                subscription.MonthlySubscriptionStatus = PBMS.Domain.Enums.MonthlySubscriptionStatus.Active;
-                
-                var now = DateTime.UtcNow;
-                if (subscription.ActivatedAt == null)
-                {
-                    subscription.ActivatedAt = now;
-                }
 
-                // Gia hạn (Renewal) hoặc kích hoạt mới
-                if (subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value > now)
-                {
-                    subscription.ExpiredAt = subscription.ExpiredAt.Value.AddMonths(1);
-                }
-                else
-                {
-                    subscription.ExpiredAt = now.AddMonths(1);
-                }
-
-                _subscriptionRepository.Update(subscription);
-                await _subscriptionRepository.SaveChangesAsync();
-
-                // Cập nhật trạng thái thẻ đỗ xe sang Assigned
-                if (subscription.AssignedCardId.HasValue)
-                {
-                    var card = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
-                    if (card != null)
-                    {
-                        card.CardStatus = PBMS.Domain.Enums.CardStatus.Assigned.ToString();
-                        _cardRepository.Update(card);
-                        await _cardRepository.SaveChangesAsync();
-                    }
-                }
-            }
-        }
 
         await _revenueService.UpdateRevenueAfterPaymentAsync(payment.Id);
     }

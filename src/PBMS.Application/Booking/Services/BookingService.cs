@@ -508,7 +508,7 @@ public class BookingService : IBookingService
         var pendingPayment = await _paymentRepository.FirstOrDefaultAsync(p => 
             p.BookingId == booking.Id && 
             p.PaymentStatus == "PENDING" && 
-            (p.SessionId == null && p.MonthlySubscriptionId == null));
+            p.SessionId == null);
 
         if (pendingPayment != null)
         {
@@ -825,7 +825,7 @@ public class BookingService : IBookingService
             var pendingPayment = await _paymentRepository.FirstOrDefaultAsync(p => 
                 p.BookingId == booking.Id && 
                 p.PaymentStatus == "PENDING" && 
-                (p.SessionId == null && p.MonthlySubscriptionId == null));
+                p.SessionId == null);
 
             if (pendingPayment != null)
             {

@@ -25,7 +25,6 @@ namespace PBMS.UnitTests
         private readonly IPaymentRepository _paymentRepositoryMock;
         private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepositoryMock;
         private readonly IRepository<BookingEntity> _bookingRepositoryMock;
-        private readonly IMonthlySubscriptionRepository _subscriptionRepositoryMock;
         private readonly IRepository<Vehicle> _vehicleRepositoryMock;
         private readonly ICardRepository _cardRepositoryMock;
         private readonly IVNPayGateway _vnpayGatewayMock;
@@ -41,7 +40,6 @@ namespace PBMS.UnitTests
             _paymentRepositoryMock = Substitute.For<IPaymentRepository>();
             _sessionRepositoryMock = Substitute.For<IRepository<PBMS.Domain.Entities.ParkingSession>>();
             _bookingRepositoryMock = Substitute.For<IRepository<BookingEntity>>();
-            _subscriptionRepositoryMock = Substitute.For<IMonthlySubscriptionRepository>();
             _vehicleRepositoryMock = Substitute.For<IRepository<Vehicle>>();
             _cardRepositoryMock = Substitute.For<ICardRepository>();
             _vnpayGatewayMock = Substitute.For<IVNPayGateway>();
@@ -55,7 +53,6 @@ namespace PBMS.UnitTests
                 _paymentRepositoryMock,
                 _sessionRepositoryMock,
                 _bookingRepositoryMock,
-                _subscriptionRepositoryMock,
                 _vehicleRepositoryMock,
                 _cardRepositoryMock,
                 _vnpayGatewayMock,
