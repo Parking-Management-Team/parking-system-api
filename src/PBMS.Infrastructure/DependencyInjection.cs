@@ -71,7 +71,6 @@ public static class DependencyInjection
         services.AddScoped<IBuildingRepository, BuildingRepository>();
         services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
-        services.AddScoped<IMonthlySubscriptionRepository, MonthlySubscriptionRepository>();
 
         // Đăng ký repository Booking
         services.AddScoped<IBookingRepository, BookingRepository>();

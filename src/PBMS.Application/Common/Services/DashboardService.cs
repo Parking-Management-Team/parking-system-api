@@ -19,20 +19,17 @@ public class DashboardService : IDashboardService
     private readonly IRepository<ParkingSessionEntity> _sessionRepository;
     private readonly IBookingRepository _bookingRepository;
     private readonly IIncidentRepository _incidentRepository;
-    private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IRepository<ParkingSlotEntity> _slotRepository;
 
     public DashboardService(
         IRepository<ParkingSessionEntity> sessionRepository,
         IBookingRepository bookingRepository,
         IIncidentRepository incidentRepository,
-        IMonthlySubscriptionRepository subscriptionRepository,
         IRepository<ParkingSlotEntity> slotRepository)
     {
         _sessionRepository = sessionRepository;
         _bookingRepository = bookingRepository;
         _incidentRepository = incidentRepository;
-        _subscriptionRepository = subscriptionRepository;
         _slotRepository = slotRepository;
     }
 
@@ -48,8 +45,6 @@ public class DashboardService : IDashboardService
             (b.BookingStatus == "Confirmed" || b.BookingStatus == "Pending"));
 
         var activeIncidents = await _incidentRepository.CountAsync(i => i.Status == IncidentStatus.Open);
-        
-        var activeSubscriptions = await _subscriptionRepository.CountAsync(s => s.MonthlySubscriptionStatus == "Active");
 
         var totalSlots = await _slotRepository.CountAsync(s => s.Status != SlotStatus.Maintenance);
         double occupancyRate = 0;
@@ -64,7 +59,6 @@ public class DashboardService : IDashboardService
             TotalActiveSessions = activeSessions,
             ExpectedBookingsToday = expectedBookings,
             ActiveIncidentsCount = activeIncidents,
-            ActiveMonthlySubscriptions = activeSubscriptions,
             OccupancyRate = occupancyRate
         };
 

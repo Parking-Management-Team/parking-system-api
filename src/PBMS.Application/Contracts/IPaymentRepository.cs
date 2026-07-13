@@ -29,5 +29,10 @@ namespace PBMS.Application.Contracts
         /// Retrieves all payments associated with an account.
         /// </summary>
         Task<IEnumerable<PaymentEntity>> GetByAccountIdAsync(int accountId);
+
+        /// <summary>
+        /// Retrieves all PAID payments within a specified UTC timeframe, including related sessions and bookings.
+        /// </summary>
+        Task<IEnumerable<PaymentEntity>> GetPaidPaymentsAsync(DateTime? fromDateUtc, DateTime? toDateUtc);
     }
 }

@@ -65,30 +65,11 @@ public class MappingProfile : Profile
         if (activeSession != null)
             return activeSession.LicensePlateIn;
 
-        var activeSubscription = src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Active);
-        if (activeSubscription != null && activeSubscription.Vehicle != null)
-            return activeSubscription.Vehicle.LicensePlate;
-
         return null;
     }
 
     private static SlotSubscriptionInfoDto? GetActiveSubscription(ParkingSlot src)
     {
-        var activeSubscription = src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Active);
-        if (activeSubscription == null)
-            return null;
-
-        return new SlotSubscriptionInfoDto
-        {
-            SubscriptionId = activeSubscription.Id,
-            AccountId = activeSubscription.AccountId,
-            AccountName = activeSubscription.Account?.FullName,
-            VehicleId = activeSubscription.VehicleId,
-            LicensePlate = activeSubscription.Vehicle?.LicensePlate,
-            Status = activeSubscription.MonthlySubscriptionStatus,
-            MonthlyPrice = activeSubscription.MonthlyPrice,
-            ActivatedAt = activeSubscription.ActivatedAt,
-            ExpiredAt = activeSubscription.ExpiredAt
-        };
+        return null;
     }
 }

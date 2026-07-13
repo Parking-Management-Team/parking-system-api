@@ -26,7 +26,6 @@ public class ParkingSessionServiceTests
     private readonly IRepository<Booking> _bookingRepositoryMock;
     private readonly IPricingCalculationService _pricingCalculationServiceMock;
     private readonly ICardRepository _cardRepositoryMock;
-    private readonly IMonthlySubscriptionRepository _subscriptionRepositoryMock;
     private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
     private readonly IIncidentRepository _incidentRepositoryMock;
     private readonly IRepository<IncidentType> _incidentTypeRepositoryMock;
@@ -45,7 +44,6 @@ public class ParkingSessionServiceTests
         _bookingRepositoryMock = Substitute.For<IRepository<Booking>>();
         _pricingCalculationServiceMock = Substitute.For<IPricingCalculationService>();
         _cardRepositoryMock = Substitute.For<ICardRepository>();
-        _subscriptionRepositoryMock = Substitute.For<IMonthlySubscriptionRepository>();
         _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _incidentRepositoryMock = Substitute.For<IIncidentRepository>();
         _incidentTypeRepositoryMock = Substitute.For<IRepository<IncidentType>>();
@@ -76,7 +74,6 @@ public class ParkingSessionServiceTests
             _bookingRepositoryMock,
             _pricingCalculationServiceMock,
             _cardRepositoryMock,
-            _subscriptionRepositoryMock,
             _parkingSlotRepositoryMock,
             _incidentRepositoryMock,
             _incidentTypeRepositoryMock,
@@ -88,134 +85,7 @@ public class ParkingSessionServiceTests
         );
     }
 
-    [Fact]
-    public async Task CheckInAsync_ShouldBypassAvailableCheck_WhenCardIsAssignedToActiveSubscription()
-    {
-        // Arrange
-        var request = new CheckInRequest
-        {
-            LicensePlate = "29A-12345",
-            CardCode = "M-CARD-1",
-            VehicleTypeId = 1,
-            BuildingId = 10,
-            StaffId = 5
-        };
 
-        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
-        var card = new Card { Id = 100, CardCode = "M-CARD-1", CardType = "MONTHLY", CardStatus = CardStatus.Assigned.ToString() };
-        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
-        var activeSub = new MonthlySubscription
-        {
-            Id = 500,
-            VehicleId = 200,
-            BuildingId = 10,
-            AssignedCardId = 100,
-            ActivatedAt = DateTime.UtcNow.AddDays(-5),
-            ExpiredAt = DateTime.UtcNow.AddDays(25),
-            Vehicle = vehicle,
-            MonthlySubscriptionStatus = "ACTIVE"
-        };
-        var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
-
-        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
-        _cardRepositoryMock.GetByCardCodeAsync("M-CARD-1").Returns(card);
-        _subscriptionRepositoryMock.GetActiveSubscriptionByCardIdAsync(100).Returns(activeSub);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
-        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
-        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
-
-        // Act
-        var result = await _service.CheckInAsync(request);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
-        Assert.Equal(500, result.Data.MonthlySubscriptionId);
-        Assert.Equal("Assigned", card.CardStatus); // Trạng thái thẻ tháng giữ nguyên Assigned
-    }
-
-    [Fact]
-    public async Task StartCheckoutAsync_ShouldNotCompleteImmediately_WhenMonthlySubscriptionIsValid_DueToTask4Refactoring()
-    {
-        // Arrange
-        int sessionId = 1;
-        var request = new StartCheckoutRequest { CheckOutTime = DateTime.UtcNow };
-
-        var session = new ParkingSession
-        {
-            Id = sessionId,
-            VehicleId = 2,
-            CardId = 3,
-            SessionStatus = "ACTIVE",
-            CheckInTime = DateTime.UtcNow.AddHours(-2),
-            MonthlySubscriptionId = 500,
-            Vehicle = new Vehicle { Id = 2, VehicleTypeId = 1 }
-        };
-
-        var subscription = new MonthlySubscription
-        {
-            Id = 500,
-            ExpiredAt = DateTime.UtcNow.AddDays(10) // Còn hạn
-        };
-
-        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
-        _subscriptionRepositoryMock.GetByIdAsync(500).Returns(subscription);
-
-        // Act
-        var result = await _service.StartCheckoutAsync(sessionId, request);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
-        Assert.Equal("ACTIVE", result.Data.SessionStatus); // Giữ ACTIVE theo yêu cầu Task 4
-        Assert.Equal(0, result.Data.TotalFee);
-        Assert.Equal(0, result.Data.AmountDue);
-    }
-
-    [Fact]
-    public async Task StartCheckoutAsync_ShouldNotCompleteImmediately_WhenMonthlySubscriptionIsExpired()
-    {
-        // Arrange
-        int sessionId = 1;
-        var checkOutTime = DateTime.UtcNow;
-        var request = new StartCheckoutRequest { CheckOutTime = checkOutTime };
-
-        var session = new ParkingSession
-        {
-            Id = sessionId,
-            VehicleId = 2,
-            CardId = 3,
-            SessionStatus = "ACTIVE",
-            CheckInTime = DateTime.UtcNow.AddHours(-10),
-            MonthlySubscriptionId = 500,
-            Vehicle = new Vehicle { Id = 2, VehicleTypeId = 1 }
-        };
-
-        var expiredAt = DateTime.UtcNow.AddHours(-5); // Hết hạn trước lúc check-out
-        var subscription = new MonthlySubscription
-        {
-            Id = 500,
-            ExpiredAt = expiredAt
-        };
-
-        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
-        _subscriptionRepositoryMock.GetByIdAsync(500).Returns(subscription);
-        _pricingCalculationServiceMock.CalculateFeeAsync(1, expiredAt, checkOutTime, sessionId)
-            .Returns(new PricingResult { BaseAmount = 15000, IncrementAmount = 0, TotalAmount = 15000 });
-
-        // Act
-        var result = await _service.StartCheckoutAsync(sessionId, request);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
-        Assert.Equal("ACTIVE", result.Data.SessionStatus); // Giữ ACTIVE chờ thanh toán phí overtime
-        Assert.Equal(15000, result.Data.TotalFee);
-        Assert.Equal(15000, result.Data.AmountDue);
-    }
 
     [Fact]
     public async Task CheckInAsync_ShouldAutoLinkBooking_WhenActiveConfirmedBookingExists()
