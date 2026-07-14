@@ -4,6 +4,7 @@ using PBMS.Application.Common.Exceptions;
 using PBMS.Application.Contracts;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Interfaces;
+using PBMS.Application.ParkingSystemConfig.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using BookingEntity = PBMS.Domain.Entities.Booking;
@@ -20,19 +21,22 @@ public class ParkingSlotService : IParkingSlotService
     private readonly IRepository<VehicleType> _vehicleTypeRepository;
     private readonly IRepository<BookingEntity> _bookingRepository;
     private readonly IMapper _mapper;
+    private readonly IParkingSystemConfigService _configService;
 
     public ParkingSlotService(
         IParkingSlotRepository slotRepository,
         IRepository<Zone> zoneRepository,
         IRepository<VehicleType> vehicleTypeRepository,
         IRepository<BookingEntity> bookingRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IParkingSystemConfigService configService)
     {
         _slotRepository = slotRepository;
         _zoneRepository = zoneRepository;
         _vehicleTypeRepository = vehicleTypeRepository;
         _bookingRepository = bookingRepository;
         _mapper = mapper;
+        _configService = configService;
     }
 
     public async Task<ParkingSlotDto> CreateSlotAsync(ParkingSlotCreateRequest request)
@@ -152,12 +156,14 @@ public class ParkingSlotService : IParkingSlotService
                 ? DateTime.SpecifyKind(plannedCheckoutTime.Value, DateTimeKind.Utc)
                 : plannedCheckoutTime.Value.ToUniversalTime();
 
-            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm 30 phút, chỉ tính booking đã Confirmed)
+            var bufferMinutes = await _configService.GetIntConfigAsync("BUFFER_TIME_MINUTES", 30);
+
+            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm cấu hình, chỉ tính booking đã Confirmed)
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
                 b.BookingStatus == BookingStatus.Confirmed &&
-                b.PlannedCheckoutTime.AddMinutes(30) > startUtc &&
-                endUtc.AddMinutes(30) > b.PlannedCheckinTime);
+                b.PlannedCheckoutTime.AddMinutes(bufferMinutes) > startUtc &&
+                endUtc.AddMinutes(bufferMinutes) > b.PlannedCheckinTime);
 
             reservedSlotIds = activeBookings
                 .Select(b => b.SlotId!.Value)
@@ -255,6 +261,12 @@ public class ParkingSlotService : IParkingSlotService
             {
                 throw new ValidationException($"Slot code '{newCode}' already exists.");
             }
+        }
+
+        // Logic bảo vệ: Không cho phép đổi trạng thái thủ công nếu slot đang có xe đậu (Occupied)
+        if (slot.Status == SlotStatus.Occupied && request.Status != SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot change the status of slot '{slot.Code}' because it is currently occupied.");
         }
 
         slot.Code = newCode;

@@ -167,6 +167,11 @@ public class AppDbContext : DbContext
     /// Tập hợp dữ liệu bảng Báo cáo ca trực (ShiftReports).
     /// </summary>
     public DbSet<ShiftReport> ShiftReports { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Cấu hình hệ thống (ParkingSystemConfigs).
+    /// </summary>
+    public DbSet<ParkingSystemConfig> ParkingSystemConfigs { get; set; } = null!;
     
     // =======================================================
 

@@ -67,6 +67,10 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
             .HasDefaultValue(ZoneAccessType.General)
             .IsRequired();
 
+        builder.Property(z => z.BookingLimitRate)
+            .HasColumnName("booking_limit_rate")
+            .HasDefaultValue(80)
+            .IsRequired();
 
         // 10. Thời điểm tạo bản ghi (CreatedAt - kế thừa từ BaseEntity)
         builder.Property(z => z.CreatedAt)

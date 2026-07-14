@@ -35,6 +35,7 @@ public class ParkingSessionService : IParkingSessionService
     private readonly IRepository<Notification> _notificationRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly IPricingPolicyRepository _pricingPolicyRepository;
+    private readonly PBMS.Application.ParkingSystemConfig.Interfaces.IParkingSystemConfigService _configService;
 
     public ParkingSessionService(
         IParkingSessionRepository sessionRepository,
@@ -50,7 +51,8 @@ public class ParkingSessionService : IParkingSessionService
         IBlacklistRepository blacklistRepository,
         IRepository<Notification> notificationRepository,
         IAccountRepository accountRepository,
-        IPricingPolicyRepository pricingPolicyRepository)
+        IPricingPolicyRepository pricingPolicyRepository,
+        PBMS.Application.ParkingSystemConfig.Interfaces.IParkingSystemConfigService configService)
     {
         _sessionRepository = sessionRepository;
         _vehicleRepository = vehicleRepository;
@@ -66,6 +68,7 @@ public class ParkingSessionService : IParkingSessionService
         _notificationRepository = notificationRepository;
         _accountRepository = accountRepository;
         _pricingPolicyRepository = pricingPolicyRepository;
+        _configService = configService;
     }
 
     public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
@@ -256,11 +259,44 @@ public class ParkingSessionService : IParkingSessionService
                 }
                 else
                 {
-                    // Nếu là slot đặt trước thông thường mà bị bận -> Trả về lỗi bận để Frontend xử lý đổi slot
+                    // If the pre-booked slot is occupied (likely due to previous car delay) or unavailable,
+                    // attempt auto-fallback to another available slot in the same Zone.
                     if (assignedSlot.Status is SlotStatus.Blocked or SlotStatus.Maintenance or SlotStatus.Reserved ||
                         await _sessionRepository.HasActiveSessionForSlotAsync(assignedSlot.Id))
                     {
-                        return BaseResponse<ParkingSessionDto>.Fail("SLOT_NOT_AVAILABLE", "Vị trí đỗ đặt trước hiện đang bị chiếm dụng hoặc không khả dụng.");
+                        var bufferMinutes = await _configService.GetIntConfigAsync("BUFFER_TIME_MINUTES", 30);
+                        
+                        // Find active session occupying the original slot for error detail
+                        var occupyingSession = await _sessionRepository.FindActiveSessionForSlotAsync(assignedSlot.Id);
+                        
+                        // Find available fallback slot in the same Zone
+                        var fallbackSlot = await _parkingSlotRepository.FindFallbackSlotAsync(
+                            zoneId: assignedSlot.ZoneId,
+                            excludeSlotId: assignedSlot.Id,
+                            checkinTime: booking.PlannedCheckinTime,
+                            checkoutTime: booking.PlannedCheckoutTime,
+                            bufferMinutes: bufferMinutes);
+
+                        if (fallbackSlot != null)
+                        {
+                            // Auto-reassign booking to fallback slot
+                            booking.SlotId = fallbackSlot.Id;
+                            _bookingRepository.Update(booking);
+                            assignedSlot = fallbackSlot;
+                            // Continue check-in normally with the fallback slot
+                        }
+                        else
+                        {
+                            // No fallback slot found -> return detailed informative error for Staff
+                            var overdueMinutes = occupyingSession != null
+                                ? (int)(checkInTime - (occupyingSession.Booking?.PlannedCheckoutTime ?? occupyingSession.CheckInTime)).TotalMinutes
+                                : 0;
+
+                            return BaseResponse<ParkingSessionDto>.Fail("NO_FALLBACK_SLOT_AVAILABLE",
+                                $"Slot '{assignedSlot.Code}' is occupied and no fallback slot is available in Zone '{assignedSlot.Zone?.Name ?? "N/A"}'. " +
+                                $"Occupying session ID: {occupyingSession?.Id}, License plate: {occupyingSession?.Vehicle?.LicensePlate ?? "N/A"}, " +
+                                $"Overdue by: {Math.Max(0, overdueMinutes)} minutes. Manual intervention required.");
+                        }
                     }
                 }
 

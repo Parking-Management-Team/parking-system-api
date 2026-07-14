@@ -6,6 +6,7 @@ using PBMS.Domain.Exceptions;
 using Microsoft.Extensions.Configuration;
 using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
+using PBMS.Application.ParkingSystemConfig.Interfaces;
 using BookingEntity = PBMS.Domain.Entities.Booking;
 using ParkingSlotEntity = PBMS.Domain.Entities.ParkingSlot;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
@@ -31,11 +32,13 @@ public class BookingService : IBookingService
     private readonly IBuildingRepository _buildingDetailRepository;
     private readonly IPricingPolicyRepository _pricingPolicyRepository;
     private readonly IRepository<ParkingSessionEntity> _sessionRepository;
-    private readonly IRepository<ParkingSlotEntity> _parkingSlotRepository;
+    private readonly IParkingSlotRepository _parkingSlotRepository;
     private readonly IRepository<PaymentEntity> _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly IBlacklistRepository _blacklistRepository;
+    private readonly IParkingSystemConfigService _configService;
+    private readonly IZoneBookingCapacityRepository _zoneCapacityRepository;
 
     private readonly IVNPayGateway _vnpayGateway;
     private readonly IPricingCalculationService _pricingCalculationService;
@@ -81,13 +84,15 @@ public class BookingService : IBookingService
         IBuildingRepository _buildingDetailRepositoryMock,
         IPricingPolicyRepository _pricingPolicyRepositoryMock,
         IRepository<ParkingSessionEntity> _sessionRepositoryMock,
-        IRepository<ParkingSlotEntity> parkingSlotRepository,
+        IParkingSlotRepository parkingSlotRepository,
         IRepository<PaymentEntity> paymentRepositoryMock,
         IUnitOfWork _unitOfWorkMock,
         IConfiguration configuration,
         IBlacklistRepository blacklistRepository,
         IVNPayGateway vnpayGateway,
-        IPricingCalculationService pricingCalculationService)
+        IPricingCalculationService pricingCalculationService,
+        IParkingSystemConfigService configService,
+        IZoneBookingCapacityRepository zoneCapacityRepository)
     {
         _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
         _vehicleRepository = _vehicleRepositoryMock ?? throw new ArgumentNullException(nameof(_vehicleRepositoryMock));
@@ -103,6 +108,8 @@ public class BookingService : IBookingService
         _blacklistRepository = blacklistRepository ?? throw new ArgumentNullException(nameof(blacklistRepository));
         _vnpayGateway = vnpayGateway ?? throw new ArgumentNullException(nameof(vnpayGateway));
         _pricingCalculationService = pricingCalculationService ?? throw new ArgumentNullException(nameof(pricingCalculationService));
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _zoneCapacityRepository = zoneCapacityRepository ?? throw new ArgumentNullException(nameof(zoneCapacityRepository));
     }
 
     // -----------------------------------------------------------------------
@@ -303,14 +310,15 @@ public class BookingService : IBookingService
                 );
             }
 
-            // 5. Kiểm tra xem slot đã được đặt bởi booking chồng lấn khác chưa (chỉ tính booking Confirmed hoặc Pending chưa quá hạn thanh toán, áp dụng khoảng đệm 30 phút)
+            // 5. Kiểm tra xem slot đã được đặt bởi booking chồng lấn khác chưa (chỉ tính booking Confirmed hoặc Pending chưa quá hạn thanh toán, áp dụng khoảng đệm cấu hình)
+            var bufferMinutes = await _configService.GetIntConfigAsync("BUFFER_TIME_MINUTES", 30);
             var isSlotTaken = await _bookingRepository.AnyAsync(b =>
                 b.SlotId == request.SlotId.Value &&
                 b.BuildingId == request.BuildingId &&
                 (b.BookingStatus == BookingStatus.Confirmed || 
                  (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
-                b.PlannedCheckoutTime.AddMinutes(30) > start &&
-                end.AddMinutes(30) > b.PlannedCheckinTime);
+                b.PlannedCheckoutTime.AddMinutes(bufferMinutes) > start &&
+                end.AddMinutes(bufferMinutes) > b.PlannedCheckinTime);
 
             if (isSlotTaken)
             {
@@ -318,6 +326,40 @@ public class BookingService : IBookingService
                     errorCode: "SLOT_ALREADY_RESERVED",
                     message: "Vị trí đỗ xe đã chọn đã được đặt trước bởi khách hàng khác trong khung giờ này."
                 );
+            }
+
+            // 6. Kiểm tra giới hạn đặt chỗ theo Zone (BookingLimitRate)
+            // Lấy chi tiết slot bao gồm Zone
+            var slotWithDetails = await _parkingSlotRepository.GetSlotWithDetailsAsync(slot.Id);
+            if (slotWithDetails != null && slotWithDetails.Zone != null)
+            {
+                var zone = slotWithDetails.Zone;
+                var walkInThresholdHours = await _configService.GetIntConfigAsync("WALKIN_STAY_THRESHOLD_HOURS", 2);
+                var timeUntilCheckin = (start - now).TotalHours;
+
+                int currentLoad;
+                if (timeUntilCheckin <= walkInThresholdHours)
+                {
+                    // Đặt chỗ sát giờ -> Tính cả xe vãng lai hiện tại + Booking trùng lịch
+                    var walkInCount = await _zoneCapacityRepository.GetActiveWalkInSessionCountAsync(zone.Id);
+                    var bookingCount = await _zoneCapacityRepository.GetConfirmedBookingCountAsync(zone.Id, start, end, bufferMinutes);
+                    currentLoad = walkInCount + bookingCount;
+                }
+                else
+                {
+                    // Đặt chỗ xa tương lai -> Chỉ tính Booking trùng lịch
+                    currentLoad = await _zoneCapacityRepository.GetConfirmedBookingCountAsync(zone.Id, start, end, bufferMinutes);
+                }
+
+                var maxAllowed = (int)Math.Floor(zone.Capacity * (zone.BookingLimitRate / 100.0));
+                if (currentLoad + 1 > maxAllowed)
+                {
+                    throw new DomainException(
+                        errorCode: "ZONE_BOOKING_LIMIT_EXCEEDED",
+                        message: $"Khu vực '{zone.Name}' đã đạt giới hạn đặt trước tối đa ({zone.BookingLimitRate}% của sức chứa {zone.Capacity} = {maxAllowed} vị trí). " +
+                                 $"Tổng tải hiện tại: {currentLoad}. Vui lòng chọn khu vực hoặc khung giờ khác."
+                    );
+                }
             }
         }
 
@@ -784,8 +826,8 @@ public class BookingService : IBookingService
 
             if (nextBooking != null)
             {
-                // Áp dụng quy tắc khoảng đệm 30 phút
-                var maxAvailableEndTime = nextBooking.PlannedCheckinTime.AddMinutes(-30);
+                var bufferMinutes = await _configService.GetIntConfigAsync("BUFFER_TIME_MINUTES", 30);
+                var maxAvailableEndTime = nextBooking.PlannedCheckinTime.AddMinutes(-bufferMinutes);
                 if (requestedEndUtc > maxAvailableEndTime)
                 {
                     finalEndTime = maxAvailableEndTime;
@@ -799,7 +841,7 @@ public class BookingService : IBookingService
                             IsCapped = true,
                             AdjustedEndTime = booking.PlannedCheckoutTime,
                             AdditionalFee = 0,
-                            Message = "Không thể gia hạn thêm do đã chạm sát mốc đặt chỗ của khách hàng tiếp theo (quy tắc khoảng đệm 30 phút)."
+                            Message = $"Cannot extend booking further as it is too close to the next reserved booking (buffer rule: {bufferMinutes} minutes)."
                         };
                     }
                 }

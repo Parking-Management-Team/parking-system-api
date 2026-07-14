@@ -15,4 +15,9 @@ public class ZoneDto
     public int Capacity { get; set; }
     public ZoneAccessType AccessType { get; set; }
     public ZoneStatus Status { get; set; }
+
+    /// <summary>
+    /// Maximum percentage (1–100) of zone capacity that can be reserved via booking.
+    /// </summary>
+    public int BookingLimitRate { get; set; }
 }

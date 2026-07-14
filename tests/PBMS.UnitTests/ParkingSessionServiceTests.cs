@@ -2,6 +2,7 @@ using NSubstitute;
 using PBMS.Application.Contracts;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Services;
+using PBMS.Application.ParkingSystemConfig.Interfaces;
 using PBMS.Application.Pricing.DTOs;
 using PBMS.Application.Pricing.Interfaces;
 using PBMS.Domain.Entities;
@@ -34,6 +35,7 @@ public class ParkingSessionServiceTests
     private readonly IRepository<Notification> _notificationRepositoryMock;
     private readonly IAccountRepository _accountRepositoryMock;
     private readonly IPricingPolicyRepository _pricingPolicyRepositoryMock;
+    private readonly IParkingSystemConfigService _configServiceMock;
     private readonly ParkingSessionService _service;
 
     public ParkingSessionServiceTests()
@@ -52,6 +54,7 @@ public class ParkingSessionServiceTests
         _notificationRepositoryMock = Substitute.For<IRepository<Notification>>();
         _accountRepositoryMock = Substitute.For<IAccountRepository>();
         _pricingPolicyRepositoryMock = Substitute.For<IPricingPolicyRepository>();
+        _configServiceMock = Substitute.For<IParkingSystemConfigService>();
 
         // Default behavior: return exactly one active pricing policy covering all dates
         _pricingPolicyRepositoryMock.GetAllWithWindowsAsync(Arg.Any<int?>(), Arg.Any<string>())
@@ -81,7 +84,8 @@ public class ParkingSessionServiceTests
             _blacklistRepositoryMock,
             _notificationRepositoryMock,
             _accountRepositoryMock,
-            _pricingPolicyRepositoryMock
+            _pricingPolicyRepositoryMock,
+            _configServiceMock
         );
     }
 
