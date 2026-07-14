@@ -84,6 +84,10 @@ public static class DependencyInjection
         services.AddScoped<ISubscriptionPriceConfigRepository, SubscriptionPriceConfigRepository>();
         services.AddScoped<IPenaltyConfigRepository, PenaltyConfigRepository>();
 
+        // System Configuration & Capacity Repositories
+        services.AddScoped<IParkingSystemConfigRepository, ParkingSystemConfigRepository>();
+        services.AddScoped<IZoneBookingCapacityRepository, ZoneBookingCapacityRepository>();
+
         // VNPay Gateway
         services.AddScoped<IVNPayGateway, VNPayGateway>();
 

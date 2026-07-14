@@ -134,3 +134,7 @@ Tài liệu này liệt kê toàn bộ các API Endpoints hiện có trong dự 
 | `/api/zones/paged` | `GET` | Cấu trúc bãi xe | `ZonesController` | ✅ Có | Lấy danh sách Zone có phân trang |
 | `/api/zones/{id}` | `PUT` | Cấu trúc bãi xe | `ZonesController` | ✅ Có | Cập nhật thông tin Zone |
 | `/api/zones/{id}` | `DELETE` | Cấu trúc bãi xe | `ZonesController` | ✅ Có | Xóa Zone khỏi hệ thống |
+| `/api/parkingsystemconfig` | `GET` | Cấu hình hệ thống | `ParkingSystemConfigController` | ✅ [Tài liệu](parking-system-config-api.md#1-get-apiparkingsystemconfig---danh-sach-cau-hinh) | Lấy danh sách toàn bộ cấu hình hệ thống |
+| `/api/parkingsystemconfig/{key}` | `GET` | Cấu hình hệ thống | `ParkingSystemConfigController` | ✅ [Tài liệu](parking-system-config-api.md#2-get-apiparkingsystemconfigkey---chi-tiet-cau-hinh) | Lấy chi tiết một cấu hình hệ thống theo Key |
+| `/api/parkingsystemconfig` | `PUT` | Cấu hình hệ thống | `ParkingSystemConfigController` | ✅ [Tài liệu](parking-system-config-api.md#3-put-apiparkingsystemconfig---cap-nhat-hoac-tao-cau-hinh) | Cập nhật hoặc tạo mới một cấu hình hệ thống |
+

@@ -278,4 +278,12 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Where(s => s.SessionStatus.ToUpper() == "ACTIVE")
             .ToListAsync();
     }
+
+    public async Task<ParkingSessionEntity?> FindActiveSessionForSlotAsync(int slotId)
+    {
+        return await _context.ParkingSessions
+            .Include(s => s.Vehicle)
+            .Include(s => s.Booking)
+            .FirstOrDefaultAsync(s => s.SlotId == slotId && s.SessionStatus.ToUpper() == "ACTIVE");
+    }
 }

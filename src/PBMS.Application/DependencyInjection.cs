@@ -24,7 +24,8 @@ using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Booking.Services;
 using PBMS.Application.AuditLog.Interfaces;
 using PBMS.Application.AuditLog.Services;
-
+using PBMS.Application.ParkingSystemConfig.Interfaces;
+using PBMS.Application.ParkingSystemConfig.Services;
 
 
 namespace PBMS.Application;
@@ -88,6 +89,9 @@ public static class DependencyInjection
 
         // Shift Report module
         services.AddScoped<PBMS.Application.ShiftReport.Interfaces.IShiftReportService, PBMS.Application.ShiftReport.Services.ShiftReportService>();
+
+        // ParkingSystemConfig module
+        services.AddScoped<IParkingSystemConfigService, ParkingSystemConfigService>();
 
         return services;
 

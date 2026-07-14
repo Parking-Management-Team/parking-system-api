@@ -78,7 +78,8 @@ public class ZoneService : IZoneService
                 Capacity = request.Capacity,
                 VehicleTypeId = request.VehicleTypeId,
                 AccessType = request.AccessType,
-                Status = ZoneStatus.Available
+                Status = ZoneStatus.Available,
+                BookingLimitRate = request.BookingLimitRate
             };
 
             await _zoneRepository.AddAsync(zone);
@@ -343,12 +344,13 @@ public class ZoneService : IZoneService
                 }
             }
 
-            // Cập nhật thuộc tính zone
+            // Update zone properties
             zone.Code = newZoneCode;
             zone.Name = request.Name;
             zone.Capacity = request.Capacity;
             zone.VehicleTypeId = request.VehicleTypeId;
             zone.AccessType = request.AccessType;
+            zone.BookingLimitRate = request.BookingLimitRate;
 
             _zoneRepository.Update(zone);
             await _unitOfWork.SaveChangesAsync();
