@@ -257,6 +257,12 @@ public class ParkingSlotService : IParkingSlotService
             }
         }
 
+        // Logic bảo vệ: Không cho phép đổi trạng thái thủ công nếu slot đang có xe đậu (Occupied)
+        if (slot.Status == SlotStatus.Occupied && request.Status != SlotStatus.Occupied)
+        {
+            throw new ValidationException($"Cannot change the status of slot '{slot.Code}' because it is currently occupied.");
+        }
+
         slot.Code = newCode;
         slot.Name = request.Name;
         slot.VehicleTypeId = request.VehicleTypeId;
