@@ -324,9 +324,9 @@ public class ParkingSlotService : IParkingSlotService
             throw new NotFoundException("ParkingSlot", id);
         }
 
-        if (slot.Status != SlotStatus.Blocked)
+        if (slot.Status != SlotStatus.Blocked && slot.Status != SlotStatus.Maintenance)
         {
-            throw new ValidationException($"Slot '{slot.Code}' is not blocked. Current status: {slot.Status}.");
+            throw new ValidationException($"Slot '{slot.Code}' cannot be unblocked. Current status: {slot.Status}.");
         }
 
         slot.Status = SlotStatus.Available;
