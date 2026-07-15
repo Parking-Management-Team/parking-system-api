@@ -746,7 +746,6 @@ public static class DbInitializer
 
         var pastPayment = new Payment
         {
-            BookingId = pastBooking.Id,
             SessionId = pastSession.Id,
             Amount = 100000m,
             PaymentMethod = "ONLINE",
