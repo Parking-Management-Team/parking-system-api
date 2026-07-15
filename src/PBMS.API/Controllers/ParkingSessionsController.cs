@@ -147,7 +147,7 @@ public class ParkingSessionsController : ControllerBase
     }
 
     /// <summary>
-    /// Hoàn tất checkout cho xe không thanh toán (ghi nhận công nợ và đưa vào Blacklist).
+    /// Completes check-out without payment, records the debt, and adds the vehicle to the blacklist.
     /// </summary>
     [HttpPost("{id:int}/unpaid-checkout")]
     public async Task<IActionResult> UnpaidCheckout(int id, [FromBody] UnpaidCheckoutRequest request)
@@ -162,7 +162,7 @@ public class ParkingSessionsController : ControllerBase
     }
 
     /// <summary>
-    /// Báo mất thẻ gửi xe và áp dụng phí phạt.
+    /// Reports a lost parking card and applies the penalty fee.
     /// </summary>
     [HttpPost("{id:int}/lost-card")]
     public async Task<IActionResult> ReportLostCard(int id, [FromBody] LostCardRequest request)
@@ -177,7 +177,7 @@ public class ParkingSessionsController : ControllerBase
     }
 
     /// <summary>
-    /// Hoàn tác/Khôi phục báo mất thẻ (gỡ bỏ các lệnh chặn blacklist của thẻ/xe và xóa sự cố).
+    /// Reverts a lost-card report, removes related blacklist entries, and cancels the incident.
     /// </summary>
     [HttpPost("{id:int}/lost-card/rollback")]
     public async Task<IActionResult> RollbackLostCard(int id)
@@ -187,7 +187,7 @@ public class ParkingSessionsController : ControllerBase
     }
 
     /// <summary>
-    /// Thay đổi thẻ gửi xe mới cho phiên gửi xe khi bị mất thẻ.
+    /// Assigns a replacement card to a parking session after a card is lost.
     /// </summary>
     [HttpPatch("{id:int}/replace-card")]
     public async Task<IActionResult> ReplaceCard(int id, [FromQuery] string newCardCode)
