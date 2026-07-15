@@ -59,6 +59,11 @@ namespace PBMS.Infrastructure.Repositories
             return await _dbSet.FirstOrDefaultAsync(predicate);
         }
 
+        public virtual async Task<TEntity?> FirstOrDefaultIgnoreQueryFiltersAsync(Expression<Func<TEntity, bool>> predicate)
+        {
+            return await _dbSet.IgnoreQueryFilters().FirstOrDefaultAsync(predicate);
+        }
+
         // 5. Thêm mới một bản ghi vào DB
         public virtual async Task AddAsync(TEntity entity)
         {
