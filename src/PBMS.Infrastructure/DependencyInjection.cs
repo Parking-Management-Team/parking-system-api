@@ -124,7 +124,8 @@ public static class DependencyInjection
             context.Database.Migrate();
             Console.WriteLine("--> Database migration completed successfully.");
 
-            await DbInitializer.SeedAsync(context);
+            var resetPasswords = configuration.GetValue<bool>("Db:ResetDemoPasswordsOnStartup", false);
+            await DbInitializer.SeedAsync(context, resetPasswords);
             Console.WriteLine("--> Database seeding completed successfully.");
         }
     }

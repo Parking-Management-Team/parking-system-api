@@ -11,9 +11,12 @@ namespace PBMS.Infrastructure.Data;
 
 public static class DbInitializer
 {
-    public static async Task SeedAsync(AppDbContext context)
+    public static async Task SeedAsync(AppDbContext context, bool resetPasswords = false)
     {
-        // 1. Seed Roles
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Seed Roles
         if (!await context.Set<Role>().AnyAsync())
         {
             var roles = new List<Role>
@@ -47,10 +50,14 @@ public static class DbInitializer
         }
 
         // 3. Seed/Update Accounts (Admin, Manager, Staff, Driver)
-        var adminRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Admin");
-        var managerRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Manager");
-        var staffRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Staff");
-        var driverRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Driver");
+        var adminRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Admin")
+            ?? throw new InvalidOperationException("Required role 'Admin' was not found in the database. Please seed roles first.");
+        var managerRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Manager")
+            ?? throw new InvalidOperationException("Required role 'Manager' was not found in the database. Please seed roles first.");
+        var staffRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Staff")
+            ?? throw new InvalidOperationException("Required role 'Staff' was not found in the database. Please seed roles first.");
+        var driverRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Driver")
+            ?? throw new InvalidOperationException("Required role 'Driver' was not found in the database. Please seed roles first.");
 
         // Admin
         var adminAccount = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "admin");
@@ -62,12 +69,12 @@ public static class DbInitializer
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "admin@pbms.com", 
                 FullName = "System Admin",
-                RoleId = adminRole!.Id,
+                RoleId = adminRole.Id,
                 AccountStatus = "Active"
             };
             await context.AddAsync(adminAccount);
         }
-        else
+        else if (resetPasswords)
         {
             adminAccount.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123");
             context.Update(adminAccount);
@@ -83,12 +90,12 @@ public static class DbInitializer
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "manager@pbms.com", 
                 FullName = "John Doe (Manager)",
-                RoleId = managerRole!.Id,
+                RoleId = managerRole.Id,
                 AccountStatus = "Active"
             };
             await context.AddAsync(managerAccount);
         }
-        else
+        else if (resetPasswords)
         {
             managerAccount.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123");
             context.Update(managerAccount);
@@ -104,12 +111,12 @@ public static class DbInitializer
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "staff@pbms.com", 
                 FullName = "Jane Smith (Staff)",
-                RoleId = staffRole!.Id,
+                RoleId = staffRole.Id,
                 AccountStatus = "Active"
             };
             await context.AddAsync(staffAccount);
         }
-        else
+        else if (resetPasswords)
         {
             staffAccount.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123");
             context.Update(staffAccount);
@@ -125,12 +132,12 @@ public static class DbInitializer
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"), 
                 Email = "driver@pbms.com", 
                 FullName = "Bob Johnson (Driver)",
-                RoleId = driverRole!.Id,
+                RoleId = driverRole.Id,
                 AccountStatus = "Active"
             };
             await context.AddAsync(driverAccount);
         }
-        else
+        else if (resetPasswords)
         {
             driverAccount.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123");
             context.Update(driverAccount);
@@ -259,14 +266,16 @@ public static class DbInitializer
         // 6. Seed Pricing Policies (Motorcycle & Car)
         if (!await context.Set<PricingPolicy>().AnyAsync())
         {
-            motorcycleType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle");
-            carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car");
+            var motorcycleTypeForPolicy = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle")
+                ?? throw new InvalidOperationException("Required VehicleType 'Motorcycle' was not found in the database. Please seed vehicle types first.");
+            var carTypeForPolicy = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car")
+                ?? throw new InvalidOperationException("Required VehicleType 'Car' was not found in the database. Please seed vehicle types first.");
 
             var policies = new List<PricingPolicy>
             {
                 new PricingPolicy
                 {
-                    VehicleTypeId = motorcycleType!.Id,
+                    VehicleTypeId = motorcycleTypeForPolicy.Id,
                     PolicyName = "Motorbike Casual Pricing",
                     EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
                     PricingPolicyStatus = "Active",
@@ -346,7 +355,7 @@ public static class DbInitializer
                 },
                 new PricingPolicy
                 {
-                    VehicleTypeId = carType!.Id,
+                    VehicleTypeId = carTypeForPolicy.Id,
                     PolicyName = "Car Casual Pricing",
                     EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
                     PricingPolicyStatus = "Active",
@@ -453,9 +462,14 @@ public static class DbInitializer
         // 9. Seed Subscription Price Configs
         if (!await context.Set<SubscriptionPriceConfig>().AnyAsync())
         {
+            var motorcycleTypeForConfig = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle")
+                ?? throw new InvalidOperationException("Required VehicleType 'Motorcycle' was not found in the database. Please seed vehicle types first.");
+            var carTypeForConfig = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car")
+                ?? throw new InvalidOperationException("Required VehicleType 'Car' was not found in the database. Please seed vehicle types first.");
+
             var motorcycleConfig = new SubscriptionPriceConfig
             {
-                VehicleTypeId = motorcycleType!.Id,
+                VehicleTypeId = motorcycleTypeForConfig.Id,
                 Price = 150000, // 150k/tháng
                 DurationDays = 30,
                 EffectiveFrom = DateTime.UtcNow,
@@ -464,7 +478,7 @@ public static class DbInitializer
 
             var carConfig = new SubscriptionPriceConfig
             {
-                VehicleTypeId = carType!.Id,
+                VehicleTypeId = carTypeForConfig.Id,
                 Price = 1000000, // 1 triệu/tháng
                 DurationDays = 30,
                 EffectiveFrom = DateTime.UtcNow,
@@ -544,5 +558,279 @@ public static class DbInitializer
             await context.AddRangeAsync(penaltyConfigs);
             await context.SaveChangesAsync();
         }
+
+        // 12. Seed Demo Bookings/Sessions if none exist
+        if (!await context.Set<Booking>().AnyAsync())
+        {
+            await SeedDemoDataInternalAsync(context);
+        }
+
+        await transaction.CommitAsync();
+    }
+    catch (Exception)
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
+
+    public static async Task ResetDemoDataAsync(AppDbContext context)
+    {
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Wipe time-sensitive transactional tables
+            context.Set<Payment>().RemoveRange(await context.Set<Payment>().ToListAsync());
+            context.Set<Incident>().RemoveRange(await context.Set<Incident>().ToListAsync());
+            context.Set<ParkingSession>().RemoveRange(await context.Set<ParkingSession>().ToListAsync());
+            context.Set<Booking>().RemoveRange(await context.Set<Booking>().ToListAsync());
+            await context.SaveChangesAsync();
+
+            // 2. Reset slot statuses to Available
+            var slots = await context.Set<ParkingSlot>().ToListAsync();
+            foreach (var slot in slots)
+            {
+                slot.Status = SlotStatus.Available;
+            }
+            context.UpdateRange(slots);
+
+            // 3. Reset card statuses to Available
+            var cards = await context.Set<Card>().ToListAsync();
+            foreach (var card in cards)
+            {
+                card.CardStatus = CardStatus.Available.ToString();
+                card.LostAt = null;
+            }
+            context.UpdateRange(cards);
+            await context.SaveChangesAsync();
+
+            // 4. Seed the fresh relative demo data
+            await SeedDemoDataInternalAsync(context);
+
+            await transaction.CommitAsync();
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    private static async Task SeedDemoDataInternalAsync(AppDbContext context)
+    {
+        var driverRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Driver")
+            ?? throw new InvalidOperationException("Required role 'Driver' was not found in the database.");
+        var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car" || v.VehicleTypeCode == "CAR")
+            ?? throw new InvalidOperationException("Required VehicleType 'Car' was not found in the database.");
+        var staff = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "staff")
+            ?? throw new InvalidOperationException("Required staff account was not found.");
+        var testDriver = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver")
+            ?? throw new InvalidOperationException("Required default driver account was not found.");
+        var testVehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-12345")
+            ?? throw new InvalidOperationException("Required default vehicle '51G-12345' was not found.");
+        var card1 = await context.Set<Card>().FirstOrDefaultAsync(c => c.CardCode == "CARD001")
+            ?? throw new InvalidOperationException("Required card 'CARD001' was not found.");
+        var card2 = await context.Set<Card>().FirstOrDefaultAsync(c => c.CardCode == "CARD002")
+            ?? throw new InvalidOperationException("Required card 'CARD002' was not found.");
+        var building = await context.Set<Building>().FirstOrDefaultAsync(b => b.Code == "BLD01")
+            ?? throw new InvalidOperationException("Required building 'BLD01' was not found.");
+        var zone = await context.Set<Zone>().FirstOrDefaultAsync(z => z.Code == "ZC01")
+            ?? throw new InvalidOperationException("Required zone 'ZC01' was not found.");
+        var slot1 = await context.Set<ParkingSlot>().FirstOrDefaultAsync(s => s.Code == "ZC01-01")
+            ?? throw new InvalidOperationException("Required slot 'ZC01-01' was not found.");
+
+        // Seeding driver2
+        var driver2 = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver2");
+        if (driver2 == null)
+        {
+            driver2 = new Account
+            {
+                Username = "driver2",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                Email = "driver2@pbms.com",
+                FullName = "Alice Smith (Demo Driver 2)",
+                RoleId = driverRole.Id,
+                AccountStatus = "Active"
+            };
+            await context.AddAsync(driver2);
+            await context.SaveChangesAsync();
+        }
+
+        // Seeding vehicle2
+        var vehicle2 = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-67890");
+        if (vehicle2 == null)
+        {
+            vehicle2 = new Vehicle
+            {
+                AccountId = driver2.Id,
+                VehicleTypeId = carType.Id,
+                LicensePlate = "51G-67890",
+                RegisteredDay = DateTime.UtcNow.AddHours(7),
+                VehicleStatus = "ACTIVE"
+            };
+            await context.AddAsync(vehicle2);
+            await context.SaveChangesAsync();
+        }
+
+        // Seeding driver3
+        var driver3 = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver3");
+        if (driver3 == null)
+        {
+            driver3 = new Account
+            {
+                Username = "driver3",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                Email = "driver3@pbms.com",
+                FullName = "Charlie Brown (Demo Driver 3)",
+                RoleId = driverRole.Id,
+                AccountStatus = "Active"
+            };
+            await context.AddAsync(driver3);
+            await context.SaveChangesAsync();
+        }
+
+        // Seeding vehicle3
+        var vehicle3 = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-88888");
+        if (vehicle3 == null)
+        {
+            vehicle3 = new Vehicle
+            {
+                AccountId = driver3.Id,
+                VehicleTypeId = carType.Id,
+                LicensePlate = "51G-88888",
+                RegisteredDay = DateTime.UtcNow.AddHours(7),
+                VehicleStatus = "ACTIVE"
+            };
+            await context.AddAsync(vehicle3);
+            await context.SaveChangesAsync();
+        }
+
+        // ----------------------------------------------------
+        // A. Past Data (Completed sessions and bookings)
+        // ----------------------------------------------------
+        var pastBooking = new Booking
+        {
+            AccountId = testDriver.Id,
+            VehicleId = testVehicle.Id,
+            VehicleTypeId = carType.Id,
+            BuildingId = building.Id,
+            PlannedCheckinTime = DateTime.UtcNow.AddDays(-3).AddHours(-4),
+            PlannedCheckoutTime = DateTime.UtcNow.AddDays(-3).AddHours(2),
+            DepositAmount = 20000m,
+            BookingStatus = BookingStatus.CheckedIn,
+            PaymentDeadline = DateTime.UtcNow.AddDays(-3).AddHours(-4).AddMinutes(15),
+            CheckinGraceUntil = DateTime.UtcNow.AddDays(-3).AddHours(-4).AddMinutes(30),
+            SlotId = slot1.Id
+        };
+        await context.AddAsync(pastBooking);
+        await context.SaveChangesAsync();
+
+        var pastSession = new ParkingSession
+        {
+            VehicleId = testVehicle.Id,
+            BuildingId = building.Id,
+            CardId = card1.Id,
+            ZoneId = zone.Id,
+            SlotId = slot1.Id,
+            BookingId = pastBooking.Id,
+            CheckInTime = DateTime.UtcNow.AddDays(-3).AddHours(-3).AddMinutes(45),
+            CheckOutTime = DateTime.UtcNow.AddDays(-3).AddHours(1).AddMinutes(30),
+            LicensePlateIn = testVehicle.LicensePlate,
+            LicensePlateOut = testVehicle.LicensePlate,
+            SessionStatus = "COMPLETED",
+            InStaffId = staff.Id,
+            OutStaffId = staff.Id
+        };
+        await context.AddAsync(pastSession);
+        await context.SaveChangesAsync();
+
+        var pastPayment = new Payment
+        {
+            BookingId = pastBooking.Id,
+            SessionId = pastSession.Id,
+            Amount = 100000m,
+            PaymentMethod = "ONLINE",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddDays(-3).Ticks,
+            PaymentTime = DateTime.UtcNow.AddDays(-3).AddHours(-3).AddMinutes(40)
+        };
+        await context.AddAsync(pastPayment);
+        await context.SaveChangesAsync();
+
+        // ----------------------------------------------------
+        // B. Present Data (Active sessions / Overdue booking)
+        // ----------------------------------------------------
+        var activeBookingD2 = new Booking
+        {
+            AccountId = driver2.Id,
+            VehicleId = vehicle2.Id,
+            VehicleTypeId = carType.Id,
+            BuildingId = building.Id,
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(-3),
+            PlannedCheckoutTime = DateTime.UtcNow.AddMinutes(-30), // Overdue Checkout!
+            DepositAmount = 20000m,
+            BookingStatus = BookingStatus.CheckedIn,
+            PaymentDeadline = DateTime.UtcNow.AddHours(-3).AddMinutes(15),
+            CheckinGraceUntil = DateTime.UtcNow.AddHours(-3).AddMinutes(30),
+            SlotId = slot1.Id
+        };
+        await context.AddAsync(activeBookingD2);
+        await context.SaveChangesAsync();
+
+        var activeSessionD2 = new ParkingSession
+        {
+            VehicleId = vehicle2.Id,
+            BuildingId = building.Id,
+            CardId = card2.Id,
+            ZoneId = zone.Id,
+            SlotId = slot1.Id,
+            BookingId = activeBookingD2.Id,
+            CheckInTime = DateTime.UtcNow.AddHours(-2).AddMinutes(50),
+            CheckOutTime = null,
+            LicensePlateIn = vehicle2.LicensePlate,
+            SessionStatus = "ACTIVE",
+            InStaffId = staff.Id
+        };
+        await context.AddAsync(activeSessionD2);
+        await context.SaveChangesAsync();
+
+        card2.CardStatus = CardStatus.Active.ToString();
+        context.Update(card2);
+
+        slot1.Status = SlotStatus.Occupied;
+        context.Update(slot1);
+        await context.SaveChangesAsync();
+
+        // ----------------------------------------------------
+        // C. Future Data (Confirmed bookings in the future)
+        // ----------------------------------------------------
+        var futureBookingD3 = new Booking
+        {
+            AccountId = driver3.Id,
+            VehicleId = vehicle3.Id,
+            VehicleTypeId = carType.Id,
+            BuildingId = building.Id,
+            PlannedCheckinTime = DateTime.UtcNow.AddMinutes(15),
+            PlannedCheckoutTime = DateTime.UtcNow.AddHours(4).AddMinutes(15),
+            DepositAmount = 20000m,
+            BookingStatus = BookingStatus.Confirmed,
+            PaymentDeadline = DateTime.UtcNow.AddMinutes(15).AddMinutes(15),
+            CheckinGraceUntil = DateTime.UtcNow.AddMinutes(15).AddMinutes(30),
+            SlotId = slot1.Id
+        };
+        await context.AddAsync(futureBookingD3);
+        await context.SaveChangesAsync();
+
+        var paymentD3 = new Payment
+        {
+            BookingId = futureBookingD3.Id,
+            Amount = 20000m,
+            PaymentMethod = "ONLINE",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.Ticks,
+            PaymentTime = DateTime.UtcNow.AddMinutes(-5)
+        };
+        await context.AddAsync(paymentD3);
+        await context.SaveChangesAsync();
     }
 }
