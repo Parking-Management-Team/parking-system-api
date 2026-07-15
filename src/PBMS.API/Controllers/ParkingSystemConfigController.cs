@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Common;
 using PBMS.Application.ParkingSystemConfig.DTOs;
 using PBMS.Application.ParkingSystemConfig.Interfaces;
+using PBMS.Infrastructure.Data;
 
 namespace PBMS.API.Controllers;
 
@@ -52,5 +53,15 @@ public class ParkingSystemConfigController : ControllerBase
     {
         var config = await _configService.UpsertConfigAsync(request);
         return Ok(BaseResponse<ParkingSystemConfigDto>.Ok(config, "Configuration updated successfully."));
+    }
+
+    /// <summary>
+    /// Resets and re-seeds relative past, present, and future demo data.
+    /// </summary>
+    [HttpPost("reset-demo")]
+    public async Task<IActionResult> ResetDemo([FromServices] AppDbContext context)
+    {
+        await DbInitializer.ResetDemoDataAsync(context);
+        return Ok(BaseResponse<object>.Ok(null, "Demo data reset and re-seeded successfully."));
     }
 }
