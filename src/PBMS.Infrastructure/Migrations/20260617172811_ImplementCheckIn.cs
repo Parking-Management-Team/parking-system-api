@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -82,10 +82,6 @@ namespace PBMS.Infrastructure.Migrations
                 ALTER TABLE vehicle_type ALTER COLUMN vehicle_type_code SET NOT NULL;
                 ALTER TABLE vehicle_type ALTER COLUMN vehicle_type_name SET NOT NULL;
                 ALTER TABLE vehicle_type ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
-
-                INSERT INTO vehicle_type (vehicle_type_code, vehicle_type_name, created_at)
-                SELECT 'UNKNOWN', 'Unknown', CURRENT_TIMESTAMP
-                WHERE NOT EXISTS (SELECT 1 FROM vehicle_type);
 
                 ALTER TABLE vehicle ADD COLUMN IF NOT EXISTS license_plate character varying(20);
                 ALTER TABLE vehicle ADD COLUMN IF NOT EXISTS vehicle_type_id integer;
