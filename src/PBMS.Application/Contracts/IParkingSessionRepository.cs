@@ -50,7 +50,15 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     Task<IEnumerable<ParkingSessionEntity>> GetByAccountIdAsync(int accountId);
 
     /// <summary>
-    /// Lấy tất cả phiên đỗ xe đang hoạt động kèm thông tin chi tiết (Vehicle, Card, v.v.).
+    /// Returns all active parking sessions with full details (Vehicle, Card, etc.).
     /// </summary>
     Task<IEnumerable<ParkingSessionEntity>> GetActiveSessionsWithDetailsAsync();
+
+    /// <summary>
+    /// Returns the active parking session currently occupying the specified slot,
+    /// including the Vehicle navigation property, or null if the slot is free.
+    /// Used by the Auto Delay Fallback logic to provide occupying session details.
+    /// </summary>
+    /// <param name="slotId">The parking slot to query.</param>
+    Task<ParkingSessionEntity?> FindActiveSessionForSlotAsync(int slotId);
 }

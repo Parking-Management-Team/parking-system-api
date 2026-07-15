@@ -2,9 +2,11 @@ using NSubstitute;
 using PBMS.Application.Booking.DTOs;
 using PBMS.Application.Booking.Services;
 using PBMS.Application.Contracts;
+using PBMS.Application.ParkingSystemConfig.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using PBMS.Domain.Exceptions;
+using PBMS.Domain.Engine;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -32,13 +34,15 @@ public class BookingServiceTests
     private readonly IBuildingRepository _buildingDetailRepositoryMock;
     private readonly IPricingPolicyRepository _pricingPolicyRepositoryMock;
     private readonly IRepository<ParkingSessionEntity> _sessionRepositoryMock;
-    private readonly IRepository<ParkingSlotEntity> _parkingSlotRepositoryMock;
+    private readonly IParkingSlotRepository _parkingSlotRepositoryMock;
     private readonly IRepository<PaymentEntity> _paymentRepositoryMock;
     private readonly IUnitOfWork _unitOfWorkMock;
     private readonly IConfiguration _configurationMock;
     private readonly IBlacklistRepository _blacklistRepositoryMock;
     private readonly IVNPayGateway _vnpayGatewayMock;
     private readonly IPricingCalculationService _pricingCalculationServiceMock;
+    private readonly IParkingSystemConfigService _configServiceMock;
+    private readonly IZoneBookingCapacityRepository _zoneCapacityRepositoryMock;
     private readonly BookingService _service;
 
     public BookingServiceTests()
@@ -50,16 +54,21 @@ public class BookingServiceTests
         _buildingDetailRepositoryMock = Substitute.For<IBuildingRepository>();
         _pricingPolicyRepositoryMock = Substitute.For<IPricingPolicyRepository>();
         _sessionRepositoryMock = Substitute.For<IRepository<ParkingSessionEntity>>();
-        _parkingSlotRepositoryMock = Substitute.For<IRepository<ParkingSlotEntity>>();
+        _parkingSlotRepositoryMock = Substitute.For<IParkingSlotRepository>();
         _paymentRepositoryMock = Substitute.For<IRepository<PaymentEntity>>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
         _configurationMock = Substitute.For<IConfiguration>();
         _blacklistRepositoryMock = Substitute.For<IBlacklistRepository>();
         _vnpayGatewayMock = Substitute.For<IVNPayGateway>();
         _pricingCalculationServiceMock = Substitute.For<IPricingCalculationService>();
+        _configServiceMock = Substitute.For<IParkingSystemConfigService>();
+        _zoneCapacityRepositoryMock = Substitute.For<IZoneBookingCapacityRepository>();
  
         // Thiết lập mặc định không nằm trong blacklist
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<PBMS.Domain.Entities.Blacklist, bool>>>()).Returns(false);
+ 
+        _pricingCalculationServiceMock.CalculateFeeAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<int?>())
+            .Returns(Task.FromResult(new PricingResult { TotalAmount = 20000 }));
  
         _service = new BookingService(
             _bookingRepositoryMock,
@@ -75,7 +84,9 @@ public class BookingServiceTests
             _configurationMock,
             _blacklistRepositoryMock,
             _vnpayGatewayMock,
-            _pricingCalculationServiceMock
+            _pricingCalculationServiceMock,
+            _configServiceMock,
+            _zoneCapacityRepositoryMock
         );
     }
 

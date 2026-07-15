@@ -5,6 +5,7 @@ using PBMS.Application.Common.Exceptions;
 using PBMS.Application.Contracts;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Application.ParkingStructure.Services;
+using PBMS.Application.ParkingSystemConfig.Interfaces;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using Xunit;
@@ -18,6 +19,7 @@ public class ParkingSlotServiceTests
     private readonly IRepository<VehicleType> _vehicleTypeRepositoryMock;
     private readonly IRepository<Booking> _bookingRepositoryMock;
     private readonly IMapper _mapperMock;
+    private readonly IParkingSystemConfigService _configServiceMock;
     private readonly ParkingSlotService _slotService;
 
     public ParkingSlotServiceTests()
@@ -27,13 +29,15 @@ public class ParkingSlotServiceTests
         _vehicleTypeRepositoryMock = Substitute.For<IRepository<VehicleType>>();
         _bookingRepositoryMock = Substitute.For<IRepository<Booking>>();
         _mapperMock = Substitute.For<IMapper>();
+        _configServiceMock = Substitute.For<IParkingSystemConfigService>();
 
         _slotService = new ParkingSlotService(
             _slotRepositoryMock,
             _zoneRepositoryMock,
             _vehicleTypeRepositoryMock,
             _bookingRepositoryMock,
-            _mapperMock);
+            _mapperMock,
+            _configServiceMock);
     }
 
     [Fact]

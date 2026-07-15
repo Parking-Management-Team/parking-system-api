@@ -20,13 +20,12 @@ using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Payment.Services;
 using PBMS.Application.Revenue.Interfaces;
 using PBMS.Application.Revenue.Services;
-using PBMS.Application.MonthlyCard.Interfaces;
-using PBMS.Application.MonthlyCard.Services;
 using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Booking.Services;
 using PBMS.Application.AuditLog.Interfaces;
 using PBMS.Application.AuditLog.Services;
-
+using PBMS.Application.ParkingSystemConfig.Interfaces;
+using PBMS.Application.ParkingSystemConfig.Services;
 
 
 namespace PBMS.Application;
@@ -78,8 +77,6 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         // Revenue module
         services.AddScoped<IRevenueService, RevenueService>();
-        // Monthly Subscription module
-        services.AddScoped<IMonthlySubscriptionService, MonthlySubscriptionService>();
 
         // Booking module
         services.AddScoped<IBookingService, BookingService>();
@@ -92,6 +89,9 @@ public static class DependencyInjection
 
         // Shift Report module
         services.AddScoped<PBMS.Application.ShiftReport.Interfaces.IShiftReportService, PBMS.Application.ShiftReport.Services.ShiftReportService>();
+
+        // ParkingSystemConfig module
+        services.AddScoped<IParkingSystemConfigService, ParkingSystemConfigService>();
 
         return services;
 

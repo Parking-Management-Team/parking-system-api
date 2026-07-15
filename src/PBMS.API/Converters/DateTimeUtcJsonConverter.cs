@@ -12,63 +12,48 @@ namespace PBMS.API.Converters
     {
         public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            var dateTime = reader.GetDateTime();
             var rawValue = reader.GetString();
 
-            if (rawValue != null)
+            if (rawValue == null)
             {
-                bool hasTime = rawValue.Contains(":");
-
-                if (hasTime)
-                {
-                    bool hasTimezone = rawValue.EndsWith("Z", StringComparison.OrdinalIgnoreCase) || 
-                                      rawValue.Contains("+");
-
-                    if (!hasTimezone)
-                    {
-                        int tIndex = rawValue.IndexOf('T');
-                        if (tIndex == -1) tIndex = rawValue.IndexOf(' ');
-                        
-                        if (tIndex != -1)
-                        {
-                            int lastHyphen = rawValue.LastIndexOf('-');
-                            if (lastHyphen > tIndex)
-                            {
-                                hasTimezone = true;
-                            }
-                        }
-                    }
-
-                    if (!hasTimezone)
-                    {
-                        // No timezone info: assume Vietnam Local time (+7) and convert to UTC
-                        return DateTime.SpecifyKind(dateTime.AddHours(-7), DateTimeKind.Utc);
-                    }
-                }
-                else
-                {
-                    // Date-only format (e.g., "2026-06-25"): Treat as UTC midnight directly
-                    return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
-                }
+                return DateTime.UtcNow;
             }
 
-            if (dateTime.Kind == DateTimeKind.Utc)
+            // Date-only format (e.g., "2026-06-25"): no colon in time portion
+            bool hasTime = rawValue.Contains(":");
+            if (!hasTime)
             {
-                return dateTime;
+                // Treat as UTC midnight
+                if (DateTime.TryParse(rawValue, out var dateOnly))
+                    return DateTime.SpecifyKind(dateOnly, DateTimeKind.Utc);
+                return DateTime.UtcNow;
             }
 
-            if (dateTime.Kind == DateTimeKind.Local)
+            // Try parsing as DateTimeOffset — handles +07:00, -05:00, Z, etc.
+            if (DateTimeOffset.TryParse(rawValue, null, System.Globalization.DateTimeStyles.None, out var dto))
             {
-                return dateTime.ToUniversalTime();
+                return dto.UtcDateTime;
             }
 
-            return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+            // Fallback: try as a bare datetime with no timezone — assume Vietnam Local (+7) → convert to UTC
+            if (DateTime.TryParse(rawValue, out var bare))
+            {
+                return DateTime.SpecifyKind(bare.AddHours(-7), DateTimeKind.Utc);
+            }
+
+            // Last resort: return UTC now
+            return DateTime.UtcNow;
         }
+
+        private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            // value is stored in Vietnam local time (UTC+7), so we write it directly with +07:00 offset
-            writer.WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss+07:00"));
+            // Convert UTC value to Vietnam local time before writing with +07:00 offset
+            var localTime = value.Kind == DateTimeKind.Utc 
+                ? TimeZoneInfo.ConvertTimeFromUtc(value, VietnamTimeZone) 
+                : value;
+            writer.WriteStringValue(localTime.ToString("yyyy-MM-ddTHH:mm:ss+07:00"));
         }
     }
 }

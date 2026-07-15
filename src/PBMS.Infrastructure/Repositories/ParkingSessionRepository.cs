@@ -88,7 +88,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Zone?> FindAvailableZoneAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow.AddHours(7);
+        var now = DateTime.UtcNow;
         var startGrace = now.AddMinutes(30);
 
         var zones = _context.Zones
@@ -126,7 +126,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<ParkingSlot?> FindAvailableGeneralSlotAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow.AddHours(7);
+        var now = DateTime.UtcNow;
         var startGrace = now.AddMinutes(30);
 
         var query = _context.ParkingSlots
@@ -158,15 +158,43 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             query = query.Where(s => !reservedSlotIds.Contains(s.Id));
         }
 
-        return await query
-            .OrderBy(s => s.ZoneId)
-            .ThenBy(s => s.Id)
-            .FirstOrDefaultAsync();
+        var candidateSlots = await query.ToListAsync();
+        if (!candidateSlots.Any())
+        {
+            return null;
+        }
+
+        var candidateSlotIds = candidateSlots.Select(s => s.Id).ToList();
+        var futureBookings = await _context.Set<Booking>()
+            .Where(b =>
+                b.SlotId != null &&
+                candidateSlotIds.Contains(b.SlotId.Value) &&
+                (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+                b.PlannedCheckinTime > now)
+            .ToListAsync();
+
+        var rankedSlots = candidateSlots
+            .Select(slot =>
+            {
+                var slotBookings = futureBookings.Where(b => b.SlotId == slot.Id).ToList();
+                var nextBooking = slotBookings.OrderBy(b => b.PlannedCheckinTime).FirstOrDefault();
+                return new
+                {
+                    Slot = slot,
+                    BookingCount = slotBookings.Count,
+                    NextCheckin = nextBooking?.PlannedCheckinTime ?? DateTime.MaxValue
+                };
+            })
+            .OrderBy(x => x.BookingCount)
+            .ThenByDescending(x => x.NextCheckin)
+            .ToList();
+
+        return rankedSlots.FirstOrDefault()?.Slot;
     }
 
     public async Task<List<ParkingSlot>> FindAllAvailableGeneralSlotsAsync(int vehicleTypeId, int? buildingId = null)
     {
-        var now = DateTime.UtcNow.AddHours(7);
+        var now = DateTime.UtcNow;
         var startGrace = now.AddMinutes(30);
 
         var query = _context.ParkingSlots
@@ -249,5 +277,13 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Include(s => s.ParkingSlot)
             .Where(s => s.SessionStatus.ToUpper() == "ACTIVE")
             .ToListAsync();
+    }
+
+    public async Task<ParkingSessionEntity?> FindActiveSessionForSlotAsync(int slotId)
+    {
+        return await _context.ParkingSessions
+            .Include(s => s.Vehicle)
+            .Include(s => s.Booking)
+            .FirstOrDefaultAsync(s => s.SlotId == slotId && s.SessionStatus.ToUpper() == "ACTIVE");
     }
 }

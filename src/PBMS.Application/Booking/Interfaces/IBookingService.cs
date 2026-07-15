@@ -95,5 +95,5 @@ public interface IBookingService
     /// Áp dụng khoảng đệm 30 phút với booking tiếp theo của khách hàng khác.
     /// Trả về DTO chứa kết quả điều chỉnh thời gian tối đa và link thanh toán VNPay bổ sung.
     /// </summary>
-    Task<BookingExtensionResultDto> RequestExtensionAsync(int id, DateTime requestedNewEndTime);
+    Task<BookingExtensionResultDto> RequestExtensionAsync(int id, DateTime requestedNewEndTime, bool payLater = false);
 }

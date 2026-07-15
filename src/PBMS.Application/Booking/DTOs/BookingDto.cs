@@ -53,6 +53,11 @@ public class BookingDto
     public decimal DepositAmount { get; set; }
 
     /// <summary>
+    /// Tổng chi phí dự kiến cho toàn bộ khoảng thời gian đặt chỗ.
+    /// </summary>
+    public decimal TotalAmount { get; set; }
+
+    /// <summary>
     /// Trạng thái Booking hiện tại.
     /// Các giá trị: "Pending", "Confirmed", "CheckedIn", "Cancelled", "NoShow", "Expired"
     /// </summary>

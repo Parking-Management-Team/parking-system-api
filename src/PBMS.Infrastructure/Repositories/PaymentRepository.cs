@@ -93,5 +93,30 @@ namespace PBMS.Infrastructure.Repositories
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }
+
+        /// <summary>
+        /// Retrieves all PAID payments within a specified UTC timeframe, including related sessions and bookings.
+        /// </summary>
+        public async Task<IEnumerable<Payment>> GetPaidPaymentsAsync(DateTime? fromDateUtc, DateTime? toDateUtc)
+        {
+            var query = _dbContext.Set<Payment>()
+                .Include(p => p.Session)
+                    .ThenInclude(s => s!.Vehicle)
+                .Include(p => p.Booking)
+                .Where(p => p.PaymentStatus == "PAID")
+                .AsQueryable();
+
+            if (fromDateUtc.HasValue)
+            {
+                query = query.Where(p => (p.PaymentTime ?? p.CreatedAt) >= fromDateUtc.Value);
+            }
+
+            if (toDateUtc.HasValue)
+            {
+                query = query.Where(p => (p.PaymentTime ?? p.CreatedAt) <= toDateUtc.Value);
+            }
+
+            return await query.ToListAsync();
+        }
     }
 }

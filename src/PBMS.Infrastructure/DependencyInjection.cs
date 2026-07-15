@@ -71,7 +71,6 @@ public static class DependencyInjection
         services.AddScoped<IBuildingRepository, BuildingRepository>();
         services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
-        services.AddScoped<IMonthlySubscriptionRepository, MonthlySubscriptionRepository>();
 
         // Đăng ký repository Booking
         services.AddScoped<IBookingRepository, BookingRepository>();
@@ -84,6 +83,10 @@ public static class DependencyInjection
         services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
         services.AddScoped<ISubscriptionPriceConfigRepository, SubscriptionPriceConfigRepository>();
         services.AddScoped<IPenaltyConfigRepository, PenaltyConfigRepository>();
+
+        // System Configuration & Capacity Repositories
+        services.AddScoped<IParkingSystemConfigRepository, ParkingSystemConfigRepository>();
+        services.AddScoped<IZoneBookingCapacityRepository, ZoneBookingCapacityRepository>();
 
         // VNPay Gateway
         services.AddScoped<IVNPayGateway, VNPayGateway>();
@@ -121,7 +124,8 @@ public static class DependencyInjection
             context.Database.Migrate();
             Console.WriteLine("--> Database migration completed successfully.");
 
-            await DbInitializer.SeedAsync(context);
+            var resetPasswords = configuration.GetValue<bool>("Db:ResetDemoPasswordsOnStartup", false);
+            await DbInitializer.SeedAsync(context, resetPasswords);
             Console.WriteLine("--> Database seeding completed successfully.");
         }
     }
