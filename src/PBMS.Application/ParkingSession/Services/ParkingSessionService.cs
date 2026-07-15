@@ -1261,7 +1261,27 @@ public class ParkingSessionService : IParkingSessionService
         _sessionRepository.Update(session);
 
         // 4. Tự động báo cáo sự cố LOST_CARD nếu chưa có để hệ thống tính phí phạt khi checkout
-        var lostCardType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LOST_CARD");
+        var lostCardType = await _incidentTypeRepository.FirstOrDefaultIgnoreQueryFiltersAsync(it => it.IncidentCode == "LOST_CARD");
+        if (lostCardType == null)
+        {
+            lostCardType = new IncidentType
+            {
+                IncidentCode = "LOST_CARD",
+                IncidentName = "Mất thẻ gửi xe",
+                Description = "Khách hàng báo mất thẻ tại cổng ra hoặc trong bãi"
+            };
+            await _incidentTypeRepository.AddAsync(lostCardType);
+            await _incidentTypeRepository.SaveChangesAsync();
+        }
+        else if (lostCardType.IsDeleted)
+        {
+            lostCardType.IsDeleted = false;
+            lostCardType.DeletedAt = null;
+            lostCardType.DeletedBy = null;
+            _incidentTypeRepository.Update(lostCardType);
+            await _incidentTypeRepository.SaveChangesAsync();
+        }
+
         if (lostCardType != null)
         {
             var openLostIncidents = await _incidentRepository.FindAsync(i => i.SessionId == session.Id && i.IncidentTypeId == lostCardType.Id && i.Status == IncidentStatus.Open);
@@ -1327,7 +1347,7 @@ public class ParkingSessionService : IParkingSessionService
         }
 
         // 4. Tạo sự cố UNPAID_VEHICLE
-        var unpaidIncidentType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "UNPAID_VEHICLE");
+        var unpaidIncidentType = await _incidentTypeRepository.FirstOrDefaultIgnoreQueryFiltersAsync(it => it.IncidentCode == "UNPAID_VEHICLE");
         if (unpaidIncidentType == null)
         {
             // Tạo mới IncidentType nếu chưa có
@@ -1338,6 +1358,14 @@ public class ParkingSessionService : IParkingSessionService
                 Description = "Phương tiện ra khỏi bãi đỗ xe nhưng chưa hoàn tất thanh toán"
             };
             await _incidentTypeRepository.AddAsync(unpaidIncidentType);
+            await _incidentTypeRepository.SaveChangesAsync();
+        }
+        else if (unpaidIncidentType.IsDeleted)
+        {
+            unpaidIncidentType.IsDeleted = false;
+            unpaidIncidentType.DeletedAt = null;
+            unpaidIncidentType.DeletedBy = null;
+            _incidentTypeRepository.Update(unpaidIncidentType);
             await _incidentTypeRepository.SaveChangesAsync();
         }
 
@@ -1422,7 +1450,7 @@ public class ParkingSessionService : IParkingSessionService
         _cardRepository.Update(card);
 
         // 2. Tạo sự cố LOST_CARD
-        var lostCardType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LOST_CARD");
+        var lostCardType = await _incidentTypeRepository.FirstOrDefaultIgnoreQueryFiltersAsync(it => it.IncidentCode == "LOST_CARD");
         if (lostCardType == null)
         {
             lostCardType = new IncidentType
@@ -1432,6 +1460,14 @@ public class ParkingSessionService : IParkingSessionService
                 Description = "Khách hàng báo mất thẻ tại cổng ra hoặc trong bãi"
             };
             await _incidentTypeRepository.AddAsync(lostCardType);
+            await _incidentTypeRepository.SaveChangesAsync();
+        }
+        else if (lostCardType.IsDeleted)
+        {
+            lostCardType.IsDeleted = false;
+            lostCardType.DeletedAt = null;
+            lostCardType.DeletedBy = null;
+            _incidentTypeRepository.Update(lostCardType);
             await _incidentTypeRepository.SaveChangesAsync();
         }
 

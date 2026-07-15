@@ -40,6 +40,11 @@ namespace PBMS.Application.Contracts
         Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate);
 
         /// <summary>
+        /// Retrieves a single entity that matches the specified predicate, ignoring global query filters.
+        /// </summary>
+        Task<TEntity?> FirstOrDefaultIgnoreQueryFiltersAsync(Expression<Func<TEntity, bool>> predicate);
+
+        /// <summary>
         /// Adds a new entity to the repository asynchronously.
         /// </summary>
         /// <param name="entity">The entity to add.</param>
