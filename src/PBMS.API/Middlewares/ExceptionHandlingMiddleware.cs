@@ -124,6 +124,17 @@ namespace PBMS.API.Middlewares
                     domainEx.Message
                 );
             }
+            else if (exception is Microsoft.EntityFrameworkCore.DbUpdateException dbUpdateEx &&
+                     dbUpdateEx.InnerException is Npgsql.PostgresException pgEx &&
+                     pgEx.SqlState == "23P11")
+            {
+                // Xử lý khi vi phạm Exclusion Constraint (đặt chỗ bị trùng khoảng thời gian song song)
+                statusCode = HttpStatusCode.BadRequest;
+                response = BaseResponse<object>.Fail(
+                    "SLOT_ALREADY_RESERVED",
+                    "Vị trí đỗ xe đã chọn đã được đặt trước bởi khách hàng khác trong khung giờ này."
+                );
+            }
             else
             {
                 // For any other unexpected exception type
