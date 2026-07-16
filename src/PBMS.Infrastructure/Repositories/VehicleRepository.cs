@@ -51,6 +51,7 @@ public class VehicleRepository : IVehicleRepository
     {
         var normalizedLicensePlate = NormalizeLicensePlate(licensePlate);
         var query = _context.Vehicles.Where(v =>
+            v.LicensePlate == normalizedLicensePlate ||
             v.LicensePlate.ToUpper().Replace(" ", "").Replace("-", "").Replace(".", "") == normalizedLicensePlate);
 
         if (excludeId.HasValue)
@@ -67,6 +68,7 @@ public class VehicleRepository : IVehicleRepository
         return await _context.Vehicles
             .Include(v => v.VehicleType)
             .FirstOrDefaultAsync(v =>
+                v.LicensePlate == normalized ||
                 v.LicensePlate.ToUpper().Replace(" ", "").Replace("-", "").Replace(".", "") == normalized);
     }
 

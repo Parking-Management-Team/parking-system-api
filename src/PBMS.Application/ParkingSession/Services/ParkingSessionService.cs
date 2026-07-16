@@ -75,7 +75,7 @@ public class ParkingSessionService : IParkingSessionService
     {
 
 
-        var normalizedPlate = Normalize(request.LicensePlate);
+        var normalizedPlate = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlate);
         var normalizedCardCode = Normalize(request.CardCode);
         var checkInTime = DateTime.UtcNow;
 
@@ -83,6 +83,23 @@ public class ParkingSessionService : IParkingSessionService
         if (vehicleType == null)
         {
             return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Vehicle type with ID {request.VehicleTypeId} not found.");
+        }
+
+        // Validate vehicle type category matches license plate format
+        var detectedCategory = PBMS.Application.Vehicle.Services.VehicleService.DetectVehicleTypeFromPlate(request.LicensePlate);
+        var selectedTypeName = vehicleType.TypeName ?? "";
+        bool isSelectedTypeMotorcycle = selectedTypeName.Contains("Motor", StringComparison.OrdinalIgnoreCase) || 
+                                       selectedTypeName.Contains("Bike", StringComparison.OrdinalIgnoreCase) || 
+                                       selectedTypeName.Contains("Scoot", StringComparison.OrdinalIgnoreCase) ||
+                                       selectedTypeName.Contains("máy", StringComparison.OrdinalIgnoreCase);
+
+        if (detectedCategory == "Motorcycle" && !isSelectedTypeMotorcycle)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_TYPE_MISMATCH", "This license plate is for a motorcycle. Please select a motorcycle vehicle type.");
+        }
+        else if (detectedCategory == "Car" && isSelectedTypeMotorcycle)
+        {
+            return BaseResponse<ParkingSessionDto>.Fail("VEHICLE_TYPE_MISMATCH", "This license plate is for a car/truck. Please select a car or non-motorcycle vehicle type.");
         }
 
         // Validate active pricing policy exists
@@ -162,7 +179,7 @@ public class ParkingSessionService : IParkingSessionService
                 return BaseResponse<ParkingSessionDto>.Fail("BOOKING_ALREADY_CHECKED_IN", "Booking already has a parking session.");
             }
 
-            var bookingPlate = Normalize(booking.Vehicle.LicensePlate);
+            var bookingPlate = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(booking.Vehicle.LicensePlate);
             if (booking.VehicleTypeId != request.VehicleTypeId || booking.Vehicle.VehicleTypeId != request.VehicleTypeId)
             {
                 return BaseResponse<ParkingSessionDto>.Fail("BOOKING_VEHICLE_TYPE_MISMATCH", "Booking vehicle type does not match the check-in request.");
@@ -648,7 +665,7 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<CheckInBookingLookupDto>.Fail("INVALID_LICENSE_PLATE", "License plate is required.");
         }
 
-        var normalizedPlate = Normalize(licensePlate);
+        var normalizedPlate = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(licensePlate);
         var booking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, buildingId);
         if (booking == null)
         {
@@ -701,7 +718,7 @@ public class ParkingSessionService : IParkingSessionService
             MonthlySubscriptionId = null,
             InStaffId = request.InStaffId,
             CheckInTime = ToUtc(request.CheckInTime ?? DateTime.UtcNow),
-            LicensePlateIn = Normalize(request.LicensePlateIn),
+            LicensePlateIn = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlateIn),
             SessionStatus = ActiveStatus
         };
 
@@ -839,7 +856,7 @@ public class ParkingSessionService : IParkingSessionService
         session.CheckOutTime = checkOutTime;
         session.LicensePlateOut = string.IsNullOrWhiteSpace(request.LicensePlateOut)
             ? session.LicensePlateIn
-            : Normalize(request.LicensePlateOut);
+            : PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlateOut);
         session.OutStaffId = request.OutStaffId;
         session.ImageOut = request.ImageOut;
 
