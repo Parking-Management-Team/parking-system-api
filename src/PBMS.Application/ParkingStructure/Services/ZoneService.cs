@@ -351,6 +351,7 @@ public class ZoneService : IZoneService
             zone.VehicleTypeId = request.VehicleTypeId;
             zone.AccessType = request.AccessType;
             zone.BookingLimitRate = request.BookingLimitRate;
+            zone.Status = request.Status;
 
             _zoneRepository.Update(zone);
             await _unitOfWork.SaveChangesAsync();

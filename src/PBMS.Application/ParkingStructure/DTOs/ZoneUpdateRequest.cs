@@ -32,4 +32,7 @@ public class ZoneUpdateRequest
     /// </summary>
     [Range(1, 100, ErrorMessage = "BookingLimitRate must be between 1 and 100.")]
     public int BookingLimitRate { get; set; } = 80;
+
+    [Required(ErrorMessage = "Status is required.")]
+    public PBMS.Domain.Enums.ZoneStatus Status { get; set; } = PBMS.Domain.Enums.ZoneStatus.Available;
 }

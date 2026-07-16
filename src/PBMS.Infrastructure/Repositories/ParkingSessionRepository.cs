@@ -96,7 +96,8 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Where(z =>
                 z.VehicleTypeId == vehicleTypeId &&
                 z.AccessType == ZoneAccessType.General &&
-                z.Status == ZoneStatus.Available);
+                z.Status == ZoneStatus.Available &&
+                z.Floor.Status == FloorStatus.Active);
 
         if (buildingId.HasValue)
         {
@@ -112,7 +113,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                     ps.SessionStatus.ToUpper() == "ACTIVE"),
                 ReservedBookings = _context.Set<Booking>().Count(b =>
                     b.SlotId != null &&
-                    b.ParkingSlot.ZoneId == z.Id &&
+                    b.ParkingSlot!.ZoneId == z.Id &&
                     b.BookingStatus == BookingStatus.Confirmed &&
                     b.PlannedCheckinTime <= startGrace &&
                     b.PlannedCheckoutTime > now)
@@ -136,7 +137,8 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 s.VehicleTypeId == vehicleTypeId &&
                 s.Status == SlotStatus.Available &&
                 s.Zone.Status == ZoneStatus.Available &&
-                s.Zone.AccessType == ZoneAccessType.General);
+                s.Zone.AccessType == ZoneAccessType.General &&
+                s.Zone.Floor.Status == FloorStatus.Active);
 
         if (buildingId.HasValue)
         {
@@ -204,7 +206,8 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 s.VehicleTypeId == vehicleTypeId &&
                 s.Status == SlotStatus.Available &&
                 s.Zone.Status == ZoneStatus.Available &&
-                s.Zone.AccessType == ZoneAccessType.General);
+                s.Zone.AccessType == ZoneAccessType.General &&
+                s.Zone.Floor.Status == FloorStatus.Active);
 
         if (buildingId.HasValue)
         {
