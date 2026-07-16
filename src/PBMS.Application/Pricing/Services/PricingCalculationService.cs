@@ -12,7 +12,7 @@ using PBMS.Domain.Exceptions;
 namespace PBMS.Application.Pricing.Services;
 
 /// <summary>
-/// Dịch vụ tính toán phí đỗ xe triển khai Pricing Engine và ghi log audit.
+/// Parking fee calculation service that uses the Pricing Engine and writes audit logs.
 /// </summary>
 public class PricingCalculationService : IPricingCalculationService
 {
@@ -43,7 +43,7 @@ public class PricingCalculationService : IPricingCalculationService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá đang hoạt động cho loại phương tiện ID = {vehicleTypeId} tại thời điểm check-in: {checkIn:dd/MM/yyyy HH:mm:ss}."
+                message: $"No active pricing policy was found for vehicle type ID {vehicleTypeId} at check-in time {checkIn:dd/MM/yyyy HH:mm:ss}."
             );
         }
 
@@ -52,13 +52,13 @@ public class PricingCalculationService : IPricingCalculationService
 
         if (parkingSessionId.HasValue)
         {
-            // Lấy danh sách các sự cố chưa được xử lý (hoặc đang Open) của session
+            // Load unresolved or open incidents for the session.
             var allIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(parkingSessionId.Value);
             incidents = allIncidents.Where(i => (i.Status == PBMS.Domain.Enums.IncidentStatus.Open || i.Status == PBMS.Domain.Enums.IncidentStatus.Processing) && !i.IsDeleted).ToList();
 
             if (incidents.Any())
             {
-                // Lấy tất cả cấu hình giá phạt đang hoạt động để làm dữ liệu map cho Engine
+                // Load all active penalty configurations for the Pricing Engine.
                 penaltyConfigs = await _penaltyConfigRepository.GetAllConfigsWithDetailsAsync(incidentTypeId: null, onlyActive: true);
             }
         }
@@ -78,7 +78,7 @@ public class PricingCalculationService : IPricingCalculationService
         {
             throw new DomainException(
                 errorCode: "PRICING_POLICY_NOT_FOUND",
-                message: $"Không tìm thấy chính sách giá đang hoạt động cho loại phương tiện ID = {vehicleTypeId} tại thời điểm check-in: {checkIn:dd/MM/yyyy HH:mm:ss}."
+                message: $"No active pricing policy was found for vehicle type ID {vehicleTypeId} at check-in time {checkIn:dd/MM/yyyy HH:mm:ss}."
             );
         }
 
@@ -98,7 +98,7 @@ public class PricingCalculationService : IPricingCalculationService
 
         var result = _pricingEngine.Calculate(policy, checkIn, checkOut, incidents, penaltyConfigs);
 
-        // Ghi log audit tính phí
+        // Write the fee calculation audit log.
         var log = new PricingCalculationLog
         {
             BookingId = bookingId,
