@@ -30,6 +30,24 @@ public class VehicleServiceTests
         Assert.Equal(expected, normalized);
     }
 
+    [Theory]
+    [InlineData("51A-123.45", "Car")]
+    [InlineData("30F-5678", "Car")]
+    [InlineData("29G1-123.45", "Motorcycle")]
+    [InlineData("29-G1 123.45", "Motorcycle")]
+    [InlineData("59T2-888.88", "Motorcycle")]
+    [InlineData("29AA-123.45", "Motorcycle")]
+    [InlineData("51LD-123.45", "Car")]
+    [InlineData("80NG-123.45", "Car")]
+    [InlineData("AA-12-34", "Car")]
+    [InlineData("59MD-12345", "Motorcycle")]
+    public void DetectVehicleTypeFromPlate_DetectsCorrectly(string input, string expected)
+    {
+        var result = VehicleService.DetectVehicleTypeFromPlate(input);
+
+        Assert.Equal(expected, result);
+    }
+
     [Fact]
     public async Task CreateAsync_CreatesVehicle_WhenInputIsValid()
     {
@@ -42,7 +60,7 @@ public class VehicleServiceTests
         var activeVehicleType = new VehicleType
         {
             Id = 1,
-            TypeName = VehicleType.MotorcycleTypeName,
+            TypeName = VehicleType.CarTypeName,
             VehicleTypeStatus = VehicleType.StatusActive
         };
 
@@ -61,12 +79,12 @@ public class VehicleServiceTests
 
         Assert.True(result.Success);
         Assert.Equal(99, result.Data!.Id);
-        Assert.Equal("51a-123.45", result.Data.LicensePlate);
+        Assert.Equal("51A12345", result.Data.LicensePlate);
         Assert.Equal(Vehicle.StatusActive, result.Data.VehicleStatus);
         await _vehicleRepositoryMock.Received(1).AddAsync(Arg.Is<Vehicle>(v =>
             v.AccountId == 10
             && v.VehicleTypeId == 1
-            && v.LicensePlate == "51a-123.45"
+            && v.LicensePlate == "51A12345"
             && v.VehicleStatus == Vehicle.StatusActive));
     }
 

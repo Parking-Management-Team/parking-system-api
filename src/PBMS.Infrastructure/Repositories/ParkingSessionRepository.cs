@@ -15,7 +15,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Vehicle?> GetVehicleByLicensePlateAsync(string licensePlate)
     {
-        var normalized = licensePlate.Trim().ToUpperInvariant();
+        var normalized = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(licensePlate);
 
         return await _context.Vehicles
             .Include(v => v.VehicleType)
@@ -51,7 +51,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
 
     public async Task<Booking?> GetActiveBookingForCheckInByLicensePlateAsync(string licensePlate, int? buildingId = null)
     {
-        var normalized = licensePlate.Trim().ToUpperInvariant();
+        var normalized = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(licensePlate);
         var now = DateTime.UtcNow;
 
         var query = _context.Bookings
