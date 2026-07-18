@@ -122,6 +122,66 @@ public class PricingPolicyService : IPricingPolicyService
             });
         }
 
+        // Bước 6b: Tạo PricingRules tương ứng từ PricingWindows
+        // Mỗi PricingWindow tạo对应的 PricingRules (BasePricing, IncrementPricing, DailyCap, GracePeriod)
+        foreach (var windowReq in request.PricingWindows)
+        {
+            // GracePeriod rule
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "GracePeriod",
+                ExecutionOrder = 1,
+                IsActive = true,
+                GracePeriodRuleConfig = new GracePeriodRuleConfig
+                {
+                    GracePeriodMinutes = windowReq.GracePeriodMinutes
+                }
+            });
+
+            // BasePricing rule
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "BasePricing",
+                ExecutionOrder = 2,
+                IsActive = true,
+                BasePricingRuleConfig = new BasePricingRuleConfig
+                {
+                    BaseDurationMinutes = windowReq.BaseDurationMinutes,
+                    BasePriceAmount = windowReq.BasePrice,
+                    CurrencyCode = "VND"
+                }
+            });
+
+            // IncrementPricing rule
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "IncrementPricing",
+                ExecutionOrder = 3,
+                IsActive = true,
+                IncrementPricingRuleConfig = new IncrementPricingRuleConfig
+                {
+                    IncrementIntervalMinutes = windowReq.IncrementBlockMinutes,
+                    IncrementPriceAmount = windowReq.IncrementPrice,
+                    ThresholdPercentage = 50,
+                    CurrencyCode = "VND"
+                }
+            });
+
+            // DailyCap rule - tự tính = basePrice * 24h / baseDuration
+            var dailyCapAmount = windowReq.BasePrice * 24 * 60 / windowReq.BaseDurationMinutes;
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "DailyCap",
+                ExecutionOrder = 4,
+                IsActive = true,
+                DailyCapRuleConfig = new DailyCapRuleConfig
+                {
+                    MaximumDailyAmount = dailyCapAmount,
+                    CurrencyCode = "VND"
+                }
+            });
+        }
+
         // Bước 7: Lưu vào database
         await _policyRepository.AddAsync(policy);
         await _policyRepository.SaveChangesAsync();
@@ -433,6 +493,12 @@ public class PricingPolicyService : IPricingPolicyService
             windowName: window.WindowName
         );
 
+        // Đồng bộ PricingRules tương ứng khi PricingWindow thay đổi
+        if (window.PricingPolicyId > 0)
+        {
+            await SyncPricingRulesFromWindowAsync(window);
+        }
+
         _policyRepository.UpdateWindow(window);
         await _policyRepository.SaveChangesAsync();
 
@@ -490,6 +556,44 @@ public class PricingPolicyService : IPricingPolicyService
                 message: $"Cannot modify pricing configuration for active policy (ID={policy.Id}). According to BR-FEE-029: Active policies cannot be modified."
             );
         }
+    }
+
+    /// <summary>
+    /// Đồng bộ PricingRules khi PricingWindow thay đổi.
+    /// Tìm và cập nhật các规则 BasePricing, IncrementPricing, DailyCap tương ứng.
+    /// </summary>
+    private async Task SyncPricingRulesFromWindowAsync(PricingWindow window)
+    {
+        var policy = await _policyRepository.GetByIdWithWindowsAsync(window.PricingPolicyId);
+        if (policy?.PricingRules == null) return;
+
+        foreach (var rule in policy.PricingRules)
+        {
+            switch (rule.RuleType)
+            {
+                case "BasePricing" when rule.BasePricingRuleConfig != null:
+                    rule.BasePricingRuleConfig.BaseDurationMinutes = window.BaseDurationMinutes;
+                    rule.BasePricingRuleConfig.BasePriceAmount = window.BasePrice;
+                    break;
+
+                case "IncrementPricing" when rule.IncrementPricingRuleConfig != null:
+                    rule.IncrementPricingRuleConfig.IncrementIntervalMinutes = window.IncrementBlockMinutes;
+                    rule.IncrementPricingRuleConfig.IncrementPriceAmount = window.IncrementPrice;
+                    break;
+
+                case "DailyCap" when rule.DailyCapRuleConfig != null:
+                    var dailyCapAmount = window.BasePrice * 24 * 60 / window.BaseDurationMinutes;
+                    rule.DailyCapRuleConfig.MaximumDailyAmount = dailyCapAmount;
+                    break;
+
+                case "GracePeriod" when rule.GracePeriodRuleConfig != null:
+                    rule.GracePeriodRuleConfig.GracePeriodMinutes = window.GracePeriodMinutes;
+                    break;
+            }
+        }
+
+        // EF Core sẽ tự track changes khi SaveChanges được gọi
+        _policyRepository.Update(policy);
     }
 
     /// <summary>
