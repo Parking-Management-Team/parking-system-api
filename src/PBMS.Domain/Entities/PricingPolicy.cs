@@ -31,6 +31,11 @@ public class PricingPolicy : BaseEntity
     /// </summary>
     public string PricingPolicyStatus { get; set; } = "Active";
 
+    /// <summary>
+    /// Độ ưu tiên của chính sách giá (Ví dụ: 0 là mặc định, chính sách ngày lễ có priority lớn hơn như 1, 2).
+    /// </summary>
+    public int Priority { get; set; } = 0;
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------

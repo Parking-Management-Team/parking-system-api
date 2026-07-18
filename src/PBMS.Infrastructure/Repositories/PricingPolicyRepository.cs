@@ -98,7 +98,8 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
             : atTime;
         var localDate = localTime.Date;
 
-        return await _dbSet
+        // 1. Tìm chính sách đang hoạt động (Active)
+        var policy = await _dbSet
             .Include(pp => pp.PricingWindows)
             .Include(pp => pp.PricingRules)
                 .ThenInclude(r => r.BasePricingRuleConfig)
@@ -116,6 +117,61 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
             )
             .OrderByDescending(pp => pp.EffectiveStart)
             .FirstOrDefaultAsync();
+
+        // 2. Fallback: Nếu không tìm thấy chính sách Active nào, tìm trong các chính sách đã Expired.
+        // Điều này đảm bảo các phiên đỗ đè qua thời điểm chuyển tiếp vẫn được tính phí bằng bảng giá cũ thay vì crash check-out.
+        if (policy == null)
+        {
+            policy = await _dbSet
+                .Include(pp => pp.PricingWindows)
+                .Include(pp => pp.PricingRules)
+                    .ThenInclude(r => r.BasePricingRuleConfig)
+                .Include(pp => pp.PricingRules)
+                    .ThenInclude(r => r.IncrementPricingRuleConfig)
+                .Include(pp => pp.PricingRules)
+                    .ThenInclude(r => r.DailyCapRuleConfig)
+                .Include(pp => pp.PricingRules)
+                    .ThenInclude(r => r.GracePeriodRuleConfig)
+                .Where(pp =>
+                    pp.VehicleTypeId == vehicleTypeId &&
+                    pp.PricingPolicyStatus == "Expired" &&
+                    pp.EffectiveStart <= localDate &&
+                    (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= localDate)
+                )
+                .OrderByDescending(pp => pp.EffectiveStart)
+                .FirstOrDefaultAsync();
+        }
+
+        return policy;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<PricingPolicy>> GetPoliciesInPeriodAsync(int vehicleTypeId, DateTime start, DateTime end)
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var localStart = start.Kind == DateTimeKind.Utc ? TimeZoneInfo.ConvertTimeFromUtc(start, tz) : start;
+        var localEnd = end.Kind == DateTimeKind.Utc ? TimeZoneInfo.ConvertTimeFromUtc(end, tz) : end;
+        var startDate = localStart.Date;
+        var endDate = localEnd.Date;
+
+        return await _dbSet
+            .Include(pp => pp.PricingWindows)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.BasePricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.IncrementPricingRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.DailyCapRuleConfig)
+            .Include(pp => pp.PricingRules)
+                .ThenInclude(r => r.GracePeriodRuleConfig)
+            .Where(pp =>
+                pp.VehicleTypeId == vehicleTypeId &&
+                (pp.PricingPolicyStatus == "Active" || pp.PricingPolicyStatus == "Expired") &&
+                pp.EffectiveStart <= endDate &&
+                (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= startDate)
+            )
+            .OrderBy(pp => pp.EffectiveStart)
+            .ToListAsync();
     }
 
     // -----------------------------------------------------------------------
@@ -168,30 +224,21 @@ public class PricingPolicyRepository : BaseRepository<PricingPolicy>, IPricingPo
 
     /// <summary>
     /// Kiểm tra xem có Policy nào cùng VehicleType overlap với khoảng thời gian không.
-    ///
-    /// Hai khoảng [A_start, A_end] và [B_start, B_end] overlap khi:
-    ///   A_start &lt; B_end AND B_start &lt; A_end
-    /// Với null-end nghĩa là vô thời hạn (dùng DateTime.MaxValue để so sánh).
-    ///
-    /// Theo BR-FEE-025: thời điểm kết thúc Policy trước có thể bằng thời điểm bắt đầu
-    /// Policy sau — khi đó tại thời điểm chuyển tiếp chỉ Policy mới áp dụng.
-    /// Vì vậy dùng điều kiện strict &lt; thay vì &lt;=.
     /// </summary>
     public async Task<bool> HasOverlapPolicyAsync(
         int vehicleTypeId,
         DateTime effectiveStart,
         DateTime? effectiveEnd,
-        int? excludePolicyId = null)
+        int? excludePolicyId = null,
+        int priority = 0)
     {
-        // Chuẩn hóa: null end = vô thời hạn → DateTime.MaxValue
         var newEnd = effectiveEnd ?? DateTime.MaxValue;
 
         var query = _dbSet.Where(pp =>
             pp.VehicleTypeId == vehicleTypeId &&
             pp.PricingPolicyStatus != "Expired" &&
-            // Loại trừ policy đang được update (nếu có)
+            pp.Priority == priority && // Check overlap only within same priority
             (excludePolicyId == null || pp.Id != excludePolicyId.Value) &&
-            // Overlap: newStart < existEnd AND existStart < newEnd
             pp.EffectiveStart < newEnd &&
             (pp.EffectiveEnd == null || pp.EffectiveEnd.Value > effectiveStart)
         );
