@@ -271,14 +271,18 @@ public static class DbInitializer
             var carTypeForPolicy = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car")
                 ?? throw new InvalidOperationException("Required VehicleType 'Car' was not found in the database. Please seed vehicle types first.");
 
+            var today = DateTime.UtcNow.AddHours(7).Date;
+
             var policies = new List<PricingPolicy>
             {
+                // Motorcycle Policy (Default, Priority = 0)
                 new PricingPolicy
                 {
                     VehicleTypeId = motorcycleTypeForPolicy.Id,
                     PolicyName = "Motorbike Casual Pricing",
-                    EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
+                    EffectiveStart = today.AddDays(-10),
                     PricingPolicyStatus = "Active",
+                    Priority = 0,
                     PricingWindows = new List<PricingWindow>
                     {
                         new PricingWindow
@@ -310,55 +314,80 @@ public static class DbInitializer
                     {
                         new PricingRule
                         {
-                            RuleType = "GracePeriod",
-                            ExecutionOrder = 1,
-                            IsActive = true,
+                            RuleType = "GracePeriod", ExecutionOrder = 1, IsActive = true,
                             GracePeriodRuleConfig = new GracePeriodRuleConfig { GracePeriodMinutes = 15 }
                         },
                         new PricingRule
                         {
-                            RuleType = "BasePricing",
-                            ExecutionOrder = 2,
-                            IsActive = true,
-                            BasePricingRuleConfig = new BasePricingRuleConfig
-                            {
-                                BaseDurationMinutes = 60,
-                                BasePriceAmount = 5000m,
-                                CurrencyCode = "VND"
-                            }
+                            RuleType = "BasePricing", ExecutionOrder = 2, IsActive = true,
+                            BasePricingRuleConfig = new BasePricingRuleConfig { BaseDurationMinutes = 60, BasePriceAmount = 5000m }
                         },
                         new PricingRule
                         {
-                            RuleType = "IncrementPricing",
-                            ExecutionOrder = 3,
-                            IsActive = true,
-                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig
-                            {
-                                IncrementIntervalMinutes = 15,
-                                IncrementPriceAmount = 2000m,
-                                ThresholdPercentage = 50,
-                                CurrencyCode = "VND"
-                            }
+                            RuleType = "IncrementPricing", ExecutionOrder = 3, IsActive = true,
+                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig { IncrementIntervalMinutes = 15, IncrementPriceAmount = 2000m, ThresholdPercentage = 50 }
                         },
                         new PricingRule
                         {
-                            RuleType = "DailyCap",
-                            ExecutionOrder = 4,
-                            IsActive = true,
-                            DailyCapRuleConfig = new DailyCapRuleConfig
-                            {
-                                MaximumDailyAmount = 50000m,
-                                CurrencyCode = "VND"
-                            }
+                            RuleType = "DailyCap", ExecutionOrder = 4, IsActive = true,
+                            DailyCapRuleConfig = new DailyCapRuleConfig { MaximumDailyAmount = 50000m }
                         }
                     }
                 },
+                
+                // Car Policy 1: Old Expired Policy (Priority = 0)
                 new PricingPolicy
                 {
                     VehicleTypeId = carTypeForPolicy.Id,
-                    PolicyName = "Car Casual Pricing",
-                    EffectiveStart = DateTime.UtcNow.AddHours(7).AddDays(-1), // GMT+7 yesterday
+                    PolicyName = "Car Old Pricing (Expired)",
+                    EffectiveStart = today.AddDays(-30),
+                    EffectiveEnd = today.AddDays(-10).AddSeconds(-1), // Ended before default starts
+                    PricingPolicyStatus = "Expired",
+                    Priority = 0,
+                    PricingWindows = new List<PricingWindow>
+                    {
+                        new PricingWindow
+                        {
+                            WindowName = "24H Window",
+                            StartTime = new TimeSpan(0, 0, 0),
+                            EndTime = new TimeSpan(24, 0, 0),
+                            BaseDurationMinutes = 60,
+                            BasePrice = 10000m,
+                            IncrementBlockMinutes = 60,
+                            IncrementPrice = 5000m,
+                            WindowCap = null,
+                            GracePeriodMinutes = 0
+                        }
+                    },
+                    PricingRules = new List<PricingRule>
+                    {
+                        new PricingRule
+                        {
+                            RuleType = "GracePeriod", ExecutionOrder = 1, IsActive = true,
+                            GracePeriodRuleConfig = new GracePeriodRuleConfig { GracePeriodMinutes = 15 }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "BasePricing", ExecutionOrder = 2, IsActive = true,
+                            BasePricingRuleConfig = new BasePricingRuleConfig { BaseDurationMinutes = 60, BasePriceAmount = 10000m }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "IncrementPricing", ExecutionOrder = 3, IsActive = true,
+                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig { IncrementIntervalMinutes = 60, IncrementPriceAmount = 5000m, ThresholdPercentage = 50 }
+                        }
+                    }
+                },
+
+                // Car Policy 2: Active Default Policy (Priority = 0)
+                new PricingPolicy
+                {
+                    VehicleTypeId = carTypeForPolicy.Id,
+                    PolicyName = "Car Casual Pricing (Default)",
+                    EffectiveStart = today.AddDays(-10),
+                    EffectiveEnd = null,
                     PricingPolicyStatus = "Active",
+                    Priority = 0,
                     PricingWindows = new List<PricingWindow>
                     {
                         new PricingWindow
@@ -390,46 +419,72 @@ public static class DbInitializer
                     {
                         new PricingRule
                         {
-                            RuleType = "GracePeriod",
-                            ExecutionOrder = 1,
-                            IsActive = true,
+                            RuleType = "GracePeriod", ExecutionOrder = 1, IsActive = true,
                             GracePeriodRuleConfig = new GracePeriodRuleConfig { GracePeriodMinutes = 15 }
                         },
                         new PricingRule
                         {
-                            RuleType = "BasePricing",
-                            ExecutionOrder = 2,
-                            IsActive = true,
-                            BasePricingRuleConfig = new BasePricingRuleConfig
-                            {
-                                BaseDurationMinutes = 60,
-                                BasePriceAmount = 20000m,
-                                CurrencyCode = "VND"
-                            }
+                            RuleType = "BasePricing", ExecutionOrder = 2, IsActive = true,
+                            BasePricingRuleConfig = new BasePricingRuleConfig { BaseDurationMinutes = 60, BasePriceAmount = 20000m }
                         },
                         new PricingRule
                         {
-                            RuleType = "IncrementPricing",
-                            ExecutionOrder = 3,
-                            IsActive = true,
-                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig
-                            {
-                                IncrementIntervalMinutes = 15,
-                                IncrementPriceAmount = 5000m,
-                                ThresholdPercentage = 50,
-                                CurrencyCode = "VND"
-                            }
+                            RuleType = "IncrementPricing", ExecutionOrder = 3, IsActive = true,
+                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig { IncrementIntervalMinutes = 15, IncrementPriceAmount = 5000m, ThresholdPercentage = 50 }
                         },
                         new PricingRule
                         {
-                            RuleType = "DailyCap",
-                            ExecutionOrder = 4,
-                            IsActive = true,
-                            DailyCapRuleConfig = new DailyCapRuleConfig
-                            {
-                                MaximumDailyAmount = 150000m,
-                                CurrencyCode = "VND"
-                            }
+                            RuleType = "DailyCap", ExecutionOrder = 4, IsActive = true,
+                            DailyCapRuleConfig = new DailyCapRuleConfig { MaximumDailyAmount = 150000m }
+                        }
+                    }
+                },
+
+                // Car Policy 3: Active Holiday Policy (Priority = 1, overlapping default)
+                new PricingPolicy
+                {
+                    VehicleTypeId = carTypeForPolicy.Id,
+                    PolicyName = "Car Holiday Special Pricing",
+                    EffectiveStart = today.AddDays(-2),
+                    EffectiveEnd = today.AddDays(2),
+                    PricingPolicyStatus = "Active",
+                    Priority = 1, // Higher priority overrides default during holiday range
+                    PricingWindows = new List<PricingWindow>
+                    {
+                        new PricingWindow
+                        {
+                            WindowName = "24H Holiday Window",
+                            StartTime = new TimeSpan(0, 0, 0),
+                            EndTime = new TimeSpan(24, 0, 0),
+                            BaseDurationMinutes = 60,
+                            BasePrice = 40000m,
+                            IncrementBlockMinutes = 60,
+                            IncrementPrice = 20000m,
+                            WindowCap = null,
+                            GracePeriodMinutes = 0
+                        }
+                    },
+                    PricingRules = new List<PricingRule>
+                    {
+                        new PricingRule
+                        {
+                            RuleType = "GracePeriod", ExecutionOrder = 1, IsActive = true,
+                            GracePeriodRuleConfig = new GracePeriodRuleConfig { GracePeriodMinutes = 15 }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "BasePricing", ExecutionOrder = 2, IsActive = true,
+                            BasePricingRuleConfig = new BasePricingRuleConfig { BaseDurationMinutes = 60, BasePriceAmount = 40000m }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "IncrementPricing", ExecutionOrder = 3, IsActive = true,
+                            IncrementPricingRuleConfig = new IncrementPricingRuleConfig { IncrementIntervalMinutes = 60, IncrementPriceAmount = 20000m, ThresholdPercentage = 50 }
+                        },
+                        new PricingRule
+                        {
+                            RuleType = "DailyCap", ExecutionOrder = 4, IsActive = true,
+                            DailyCapRuleConfig = new DailyCapRuleConfig { MaximumDailyAmount = 300000m }
                         }
                     }
                 }

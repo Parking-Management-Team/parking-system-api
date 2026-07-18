@@ -51,6 +51,12 @@ namespace PBMS.Infrastructure.Configurations
                 .HasDefaultValue("Active")
                 .IsRequired();
 
+            // 8.5. Độ ưu tiên (Priority)
+            builder.Property(pp => pp.Priority)
+                .HasColumnName("priority")
+                .HasDefaultValue(0)
+                .IsRequired();
+
             // 9. Concurrency RowVersion
             builder.Property(pp => pp.RowVersion)
                 .IsRowVersion();

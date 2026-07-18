@@ -17,28 +17,37 @@ public class PricingEngine : IPricingEngine
         IEnumerable<Incident>? incidents = null,
         IEnumerable<PenaltyConfig>? penaltyConfigs = null)
     {
+        return CalculateSegmented(_ => policy, checkIn, checkOut, incidents, penaltyConfigs);
+    }
+
+    public PricingResult CalculateSegmented(
+        Func<DateTime, PricingPolicy> getPolicyAtTime,
+        DateTime checkIn,
+        DateTime checkOut,
+        IEnumerable<Incident>? incidents = null,
+        IEnumerable<PenaltyConfig>? penaltyConfigs = null)
+    {
         if (checkOut <= checkIn)
         {
             return new PricingResult { TotalAmount = 0 };
         }
 
-        // Lấy tất cả các rules đang active của policy được sắp xếp theo ExecutionOrder
-        var activeRules = policy.PricingRules
-            .Where(r => r.IsActive)
-            .OrderBy(r => r.ExecutionOrder)
-            .ToList();
-
         var result = new PricingResult();
-        var totalDurationMinutes = (checkOut - checkIn).TotalMinutes;
 
         // 1. Chia nhỏ thành các blocks thời gian
-        var blocks = GenerateBlocks(activeRules, checkIn, checkOut);
+        var blocks = GenerateBlocksSegmented(getPolicyAtTime, checkIn, checkOut);
         decimal baseAmount = 0;
         decimal incrementAmount = 0;
 
         // 2. Thực thi tính phí cho từng block gửi xe
         foreach (var block in blocks)
         {
+            var currentPolicy = getPolicyAtTime(block.StartTime);
+            var activeRules = currentPolicy.PricingRules
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.ExecutionOrder)
+                .ToList();
+
             if (block.IsBase)
             {
                 var baseRule = activeRules.FirstOrDefault(r => r.RuleType == "BasePricing");
@@ -50,7 +59,7 @@ public class PricingEngine : IPricingEngine
                     {
                         RuleType = "BasePricing",
                         Amount = config.BasePriceAmount,
-                        Explanation = $"Áp dụng block đầu tiên ({block.DurationMinutes:F1}/{config.BaseDurationMinutes} phút): {config.BasePriceAmount:N0} {config.CurrencyCode}"
+                        Explanation = $"[{currentPolicy.PolicyName}] Áp dụng block đầu tiên ({block.DurationMinutes:F1}/{config.BaseDurationMinutes} phút): {config.BasePriceAmount:N0} {config.CurrencyCode}"
                     });
                 }
             }
@@ -72,7 +81,7 @@ public class PricingEngine : IPricingEngine
                         {
                             RuleType = "IncrementPricing",
                             Amount = config.IncrementPriceAmount,
-                            Explanation = $"Block phụ thứ {block.BlockSequence} ({actualMinutes:F1}/{interval} phút, tỷ lệ {percentage:F0}% >= ngưỡng {config.ThresholdPercentage}%): {config.IncrementPriceAmount:N0} {config.CurrencyCode}"
+                            Explanation = $"[{currentPolicy.PolicyName}] Block phụ thứ {block.BlockSequence} ({actualMinutes:F1}/{interval} phút, tỷ lệ {percentage:F0}% >= ngưỡng {config.ThresholdPercentage}%): {config.IncrementPriceAmount:N0} {config.CurrencyCode}"
                         });
                     }
                     else
@@ -81,7 +90,7 @@ public class PricingEngine : IPricingEngine
                         {
                             RuleType = "IncrementPricing",
                             Amount = 0,
-                            Explanation = $"Block phụ thứ {block.BlockSequence} ({actualMinutes:F1}/{interval} phút, tỷ lệ {percentage:F0}% < ngưỡng {config.ThresholdPercentage}%): Miễn phí."
+                            Explanation = $"[{currentPolicy.PolicyName}] Block phụ thứ {block.BlockSequence} ({actualMinutes:F1}/{interval} phút, tỷ lệ {percentage:F0}% < ngưỡng {config.ThresholdPercentage}%): Miễn phí."
                         });
                     }
                 }
@@ -91,7 +100,12 @@ public class PricingEngine : IPricingEngine
         var totalAccumulatedParkingFee = baseAmount + incrementAmount;
 
         // 3. Áp dụng Daily Cap Rule (Giới hạn trần theo ngày lịch 00:00) cho phí đỗ xe
-        var dailyCapRule = activeRules.FirstOrDefault(r => r.RuleType == "DailyCap");
+        var endPolicy = getPolicyAtTime(checkOut.AddSeconds(-1));
+        var endRules = endPolicy.PricingRules
+            .Where(r => r.IsActive)
+            .OrderBy(r => r.ExecutionOrder)
+            .ToList();
+        var dailyCapRule = endRules.FirstOrDefault(r => r.RuleType == "DailyCap");
         if (dailyCapRule?.DailyCapRuleConfig != null)
         {
             var config = dailyCapRule.DailyCapRuleConfig;
@@ -111,12 +125,11 @@ public class PricingEngine : IPricingEngine
                 {
                     RuleType = "DailyCap",
                     Amount = maxCap - totalAccumulatedParkingFee,
-                    Explanation = $"Tổng phí tích lũy ({totalAccumulatedParkingFee:N0}) vượt quá giới hạn trần tối đa ({config.MaximumDailyAmount:N0}/ngày x {totalDays} ngày lịch = {maxCap:N0}). Áp giá trần."
+                    Explanation = $"[{endPolicy.PolicyName}] Tổng phí tích lũy ({totalAccumulatedParkingFee:N0}) vượt quá giới hạn trần tối đa ({config.MaximumDailyAmount:N0}/ngày x {totalDays} ngày lịch = {maxCap:N0}). Áp giá trần."
                 });
                 totalAccumulatedParkingFee = maxCap;
                 
                 // Điều chỉnh lại tỉ lệ hiển thị phân bổ phí khi đã áp giá trần
-                // Gán phí base tối đa, phần còn lại đưa vào increment
                 baseAmount = Math.Min(baseAmount, totalAccumulatedParkingFee);
                 incrementAmount = totalAccumulatedParkingFee - baseAmount;
             }
@@ -128,10 +141,6 @@ public class PricingEngine : IPricingEngine
         {
             foreach (var incident in incidents)
             {
-                // Độ ưu tiên tiền phạt:
-                // 1. Phí phạt thủ công gán trực tiếp trên Incident.PenaltyFee
-                // 2. Tra cứu từ danh sách PenaltyConfigs truyền vào tương ứng với IncidentTypeId
-                // 3. Tra cứu mặc định từ IncidentType.PenaltyConfigs nếu có load kèm
                 decimal incidentFee = 0;
                 
                 if (incident.PenaltyFee.HasValue)
@@ -177,17 +186,20 @@ public class PricingEngine : IPricingEngine
     }
 
     /// <summary>
-    /// Hàm chia timeline gửi xe thành block cơ bản (Base) và các block lũy tiến (Increment).
+    /// Hàm chia timeline gửi xe thành block cơ bản (Base) và các block lũy tiến (Increment), giải quyết theo chính sách phân đoạn.
     /// </summary>
-    private List<PricingBlock> GenerateBlocks(List<PricingRule> activeRules, DateTime checkIn, DateTime checkOut)
+    private List<PricingBlock> GenerateBlocksSegmented(Func<DateTime, PricingPolicy> getPolicyAtTime, DateTime checkIn, DateTime checkOut)
     {
         var blocks = new List<PricingBlock>();
         
-        var baseRule = activeRules.FirstOrDefault(r => r.RuleType == "BasePricing");
+        var startPolicy = getPolicyAtTime(checkIn);
+        var activeRulesAtStart = startPolicy.PricingRules
+            .Where(r => r.IsActive)
+            .OrderBy(r => r.ExecutionOrder)
+            .ToList();
+        
+        var baseRule = activeRulesAtStart.FirstOrDefault(r => r.RuleType == "BasePricing");
         var baseMinutes = baseRule?.BasePricingRuleConfig?.BaseDurationMinutes ?? 60; // Mặc định 60 phút nếu không config
-
-        var incRule = activeRules.FirstOrDefault(r => r.RuleType == "IncrementPricing");
-        var incInterval = incRule?.IncrementPricingRuleConfig?.IncrementIntervalMinutes ?? 15; // Mặc định 15 phút nếu không config
 
         var totalMinutes = (checkOut - checkIn).TotalMinutes;
 
@@ -209,6 +221,15 @@ public class PricingEngine : IPricingEngine
 
         while (remainingMinutes > 0)
         {
+            var currentPolicy = getPolicyAtTime(currentBlockStart);
+            var activeRulesAtCurrent = currentPolicy.PricingRules
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.ExecutionOrder)
+                .ToList();
+
+            var incRule = activeRulesAtCurrent.FirstOrDefault(r => r.RuleType == "IncrementPricing");
+            var incInterval = incRule?.IncrementPricingRuleConfig?.IncrementIntervalMinutes ?? 15; // Mặc định 15 phút nếu không config
+
             var blockDuration = Math.Min(remainingMinutes, incInterval);
             blocks.Add(new PricingBlock
             {
@@ -224,4 +245,5 @@ public class PricingEngine : IPricingEngine
 
         return blocks;
     }
+
 }

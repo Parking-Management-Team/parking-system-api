@@ -27,6 +27,9 @@ public class PricingPolicyDto
     /// <summary>Trạng thái chính sách (Active / Inactive / Expired).</summary>
     public string PricingPolicyStatus { get; set; } = null!;
 
+    /// <summary>Độ ưu tiên của chính sách giá (0 = Mặc định, >0 = Ưu tiên cao hơn).</summary>
+    public int Priority { get; set; }
+
     /// <summary>Thời điểm tạo bản ghi.</summary>
     public DateTime CreatedAt { get; set; }
 

@@ -29,4 +29,9 @@ public class UpdatePricingPolicyRequest
     /// </summary>
     [MaxLength(20)]
     public string? PricingPolicyStatus { get; set; }
+
+    /// <summary>
+    /// Độ ưu tiên mới (null nếu không thay đổi).
+    /// </summary>
+    public int? Priority { get; set; }
 }

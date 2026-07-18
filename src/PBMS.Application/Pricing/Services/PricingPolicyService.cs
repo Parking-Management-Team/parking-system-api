@@ -101,7 +101,8 @@ public class PricingPolicyService : IPricingPolicyService
             PolicyName = request.PolicyName.Trim(),
             EffectiveStart = request.EffectiveStart.Date,
             EffectiveEnd = request.EffectiveEnd.HasValue ? request.EffectiveEnd.Value.Date : null,
-            PricingPolicyStatus = "Inactive"
+            PricingPolicyStatus = "Inactive",
+            Priority = request.Priority
         };
 
         // Bước 6: Tạo PricingWindow entities gắn vào policy
@@ -169,7 +170,8 @@ public class PricingPolicyService : IPricingPolicyService
             vehicleTypeId: policy.VehicleTypeId,
             effectiveStart: policy.EffectiveStart,
             effectiveEnd: policy.EffectiveEnd,
-            excludePolicyId: policy.Id
+            excludePolicyId: policy.Id,
+            priority: policy.Priority
         );
 
         if (hasOverlap)
@@ -275,6 +277,13 @@ public class PricingPolicyService : IPricingPolicyService
         if (request.EffectiveStart.HasValue)
         {
             policy.EffectiveStart = request.EffectiveStart.Value.Date;
+        }
+
+        // Cập nhật Priority (chỉ khi INACTIVE)
+        if (request.Priority.HasValue)
+        {
+            GuardAgainstModifyingActivePolicy(policy);
+            policy.Priority = request.Priority.Value;
         }
 
         // Cập nhật EffectiveEnd
@@ -643,6 +652,7 @@ public class PricingPolicyService : IPricingPolicyService
             EffectiveStart = policy.EffectiveStart,
             EffectiveEnd = policy.EffectiveEnd,
             PricingPolicyStatus = policy.PricingPolicyStatus,
+            Priority = policy.Priority,
             CreatedAt = policy.CreatedAt,
             PricingWindows = policy.PricingWindows.Select(MapWindowToDto).ToList()
         };
