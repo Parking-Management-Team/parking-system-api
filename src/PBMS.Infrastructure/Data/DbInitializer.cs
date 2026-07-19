@@ -1031,6 +1031,37 @@ public static class DbInitializer
         if (histIncidents.Any()) await context.AddRangeAsync(histIncidents);
         
         await context.SaveChangesAsync();
+
+        // ----------------------------------------------------
+        // E. Blacklisted Vehicle Seeding (Merged from develop)
+        // ----------------------------------------------------
+        var blacklistedVehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51A-999.99");
+        if (blacklistedVehicle == null)
+        {
+            blacklistedVehicle = new Vehicle
+            {
+                AccountId = testDriver.Id,
+                VehicleTypeId = carType.Id,
+                LicensePlate = "51A-999.99",
+                RegisteredDay = DateTime.UtcNow.AddDays(-40),
+                VehicleStatus = "ACTIVE"
+            };
+            await context.AddAsync(blacklistedVehicle);
+            await context.SaveChangesAsync();
+        }
+
+        var blacklistEntry = await context.Set<Blacklist>().FirstOrDefaultAsync(b => b.VehicleId == blacklistedVehicle.Id);
+        if (blacklistEntry == null)
+        {
+            blacklistEntry = new Blacklist
+            {
+                VehicleId = blacklistedVehicle.Id,
+                Reason = "Repeated unpaid parking fees and unauthorized parking behavior.",
+                IsDeleted = false
+            };
+            await context.AddAsync(blacklistEntry);
+            await context.SaveChangesAsync();
+        }
     }
 
     private static decimal CalculateEstimatedFee(bool isMotor, DateTime start, DateTime end)

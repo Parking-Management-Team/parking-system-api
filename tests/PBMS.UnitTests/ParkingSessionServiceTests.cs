@@ -97,7 +97,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29G112345",
             CardCode = "CARD-999",
             VehicleTypeId = 1,
             BuildingId = 10,
@@ -106,7 +106,7 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
         var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G112345", VehicleTypeId = 1 };
         var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
 
         var booking = new Booking
@@ -122,7 +122,7 @@ public class ParkingSessionServiceTests
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G112345").Returns(vehicle);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
         _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
 
@@ -408,7 +408,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "B-CARD-1",
             VehicleTypeId = 1,
             BuildingId = 1
@@ -439,7 +439,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "G-CARD-1",
             VehicleTypeId = 1,
             BuildingId = 1
@@ -447,11 +447,11 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "Car" };
         var card = new Card { Id = 100, CardCode = "G-CARD-1", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A12345", VehicleTypeId = 1 };
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("G-CARD-1").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A12345").Returns(vehicle);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
 
         // First call for CardId check returns false, second call for VehicleId check returns true
@@ -473,7 +473,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "A-CARD-1",
             VehicleTypeId = 1,
             BuildingId = 1
@@ -512,7 +512,7 @@ public class ParkingSessionServiceTests
             Id = sessionId,
             SessionStatus = "ACTIVE",
             CheckOutTime = DateTime.UtcNow,
-            LicensePlateOut = "29A-12345",
+            LicensePlateOut = "29A12345",
             OutStaffId = 10
         };
 
@@ -543,7 +543,7 @@ public class ParkingSessionServiceTests
             Id = sessionId,
             SessionStatus = "ACTIVE",
             CheckOutTime = DateTime.UtcNow,
-            LicensePlateOut = "29A-12345",
+            LicensePlateOut = "29A12345",
             OutStaffId = 10
         };
 
@@ -573,7 +573,7 @@ public class ParkingSessionServiceTests
             PlannedCheckoutTime = now.AddMinutes(10)
         };
 
-        var vehicle = new Vehicle { LicensePlate = "29A-12345" };
+        var vehicle = new Vehicle { LicensePlate = "29A12345" };
 
         var session = new PBMS.Domain.Entities.ParkingSession
         {
@@ -608,7 +608,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckEntryRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "CARD-001",
             VehicleTypeId = 1,
             BuildingId = 10
@@ -616,13 +616,13 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
         var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A12345", VehicleTypeId = 1 };
         var zone = new Zone { Id = 5, Floor = new Floor { BuildingId = 10 } };
         var slot = new ParkingSlot { Id = 100, ZoneId = 5, VehicleTypeId = 1, Status = SlotStatus.Available, Zone = zone };
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A12345").Returns(vehicle);
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(false);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
         _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
@@ -649,7 +649,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckEntryRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "NONEXISTENT",
             VehicleTypeId = 1,
             BuildingId = 10
@@ -677,7 +677,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckEntryRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "CARD-001",
             VehicleTypeId = 1,
             BuildingId = 10
@@ -685,12 +685,12 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
         var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A12345", VehicleTypeId = 1 };
         var zone = new Zone { Id = 5, Floor = new Floor { BuildingId = 10 } };
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A12345").Returns(vehicle);
         // Card is blacklisted
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(true);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
@@ -714,7 +714,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckEntryRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "CARD-001",
             VehicleTypeId = 1,
             BuildingId = 10
@@ -722,11 +722,11 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = "MOTORCYCLE" };
         var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A12345", VehicleTypeId = 1 };
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A12345").Returns(vehicle);
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(false);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
         _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
@@ -751,7 +751,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29A12345",
             CardCode = "CARD-001",
             VehicleTypeId = 2,
             BuildingId = 10,
@@ -761,14 +761,14 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 2, TypeName = "CAR" };
         var card = new Card { Id = 1, CardCode = "CARD-001", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A-12345", VehicleTypeId = 2 };
+        var vehicle = new VehicleEntity { Id = 10, LicensePlate = "29A12345", VehicleTypeId = 2 };
         var zone = new Zone { Id = 5, Floor = new Floor { BuildingId = 10 } };
         var slot1 = new ParkingSlot { Id = 100, ZoneId = 5, VehicleTypeId = 2, Status = SlotStatus.Available, Zone = zone };
         var slot2 = new ParkingSlot { Id = 101, ZoneId = 5, VehicleTypeId = 2, Status = SlotStatus.Available, Zone = zone };
 
         _vehicleTypeRepositoryMock.GetByIdAsync(2).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-001").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A12345").Returns(vehicle);
         _blacklistRepositoryMock.AnyAsync(Arg.Any<Expression<Func<BlacklistEntity, bool>>>()).Returns(false);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(10).Returns(false);
         _sessionRepositoryMock.AnyAsync(Arg.Any<Expression<Func<ParkingSession, bool>>>()).Returns(false);
@@ -802,10 +802,10 @@ public class ParkingSessionServiceTests
         {
             Id = sessionId,
             SessionStatus = "ACTIVE",
-            LicensePlateIn = "29A-12345",
+            LicensePlateIn = "29A12345",
             CardId = 10,
             BuildingId = 10,
-            Vehicle = new VehicleEntity { Id = 20, LicensePlate = "29A-12345", VehicleTypeId = 1 }
+            Vehicle = new VehicleEntity { Id = 20, LicensePlate = "29A12345", VehicleTypeId = 1 }
         };
 
         _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
@@ -832,8 +832,8 @@ public class ParkingSessionServiceTests
         {
             Id = sessionId,
             SessionStatus = "COMPLETED",
-            LicensePlateIn = "29A-12345",
-            Vehicle = new VehicleEntity { Id = 20, LicensePlate = "29A-12345", VehicleTypeId = 1 }
+            LicensePlateIn = "29A12345",
+            Vehicle = new VehicleEntity { Id = 20, LicensePlate = "29A12345", VehicleTypeId = 1 }
         };
 
         _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);

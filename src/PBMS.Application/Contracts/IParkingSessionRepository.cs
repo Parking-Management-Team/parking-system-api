@@ -61,4 +61,9 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     /// </summary>
     /// <param name="slotId">The parking slot to query.</param>
     Task<ParkingSessionEntity?> FindActiveSessionForSlotAsync(int slotId);
+
+    /// <summary>
+    /// Kiểm tra xem đặt chỗ đã có giao dịch thanh toán thành công (PAID) hay chưa.
+    /// </summary>
+    Task<bool> HasPaidPaymentForBookingAsync(int bookingId);
 }

@@ -158,10 +158,11 @@ public class ParkingSlotService : IParkingSlotService
 
             var bufferMinutes = await _configService.GetIntConfigAsync("BUFFER_TIME_MINUTES", 30);
 
-            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm cấu hình, chỉ tính booking đã Confirmed)
+            var nowUtc = DateTime.UtcNow;
+            // Lấy danh sách Booking bị trùng lịch đặt chỗ (áp dụng khoảng đệm cấu hình, tính booking Confirmed hoặc Pending chưa hết hạn)
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
-                b.BookingStatus == BookingStatus.Confirmed &&
+                (b.BookingStatus == BookingStatus.Confirmed || (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline >= nowUtc)) &&
                 b.PlannedCheckoutTime.AddMinutes(bufferMinutes) > startUtc &&
                 endUtc.AddMinutes(bufferMinutes) > b.PlannedCheckinTime);
 
@@ -176,7 +177,7 @@ public class ParkingSlotService : IParkingSlotService
             var startGrace = nowUtc.AddMinutes(15);
             var activeBookings = await _bookingRepository.FindAsync(b =>
                 b.SlotId != null &&
-                b.BookingStatus == BookingStatus.Confirmed &&
+                (b.BookingStatus == BookingStatus.Confirmed || (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline >= nowUtc)) &&
                 b.PlannedCheckinTime <= startGrace &&
                 b.PlannedCheckoutTime > nowUtc);
 
