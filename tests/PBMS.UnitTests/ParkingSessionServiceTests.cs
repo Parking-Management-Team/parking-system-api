@@ -148,7 +148,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29B-99999",
+            LicensePlate = "29G1-99999",
             CardCode = "CARD-999",
             VehicleTypeId = 1,
             BuildingId = 10,
@@ -157,7 +157,7 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
         var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29B-99999", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-99999", VehicleTypeId = 1 };
         var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
 
         // Booking bắt đầu sau 6 tiếng (đến sớm 6 tiếng)
@@ -174,7 +174,7 @@ public class ParkingSessionServiceTests
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29B-99999").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G1-99999").Returns(vehicle);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
         _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
 
@@ -187,7 +187,7 @@ public class ParkingSessionServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.True(result.Success);
+        Assert.True(result.Success, $"ErrorCode: {result.ErrorCode}, Message: {result.Message}");
         Assert.NotNull(result.Data);
         Assert.Null(result.Data.BookingId); // Phải là null (không liên kết Booking)
         Assert.Equal(BookingStatus.Confirmed, booking.BookingStatus); // Trạng thái Booking của Xe B vẫn giữ nguyên Confirmed
@@ -200,7 +200,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckInRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29G1-12345",
             CardCode = "CARD-999",
             VehicleTypeId = 1,
             BuildingId = 10,
@@ -209,7 +209,7 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
         var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-12345", VehicleTypeId = 1 };
         var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
 
         // 2 Active Policies: Default (Priority = 0) and Holiday (Priority = 1)
@@ -221,7 +221,7 @@ public class ParkingSessionServiceTests
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G1-12345").Returns(vehicle);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
         _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
         _bookingRepositoryMock.FirstOrDefaultAsync(Arg.Any<System.Linq.Expressions.Expression<Func<Booking, bool>>>())
@@ -232,7 +232,7 @@ public class ParkingSessionServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.True(result.Success);
+        Assert.True(result.Success, $"ErrorCode: {result.ErrorCode}, Message: {result.Message}");
         Assert.NotNull(result.Data);
         Assert.Equal("ACTIVE", result.Data.SessionStatus);
     }
@@ -243,7 +243,7 @@ public class ParkingSessionServiceTests
         // Arrange
         var request = new CheckEntryRequest
         {
-            LicensePlate = "29A-12345",
+            LicensePlate = "29G1-12345",
             CardCode = "CARD-999",
             VehicleTypeId = 1,
             BuildingId = 10
@@ -251,7 +251,7 @@ public class ParkingSessionServiceTests
 
         var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
         var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
-        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29A-12345", VehicleTypeId = 1 };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-12345", VehicleTypeId = 1 };
         var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
 
         // 2 Active Policies
@@ -263,7 +263,7 @@ public class ParkingSessionServiceTests
 
         _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
         _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
-        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29A-12345").Returns(vehicle);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G1-12345").Returns(vehicle);
         _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
         _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
 
