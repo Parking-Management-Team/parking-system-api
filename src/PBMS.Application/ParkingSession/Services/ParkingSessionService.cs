@@ -160,9 +160,18 @@ public class ParkingSessionService : IParkingSessionService
                 return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Booking with ID {effectiveBookingId.Value} not found.");
             }
 
-            if (!StatusEquals(booking.BookingStatus, "CONFIRMED"))
+            if (!StatusEquals(booking.BookingStatus, "CONFIRMED") && !StatusEquals(booking.BookingStatus, "PENDING"))
             {
-                return BaseResponse<ParkingSessionDto>.Fail("BOOKING_NOT_CONFIRMED", "Only confirmed bookings can be checked in.");
+                return BaseResponse<ParkingSessionDto>.Fail("BOOKING_NOT_CONFIRMED_OR_PENDING", "Only confirmed or pending bookings can be checked in.");
+            }
+
+            if (StatusEquals(booking.BookingStatus, "PENDING") && booking.PaymentDeadline < checkInTime)
+            {
+                booking.BookingStatus = "Expired";
+                _bookingRepository.Update(booking);
+                await _bookingRepository.SaveChangesAsync();
+
+                return BaseResponse<ParkingSessionDto>.Fail("BOOKING_EXPIRED", "Booking has expired (payment deadline passed) and cannot be checked in.");
             }
 
             if (booking.CheckinGraceUntil < checkInTime)
@@ -376,7 +385,7 @@ public class ParkingSessionService : IParkingSessionService
             activeBooking = await _bookingRepository.FirstOrDefaultAsync(b =>
                 b.Vehicle.LicensePlate.ToUpper() == normalizedPlate &&
                 b.BuildingId == buildingId &&
-                b.BookingStatus == BookingStatus.Confirmed &&
+                (b.BookingStatus == BookingStatus.Confirmed || (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline >= now)) &&
                 b.PlannedCheckinTime.AddMinutes(-30) <= now &&
                 b.CheckinGraceUntil >= now);
 
@@ -905,11 +914,58 @@ public class ParkingSessionService : IParkingSessionService
  
         if (calculationStartTime < checkOutTime)
         {
-            // The Pricing Engine calculates parking charges and penalties for open incidents.
-            var feeResult = await _pricingCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime, session.Id);
-            totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
-            totalPenaltyFee = feeResult.PenaltyAmount;
-            amountDue = feeResult.TotalAmount;
+            if (session.BookingId.HasValue)
+            {
+                var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+                if (booking != null && session.CheckInTime < booking.PlannedCheckinTime && checkOutTime > booking.PlannedCheckinTime)
+                {
+                    // Calculate early check-in fee (vãng lai stay from CheckInTime to PlannedCheckinTime)
+                    var earlyFeeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
+                        vehicle.VehicleTypeId,
+                        session.CheckInTime,
+                        booking.PlannedCheckinTime,
+                        bookingId: null, // Walk-in stay
+                        parkingSessionId: session.Id);
+
+                    // Calculate main booking stay fee (from PlannedCheckinTime to checkout time)
+                    var mainFeeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
+                        vehicle.VehicleTypeId,
+                        booking.PlannedCheckinTime,
+                        checkOutTime,
+                        bookingId: booking.Id,
+                        parkingSessionId: session.Id);
+
+                    totalFee = earlyFeeResult.BaseAmount + earlyFeeResult.IncrementAmount + mainFeeResult.BaseAmount + mainFeeResult.IncrementAmount;
+                    totalPenaltyFee = earlyFeeResult.PenaltyAmount + mainFeeResult.PenaltyAmount;
+                    amountDue = earlyFeeResult.TotalAmount + mainFeeResult.TotalAmount;
+                }
+                else
+                {
+                    // No early check-in or checked out before booking starts
+                    var feeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
+                        vehicle.VehicleTypeId,
+                        calculationStartTime,
+                        checkOutTime,
+                        bookingId: session.BookingId,
+                        parkingSessionId: session.Id);
+                    totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
+                    totalPenaltyFee = feeResult.PenaltyAmount;
+                    amountDue = feeResult.TotalAmount;
+                }
+            }
+            else
+            {
+                // Walk-in session (no booking)
+                var feeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
+                    vehicle.VehicleTypeId,
+                    calculationStartTime,
+                    checkOutTime,
+                    bookingId: null,
+                    parkingSessionId: session.Id);
+                totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
+                totalPenaltyFee = feeResult.PenaltyAmount;
+                amountDue = feeResult.TotalAmount;
+            }
         }
         else
         {
@@ -929,10 +985,14 @@ public class ParkingSessionService : IParkingSessionService
             var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
             if (booking != null)
             {
-                // Apply the deposit deduction first.
-                amountDue = Math.Max(0, amountDue - booking.DepositAmount);
-                // Update the displayed total after the deposit deduction.
-                totalFee = Math.Max(0, totalFee - booking.DepositAmount);
+                var isDepositPaid = await _sessionRepository.HasPaidPaymentForBookingAsync(booking.Id);
+                if (isDepositPaid)
+                {
+                    // Apply the deposit deduction first.
+                    amountDue = Math.Max(0, amountDue - booking.DepositAmount);
+                    // Update the displayed total after the deposit deduction.
+                    totalFee = Math.Max(0, totalFee - booking.DepositAmount);
+                }
             }
         }
  

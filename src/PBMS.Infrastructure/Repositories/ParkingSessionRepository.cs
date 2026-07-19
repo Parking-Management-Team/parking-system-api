@@ -60,7 +60,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Include(b => b.Building)
             .Where(b =>
                 b.Vehicle.LicensePlate.ToUpper() == normalized &&
-                b.BookingStatus.ToUpper() == "CONFIRMED" &&
+                (b.BookingStatus == BookingStatus.Confirmed || (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline >= now)) &&
                 b.CheckinGraceUntil >= now &&
                 !_context.ParkingSessions.Any(ps => ps.BookingId == b.Id));
 
@@ -288,5 +288,11 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Include(s => s.Vehicle)
             .Include(s => s.Booking)
             .FirstOrDefaultAsync(s => s.SlotId == slotId && s.SessionStatus.ToUpper() == "ACTIVE");
+    }
+
+    public async Task<bool> HasPaidPaymentForBookingAsync(int bookingId)
+    {
+        return await _context.Payments
+            .AnyAsync(p => p.BookingId == bookingId && p.PaymentStatus == "PAID");
     }
 }
