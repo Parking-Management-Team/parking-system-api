@@ -374,7 +374,24 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
-                return BaseResponse<string>.Ok("00", $"Payment failed from VNPay, response code: {responseCode}");
+                // Translate VNPay error code to English explanation
+                string errorMsg = responseCode switch
+                {
+                    "07" => "Suspicious transaction, under review by bank.",
+                    "09" => "Customer card/account has not registered for Internet Banking service.",
+                    "10" => "Incorrect verification of account/card information more than 3 times.",
+                    "11" => "Payment deadline expired. Please try again.",
+                    "12" => "Customer card/account is locked or blocked.",
+                    "13" => "Incorrect OTP password entered. Transaction cancelled.",
+                    "24" => "Transaction cancelled by customer.",
+                    "51" => "Insufficient funds in customer account.",
+                    "65" => "Transaction limit exceeded for the day.",
+                    "75" => "The payment bank is undergoing maintenance. Please try again later.",
+                    "79" => "Incorrect payment password entered too many times.",
+                    _ => "Unknown error occurred at payment gateway."
+                };
+
+                return BaseResponse<string>.Fail("PAYMENT_FAILED", errorMsg);
             }
         }
 
