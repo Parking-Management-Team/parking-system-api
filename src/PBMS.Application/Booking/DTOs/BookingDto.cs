@@ -41,10 +41,21 @@ public class BookingDto
     /// <summary>Thời gian dự kiến vào bãi.</summary>
     public DateTime PlannedCheckinTime { get; set; }
 
+    /// <summary>Thời gian dự kiến ra khỏi bãi.</summary>
+    public DateTime PlannedCheckoutTime { get; set; }
+
+    /// <summary>Thời gian dự kiến checkout gia hạn (nếu có).</summary>
+    public DateTime? ExtendedCheckoutTime { get; set; }
+
     /// <summary>
     /// Số tiền đặt cọc (bằng BasePrice của PricingWindow tại giờ check-in dự kiến).
     /// </summary>
     public decimal DepositAmount { get; set; }
+
+    /// <summary>
+    /// Tổng chi phí dự kiến cho toàn bộ khoảng thời gian đặt chỗ.
+    /// </summary>
+    public decimal TotalAmount { get; set; }
 
     /// <summary>
     /// Trạng thái Booking hiện tại.
@@ -69,4 +80,10 @@ public class BookingDto
 
     /// <summary>Thời điểm tạo Booking.</summary>
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>ID vị trí đỗ xe chọn trước (chỉ áp dụng cho xe hơi).</summary>
+    public int? SlotId { get; set; }
+
+    /// <summary>Mã vị trí đỗ xe chọn trước (Ví dụ: "SLOT-A01").</summary>
+    public string? SlotCode { get; set; }
 }

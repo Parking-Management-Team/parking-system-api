@@ -26,4 +26,17 @@ public class PaymentResponseDto
     /// Mã QR thanh toán VietQR chuyển khoản (chỉ xuất hiện đối với hình thức ONLINE_BANKING).
     /// </summary>
     public string? QrCodeUrl { get; set; }
+
+    // Các trường breakdown bổ sung cho Staff checkout
+    public decimal BaseParkingFee { get; set; }
+    public decimal IncidentFeeTotal { get; set; }
+    public System.Collections.Generic.List<PaymentBreakdownItemDto> Items { get; set; } = new();
+}
+
+public class PaymentBreakdownItemDto
+{
+    public string Type { get; set; } = null!;
+    public string Name { get; set; } = null!;
+    public decimal Amount { get; set; }
+    public int? IncidentId { get; set; }
 }

@@ -31,6 +31,8 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
         builder.Property(ps => ps.CheckOutTime).HasColumnName("check_out_time");
         builder.Property(ps => ps.LicensePlateIn).HasColumnName("license_plate_in").HasMaxLength(20).IsRequired();
         builder.Property(ps => ps.LicensePlateOut).HasColumnName("license_plate_out").HasMaxLength(20);
+        builder.Property(ps => ps.ImageIn).HasColumnName("image_in");
+        builder.Property(ps => ps.ImageOut).HasColumnName("image_out");
         builder.Property(ps => ps.SessionStatus)
             .HasColumnName("session_status")
             .HasMaxLength(20)
@@ -108,5 +110,8 @@ public class ParkingSessionConfiguration : IEntityTypeConfiguration<ParkingSessi
             .IsUnique()
             .HasFilter("booking_id IS NOT NULL")
             .HasDatabaseName("IX_parking_session_booking_id");
+
+        builder.HasIndex(ps => ps.SessionStatus)
+            .HasDatabaseName("IX_parking_session_status");
     }
 }

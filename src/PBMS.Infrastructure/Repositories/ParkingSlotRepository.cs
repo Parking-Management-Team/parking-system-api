@@ -37,6 +37,7 @@ public class ParkingSlotRepository : BaseRepository<ParkingSlot>, IParkingSlotRe
     {
         return await _dbContext.Set<ParkingSlot>()
             .Include(s => s.Zone)
+                .ThenInclude(z => z.Floor)
             .Include(s => s.VehicleType)
             .Include(s => s.ParkingSessions)
             .FirstOrDefaultAsync(s => s.Id == id);
@@ -53,6 +54,22 @@ public class ParkingSlotRepository : BaseRepository<ParkingSlot>, IParkingSlotRe
                 s.VehicleTypeId == vehicleTypeId &&
                 s.Status != SlotStatus.Blocked &&
                 !s.MonthlySubscriptions.Any(ms => ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Active || ms.MonthlySubscriptionStatus == MonthlySubscriptionStatus.Pending));
+    }
+
+    public async Task<ParkingSlot?> FindFallbackSlotAsync(int zoneId, int excludeSlotId, DateTime checkinTime, DateTime checkoutTime, int bufferMinutes)
+    {
+        var now = DateTime.UtcNow;
+        return await _dbContext.Set<ParkingSlot>()
+            .Where(s => s.ZoneId == zoneId
+                && s.Id != excludeSlotId
+                && s.Status == SlotStatus.Available
+                && !s.ParkingSessions.Any(ps => ps.SessionStatus.ToUpper() == "ACTIVE")
+                && !s.Bookings.Any(b =>
+                    (b.BookingStatus == BookingStatus.Confirmed ||
+                     (b.BookingStatus == BookingStatus.Pending && b.PaymentDeadline > now)) &&
+                    b.PlannedCheckoutTime.AddMinutes(bufferMinutes) > checkinTime &&
+                    checkoutTime.AddMinutes(bufferMinutes) > b.PlannedCheckinTime))
+            .FirstOrDefaultAsync();
     }
 }
 

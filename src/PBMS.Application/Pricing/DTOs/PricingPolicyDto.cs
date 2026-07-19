@@ -27,9 +27,15 @@ public class PricingPolicyDto
     /// <summary>Trạng thái chính sách (Active / Inactive / Expired).</summary>
     public string PricingPolicyStatus { get; set; } = null!;
 
+    /// <summary>Độ ưu tiên của chính sách giá (0 = Mặc định, >0 = Ưu tiên cao hơn).</summary>
+    public int Priority { get; set; }
+
     /// <summary>Thời điểm tạo bản ghi.</summary>
     public DateTime CreatedAt { get; set; }
 
     /// <summary>Danh sách khung giờ tính giá của chính sách này.</summary>
     public IEnumerable<PricingWindowDto> PricingWindows { get; set; } = new List<PricingWindowDto>();
+
+    /// <summary>Danh sách quy tắc tính giá của chính sách này.</summary>
+    public IEnumerable<PricingRuleDto> PricingRules { get; set; } = new List<PricingRuleDto>();
 }

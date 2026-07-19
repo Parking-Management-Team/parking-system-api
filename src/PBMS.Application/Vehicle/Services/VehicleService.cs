@@ -108,8 +108,24 @@ public class VehicleService : IVehicleService
             }
 
             var normalizedPlate = NormalizeLicensePlate(createDto.LicensePlate);
-            if (await _vehicleRepository.LicensePlateExistsAsync(normalizedPlate))
+
+            // Check if vehicle with same license plate already exists
+            var existingVehicle = await _vehicleRepository.GetByLicensePlateAsync(normalizedPlate);
+            if (existingVehicle != null)
             {
+                if (existingVehicle.AccountId == null)
+                {
+                    // Vehicle is a guest/walk-in vehicle (no owner). Claim it by assigning AccountId.
+                    existingVehicle.AccountId = createDto.AccountId;
+                    existingVehicle.VehicleTypeId = createDto.VehicleTypeId;
+                    existingVehicle.RegisteredDay = createDto.RegisteredDay ?? existingVehicle.RegisteredDay;
+                    existingVehicle.VehicleStatus = NormalizeStatus(createDto.VehicleStatus);
+
+                    var claimed = await _vehicleRepository.UpdateAsync(existingVehicle);
+                    return BaseResponse<VehicleDto>.Ok(MapToDto(claimed), "Vehicle claimed and linked to account successfully.");
+                }
+
+                // Vehicle already belongs to another account
                 return BaseResponse<VehicleDto>.Fail(
                     "LICENSE_PLATE_EXISTS",
                     $"Vehicle license plate '{createDto.LicensePlate.Trim()}' already exists in the system.");
@@ -119,7 +135,7 @@ public class VehicleService : IVehicleService
             {
                 AccountId = createDto.AccountId,
                 VehicleTypeId = createDto.VehicleTypeId,
-                LicensePlate = createDto.LicensePlate.Trim(),
+                LicensePlate = normalizedPlate,
                 RegisteredDay = createDto.RegisteredDay,
                 VehicleStatus = NormalizeStatus(createDto.VehicleStatus)
             };
@@ -165,7 +181,7 @@ public class VehicleService : IVehicleService
 
             vehicle.AccountId = updateDto.AccountId;
             vehicle.VehicleTypeId = updateDto.VehicleTypeId;
-            vehicle.LicensePlate = updateDto.LicensePlate.Trim();
+            vehicle.LicensePlate = normalizedPlate;
             vehicle.RegisteredDay = updateDto.RegisteredDay;
             vehicle.VehicleStatus = NormalizeStatus(updateDto.VehicleStatus);
 
@@ -218,6 +234,44 @@ public class VehicleService : IVehicleService
             .ToArray());
     }
 
+    public static string DetectVehicleTypeFromPlate(string licensePlate)
+    {
+        if (string.IsNullOrWhiteSpace(licensePlate)) return "Car";
+        var clean = new string(licensePlate
+            .Trim()
+            .ToUpperInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray());
+
+        if (clean.Length < 3) return "Car";
+
+        var match = System.Text.RegularExpressions.Regex.Match(clean, @"^(.*?)(\d{4,5})$");
+        if (!match.Success) return "Car";
+
+        var prefix = match.Groups[1].Value;
+
+        // 1. Motorcycle standard: 2 digits + 1 letter + 1 digit (e.g., 29G1, 59T2)
+        if (System.Text.RegularExpressions.Regex.IsMatch(prefix, @"^\d{2}[A-Z]\d$"))
+        {
+            return "Motorcycle";
+        }
+
+        // 2. Motorcycle electric / under 50cc: 2 digits + 2 letters (e.g., 29AA, 59AB, 29MD)
+        // Excluding special car prefixes: LD, DA, MK, HC, NG, QT, NN, KT
+        if (System.Text.RegularExpressions.Regex.IsMatch(prefix, @"^\d{2}[A-Z]{2}$"))
+        {
+            var letters = prefix.Substring(2);
+            var carSpecialLetters = new[] { "LD", "DA", "MK", "HC", "NG", "QT", "NN", "KT" };
+            if (carSpecialLetters.Contains(letters))
+            {
+                return "Car";
+            }
+            return "Motorcycle";
+        }
+
+        return "Car";
+    }
+
     private async Task<BaseResponse<VehicleDto>> ValidateVehicleInputAsync(
         int? accountId,
         int vehicleTypeId,
@@ -248,6 +302,23 @@ public class VehicleService : IVehicleService
         if (!string.Equals(vehicleType.VehicleTypeStatus, VehicleType.StatusActive, StringComparison.OrdinalIgnoreCase))
         {
             return BaseResponse<VehicleDto>.Fail("VEHICLE_TYPE_INACTIVE", "Vehicle type is not active.");
+        }
+
+        // Validate vehicle type against license plate format
+        var detectedCategory = DetectVehicleTypeFromPlate(licensePlate);
+        var selectedTypeName = vehicleType.TypeName ?? "";
+        bool isSelectedTypeMotorcycle = selectedTypeName.Contains("Motor", StringComparison.OrdinalIgnoreCase) || 
+                                       selectedTypeName.Contains("Bike", StringComparison.OrdinalIgnoreCase) || 
+                                       selectedTypeName.Contains("Scoot", StringComparison.OrdinalIgnoreCase) ||
+                                       selectedTypeName.Contains("máy", StringComparison.OrdinalIgnoreCase);
+
+        if (detectedCategory == "Motorcycle" && !isSelectedTypeMotorcycle)
+        {
+            return BaseResponse<VehicleDto>.Fail("VEHICLE_TYPE_MISMATCH", "This license plate is for a motorcycle. Please select a motorcycle vehicle type.");
+        }
+        else if (detectedCategory == "Car" && isSelectedTypeMotorcycle)
+        {
+            return BaseResponse<VehicleDto>.Fail("VEHICLE_TYPE_MISMATCH", "This license plate is for a car/truck. Please select a car or non-motorcycle vehicle type.");
         }
 
         if (string.IsNullOrWhiteSpace(licensePlate))

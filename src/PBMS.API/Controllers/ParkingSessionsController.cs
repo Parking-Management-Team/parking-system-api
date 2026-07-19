@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Common;
+using PBMS.Application.Common.Interfaces;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
 
@@ -10,10 +11,36 @@ namespace PBMS.API.Controllers;
 public class ParkingSessionsController : ControllerBase
 {
     private readonly IParkingSessionService _service;
+    private readonly ILicensePlateOcrService _ocrService;
 
-    public ParkingSessionsController(IParkingSessionService service)
+    public ParkingSessionsController(IParkingSessionService service, ILicensePlateOcrService ocrService)
     {
         _service = service;
+        _ocrService = ocrService;
+    }
+
+    [HttpPost("check-entry")]
+    public async Task<IActionResult> CheckEntry([FromBody] CheckEntryRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.CheckEntryConditionsAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("ocr")]
+    public async Task<IActionResult> ScanLicensePlate([FromBody] OcrScanRequest request)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Image))
+        {
+            return BadRequest("Image data is required.");
+        }
+
+        var result = await _ocrService.ScanLicensePlateAsync(request.Image);
+        return result.Success ? Ok(result) : BadRequest(result);
     }
 
     [HttpPost("check-in")]
@@ -28,6 +55,13 @@ public class ParkingSessionsController : ControllerBase
         return result.Success
             ? CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result)
             : ToErrorResult(result.ErrorCode, result);
+    }
+
+    [HttpGet("check-in/booking")]
+    public async Task<IActionResult> GetCheckInBooking([FromQuery] string licensePlate, [FromQuery] int? buildingId)
+    {
+        var result = await _service.GetCheckInBookingByLicensePlateAsync(licensePlate, buildingId);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
     [HttpPost]
@@ -58,10 +92,29 @@ public class ParkingSessionsController : ControllerBase
         return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
+    [HttpGet("by-account/{accountId:int}")]
+    public async Task<IActionResult> GetByAccount(int accountId)
+    {
+        var result = await _service.GetByAccountIdAsync(accountId);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _service.GetByIdAsync(id);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    [HttpPatch("{id:int}/update")]
+    public async Task<IActionResult> UpdateCheckinInfo(int id, [FromBody] UpdateCheckinRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.UpdateCheckinInfoAsync(id, request);
         return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
@@ -93,12 +146,65 @@ public class ParkingSessionsController : ControllerBase
         return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
     }
 
+    /// <summary>
+    /// Completes check-out without payment, records the debt, and adds the vehicle to the blacklist.
+    /// </summary>
+    [HttpPost("{id:int}/unpaid-checkout")]
+    public async Task<IActionResult> UnpaidCheckout(int id, [FromBody] UnpaidCheckoutRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.UnpaidCheckoutAsync(id, request);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    /// <summary>
+    /// Reports a lost parking card and applies the penalty fee.
+    /// </summary>
+    [HttpPost("{id:int}/lost-card")]
+    public async Task<IActionResult> ReportLostCard(int id, [FromBody] LostCardRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _service.ReportLostCardAsync(id, request);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    /// <summary>
+    /// Reverts a lost-card report, removes related blacklist entries, and cancels the incident.
+    /// </summary>
+    [HttpPost("{id:int}/lost-card/rollback")]
+    public async Task<IActionResult> RollbackLostCard(int id)
+    {
+        var result = await _service.RollbackLostCardAsync(id);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
+    /// <summary>
+    /// Assigns a replacement card to a parking session after a card is lost.
+    /// </summary>
+    [HttpPatch("{id:int}/replace-card")]
+    public async Task<IActionResult> ReplaceCard(int id, [FromQuery] string newCardCode)
+    {
+        var result = await _service.ReplaceSessionCardAsync(id, newCardCode);
+        return result.Success ? Ok(result) : ToErrorResult(result.ErrorCode, result);
+    }
+
     private IActionResult ToErrorResult(string? errorCode, object result)
     {
         return errorCode switch
         {
-            "NOT_FOUND" => NotFound(result),
-            "VEHICLE_IN_ACTIVE_SESSION" or "CARD_IN_ACTIVE_SESSION" or "SLOT_IN_ACTIVE_SESSION" => Conflict(result),
+            "NOT_FOUND" or "BOOKING_NOT_FOUND" => NotFound(result),
+            "VEHICLE_IN_ACTIVE_SESSION" or "CARD_IN_ACTIVE_SESSION" or "SLOT_IN_ACTIVE_SESSION"
+                or "SESSION_NOT_ACTIVE" => Conflict(result),
+            "VEHICLE_TYPE_MISMATCH" or "BUILDING_MISMATCH"
+                or "SLOT_NOT_AVAILABLE" => Conflict(result),
             _ => BadRequest(result)
         };
     }

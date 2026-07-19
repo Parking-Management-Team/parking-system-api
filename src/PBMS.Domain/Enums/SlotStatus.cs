@@ -24,5 +24,10 @@ public enum SlotStatus
     /// <summary>
     /// Slot đang bảo trì.
     /// </summary>
-    Maintenance
+    Maintenance,
+
+    /// <summary>
+    /// Slot đã được đặt trước.
+    /// </summary>
+    Reserved
 }

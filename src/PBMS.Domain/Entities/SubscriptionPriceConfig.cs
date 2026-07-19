@@ -18,6 +18,12 @@ public class SubscriptionPriceConfig : BaseEntity, ISoftDeletable
     public decimal Price { get; set; }
 
     /// <summary>
+    /// Số ngày hiệu lực của gói vé tháng (ví dụ: 30 ngày, 90 ngày).
+    /// </summary>
+    public int DurationDays { get; set; } = 30;
+
+
+    /// <summary>
     /// Thời điểm bắt đầu áp dụng mức giá này.
     /// </summary>
     public DateTime EffectiveFrom { get; set; }

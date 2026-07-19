@@ -37,10 +37,20 @@ public class CreatePricingPolicyRequest
     public DateTime? EffectiveEnd { get; set; }
 
     /// <summary>
+    /// Độ ưu tiên của chính sách giá (Mặc định = 0).
+    /// </summary>
+    public int Priority { get; set; } = 0;
+
+    /// <summary>
     /// Danh sách khung giờ tính giá của chính sách này.
     /// Phải có ít nhất 1 khung giờ.
     /// </summary>
     [Required]
     [MinLength(1)]
     public List<CreatePricingWindowRequest> PricingWindows { get; set; } = new();
+
+    /// <summary>
+    /// Danh sách các quy tắc tính giá đi kèm.
+    /// </summary>
+    public List<CreatePricingRuleRequest> PricingRules { get; set; } = new();
 }

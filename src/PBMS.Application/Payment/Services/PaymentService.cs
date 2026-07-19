@@ -20,30 +20,28 @@ namespace PBMS.Application.Payment.Services;
 /// </summary>
 public class PaymentService : IPaymentService
 {
-    private readonly IRepository<PBMS.Domain.Entities.Payment> _paymentRepository;
+    private readonly IPaymentRepository _paymentRepository;
     private readonly IRepository<PBMS.Domain.Entities.ParkingSession> _sessionRepository;
     private readonly IRepository<BookingEntity> _bookingRepository;
-    private readonly IMonthlySubscriptionRepository _subscriptionRepository;
     private readonly IRepository<PBMS.Domain.Entities.Vehicle> _vehicleRepository;
     private readonly ICardRepository _cardRepository;
     private readonly IVNPayGateway _vnpayGateway;
     private readonly IParkingSessionService _sessionService;
-    private readonly IFeeCalculationService _feeCalculationService;
+    private readonly IPricingCalculationService _pricingCalculationService;
     private readonly IRevenueService _revenueService;
     private readonly IConfiguration _configuration;
     private readonly IIncidentRepository _incidentRepository;
 
 
     public PaymentService(
-        IRepository<PBMS.Domain.Entities.Payment> paymentRepository,
+        IPaymentRepository paymentRepository,
         IRepository<PBMS.Domain.Entities.ParkingSession> sessionRepository,
         IRepository<BookingEntity> bookingRepository,
-        IMonthlySubscriptionRepository subscriptionRepository,
         IRepository<PBMS.Domain.Entities.Vehicle> vehicleRepository,
         ICardRepository cardRepository,
         IVNPayGateway vnpayGateway,
         IParkingSessionService sessionService,
-        IFeeCalculationService feeCalculationService,
+        IPricingCalculationService pricingCalculationService,
         IConfiguration configuration,
         IRevenueService revenueService,
         IIncidentRepository incidentRepository)
@@ -51,12 +49,11 @@ public class PaymentService : IPaymentService
         _paymentRepository = paymentRepository;
         _sessionRepository = sessionRepository;
         _bookingRepository = bookingRepository;
-        _subscriptionRepository = subscriptionRepository;
         _vehicleRepository = vehicleRepository;
         _cardRepository = cardRepository;
         _vnpayGateway = vnpayGateway;
         _sessionService = sessionService;
-        _feeCalculationService = feeCalculationService;
+        _pricingCalculationService = pricingCalculationService;
         _configuration = configuration;
         _revenueService = revenueService;
         _incidentRepository = incidentRepository;
@@ -70,16 +67,39 @@ public class PaymentService : IPaymentService
     {
         // 1. Kiểm tra ràng buộc duy nhất nguồn thanh toán
         int sourceCount = (request.SessionId.HasValue ? 1 : 0) +
-                          (request.BookingId.HasValue ? 1 : 0) +
-                          (request.MonthlySubscriptionId.HasValue ? 1 : 0);
+                          (request.BookingId.HasValue ? 1 : 0);
 
         if (sourceCount != 1)
         {
-            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId, BookingId, or MonthlySubscriptionId.");
+            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_SOURCE", "The payment transaction must be linked to exactly one source: SessionId or BookingId.");
         }
+
+        // Hủy (chuyển sang FAILED) toàn bộ các giao dịch PENDING cũ liên quan đến nguồn thanh toán này
+        if (request.SessionId.HasValue)
+        {
+            var pendingPayments = await _paymentRepository.FindAsync(p => p.SessionId == request.SessionId.Value && p.PaymentStatus == "PENDING");
+            foreach (var pendingPayment in pendingPayments)
+            {
+                pendingPayment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(pendingPayment);
+            }
+        }
+        else if (request.BookingId.HasValue)
+        {
+            var pendingPayments = await _paymentRepository.FindAsync(p => p.BookingId == request.BookingId.Value && p.PaymentStatus == "PENDING");
+            foreach (var pendingPayment in pendingPayments)
+            {
+                pendingPayment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(pendingPayment);
+            }
+        }
+
 
         decimal originalAmount = 0;
         string description = "Transaction payment";
+        decimal baseParkingFee = 0;
+        decimal incidentFeeTotal = 0;
+        var breakdownItems = new System.Collections.Generic.List<PaymentBreakdownItemDto>();
 
         // 2. Xác định số tiền gốc cần thanh toán theo từng nguồn nghiệp vụ
         if (request.SessionId.HasValue)
@@ -100,38 +120,56 @@ public class PaymentService : IPaymentService
             var checkOutTime = session.CheckOutTime ?? DateTime.UtcNow;
             var calculationStartTime = session.CheckInTime;
 
-            if (session.MonthlySubscriptionId.HasValue)
+
+
+            // Gộp tính toán phí đỗ xe và phí phạt qua PricingEngine thống nhất
+            var feeResult = await _pricingCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime, session.Id);
+            
+            decimal finalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
+            decimal totalPenaltyFee = feeResult.PenaltyAmount;
+            originalAmount = feeResult.TotalAmount;
+
+            baseParkingFee = finalFee;
+            incidentFeeTotal = totalPenaltyFee;
+
+            breakdownItems.Add(new PaymentBreakdownItemDto
             {
-                var subscription = await _subscriptionRepository.GetByIdAsync(session.MonthlySubscriptionId.Value);
-                if (subscription != null && subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value < checkOutTime)
-                {
-                    calculationStartTime = subscription.ExpiredAt.Value;
-                }
-            }
+                Type = "PARKING_FEE",
+                Name = "Phí gửi xe",
+                Amount = finalFee
+            });
 
-            var feeResult = await _feeCalculationService.CalculateFeeAsync(vehicle.VehicleTypeId, calculationStartTime, checkOutTime);
-
-            decimal finalFee = feeResult.TotalFee;
             // Nếu lượt gửi xe có liên kết với đặt chỗ, thực hiện khấu trừ tiền đặt cọc vào tổng tiền thanh toán
             if (session.BookingId.HasValue)
             {
                 var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
                 if (booking != null)
                 {
+                    originalAmount = Math.Max(0, originalAmount - booking.DepositAmount);
                     finalFee = Math.Max(0, finalFee - booking.DepositAmount);
+                    breakdownItems.Add(new PaymentBreakdownItemDto
+                    {
+                        Type = "DEPOSIT_DEDUCTION",
+                        Name = "Khấu trừ đặt cọc",
+                        Amount = -booking.DepositAmount
+                    });
                 }
             }
 
-            // Truy vấn và cộng dồn tiền phạt từ các sự cố chưa giải quyết (Open)
-            decimal totalPenaltyFee = 0;
             var sessionIncidents = await _incidentRepository.GetIncidentsBySessionWithDetailsAsync(session.Id);
-            if (sessionIncidents != null)
+            var activeIncidents = sessionIncidents.Where(i => (i.Status == PBMS.Domain.Enums.IncidentStatus.Open || i.Status == PBMS.Domain.Enums.IncidentStatus.Processing) && !i.IsDeleted).ToList();
+            foreach (var incident in activeIncidents)
             {
-                var openIncidents = sessionIncidents.Where(i => i.Status == PBMS.Domain.Enums.IncidentStatus.Open);
-                totalPenaltyFee = openIncidents.Sum(i => i.PenaltyFee ?? 0);
+                decimal penaltyAmt = incident.PenaltyFee ?? incident.PenaltyConfig?.PenaltyFee ?? 0;
+                breakdownItems.Add(new PaymentBreakdownItemDto
+                {
+                    Type = "INCIDENT_PENALTY",
+                    IncidentId = incident.Id,
+                    Name = incident.IncidentType?.IncidentName ?? "Phí phạt sự cố",
+                    Amount = penaltyAmt
+                });
             }
 
-            originalAmount = finalFee + totalPenaltyFee;
             description = $"Parking fee payment for session {session.Id}";
             if (totalPenaltyFee > 0)
             {
@@ -148,14 +186,37 @@ public class PaymentService : IPaymentService
             originalAmount = booking.DepositAmount;
             description = $"Deposit payment for booking {booking.Id}";
         }
-        else if (request.MonthlySubscriptionId.HasValue)
-        {
-            var subscription = await _subscriptionRepository.GetByIdAsync(request.MonthlySubscriptionId.Value);
-            if (subscription == null)
-                return BaseResponse<PaymentResponseDto>.Fail("SUBSCRIPTION_NOT_FOUND", "Monthly subscription information not found.");
 
-            originalAmount = subscription.MonthlyPrice;
-            description = $"Monthly subscription payment for subscription {subscription.Id}";
+
+        // Nếu số tiền cần thanh toán thực tế là 0đ (do trong grace period hoặc được khấu trừ hết)
+        if (originalAmount <= 0)
+        {
+            var payment = new PBMS.Domain.Entities.Payment
+            {
+                SessionId = request.SessionId,
+                BookingId = request.BookingId,
+                MonthlySubscriptionId = null,
+                Amount = 0,
+                PaymentMethod = request.PaymentMethod.ToUpperInvariant(),
+                PaymentStatus = "PAID",
+                PaymentTime = DateTime.UtcNow
+            };
+
+            await _paymentRepository.AddAsync(payment);
+            await _paymentRepository.SaveChangesAsync();
+
+            // Hoàn tất nghiệp vụ logic sau khi thanh toán thành công
+            await CompleteBusinessFlowAsync(payment);
+
+            var responseDto = MapToDto(payment);
+            if (payment.SessionId.HasValue)
+            {
+                responseDto.BaseParkingFee = baseParkingFee;
+                responseDto.IncidentFeeTotal = incidentFeeTotal;
+                responseDto.Items = breakdownItems;
+            }
+
+            return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Payment successful (Zero amount due, automatically marked as PAID).");
         }
 
         // 3. Xử lý logic theo Phương thức thanh toán
@@ -175,7 +236,7 @@ public class PaymentService : IPaymentService
             {
                 SessionId = request.SessionId,
                 BookingId = request.BookingId,
-                MonthlySubscriptionId = request.MonthlySubscriptionId,
+                MonthlySubscriptionId = null,
                 Amount = roundedAmount,
                 PaymentMethod = "CASH",
                 PaymentStatus = "PAID",
@@ -188,7 +249,15 @@ public class PaymentService : IPaymentService
             // Hoàn tất nghiệp vụ logic sau khi thanh toán thành công
             await CompleteBusinessFlowAsync(payment);
 
-            return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Cash payment successful (Cash rounding applied).");
+            var responseDto = MapToDto(payment);
+            if (payment.SessionId.HasValue)
+            {
+                responseDto.BaseParkingFee = baseParkingFee;
+                responseDto.IncidentFeeTotal = incidentFeeTotal;
+                responseDto.Items = breakdownItems;
+            }
+
+            return BaseResponse<PaymentResponseDto>.Ok(responseDto, "Cash payment successful (Cash rounding applied).");
         }
         else if (method == "ONLINE_BANKING")
         {
@@ -200,7 +269,7 @@ public class PaymentService : IPaymentService
             {
                 SessionId = request.SessionId,
                 BookingId = request.BookingId,
-                MonthlySubscriptionId = request.MonthlySubscriptionId,
+                MonthlySubscriptionId = null,
                 Amount = originalAmount,
                 PaymentMethod = "ONLINE_BANKING",
                 PaymentStatus = "PENDING",
@@ -217,6 +286,12 @@ public class PaymentService : IPaymentService
                 string paymentUrl = _vnpayGateway.CreatePaymentUrl(orderCode, originalAmount, description, "127.0.0.1");
 
                 var responseDto = MapToDto(payment);
+                if (payment.SessionId.HasValue)
+                {
+                    responseDto.BaseParkingFee = baseParkingFee;
+                    responseDto.IncidentFeeTotal = incidentFeeTotal;
+                    responseDto.Items = breakdownItems;
+                }
                 responseDto.PaymentUrl = paymentUrl;
                 responseDto.QrCodeUrl = ""; // VNPay đã tích hợp sẵn QR trong trang thanh toán
 
@@ -268,6 +343,15 @@ public class PaymentService : IPaymentService
 
         if (payment.PaymentStatus == "PENDING")
         {
+            // Kiểm tra thời gian hết hạn của giao dịch thanh toán online (15 phút)
+            if (payment.CreatedAt.AddMinutes(15) < DateTime.UtcNow)
+            {
+                payment.PaymentStatus = "FAILED";
+                _paymentRepository.Update(payment);
+                await _paymentRepository.SaveChangesAsync();
+                return BaseResponse<string>.Fail("PAYMENT_EXPIRED", "Payment transaction has expired. Please check out again.");
+            }
+
             vnpayData.TryGetValue("vnp_ResponseCode", out string? responseCode);
             vnpayData.TryGetValue("vnp_TransactionStatus", out string? transactionStatus);
 
@@ -290,7 +374,24 @@ public class PaymentService : IPaymentService
                 _paymentRepository.Update(payment);
                 await _paymentRepository.SaveChangesAsync();
 
-                return BaseResponse<string>.Ok("00", $"Payment failed from VNPay, response code: {responseCode}");
+                // Translate VNPay error code to English explanation
+                string errorMsg = responseCode switch
+                {
+                    "07" => "Suspicious transaction, under review by bank.",
+                    "09" => "Customer card/account has not registered for Internet Banking service.",
+                    "10" => "Incorrect verification of account/card information more than 3 times.",
+                    "11" => "Payment deadline expired. Please try again.",
+                    "12" => "Customer card/account is locked or blocked.",
+                    "13" => "Incorrect OTP password entered. Transaction cancelled.",
+                    "24" => "Transaction cancelled by customer.",
+                    "51" => "Insufficient funds in customer account.",
+                    "65" => "Transaction limit exceeded for the day.",
+                    "75" => "The payment bank is undergoing maintenance. Please try again later.",
+                    "79" => "Incorrect payment password entered too many times.",
+                    _ => "Unknown error occurred at payment gateway."
+                };
+
+                return BaseResponse<string>.Fail("PAYMENT_FAILED", errorMsg);
             }
         }
 
@@ -309,58 +410,76 @@ public class PaymentService : IPaymentService
         }
         else if (payment.BookingId.HasValue)
         {
-            // Thanh toán đặt cọc -> Xác nhận đặt cọc thành công
             var booking = await _bookingRepository.GetByIdAsync(payment.BookingId.Value);
             if (booking != null)
             {
-                booking.BookingStatus = "Confirmed";
-                booking.ConfirmedAt = DateTime.UtcNow;
+                if (booking.ExtendedCheckoutTime.HasValue)
+                {
+                    // Thanh toán gia hạn đặt chỗ -> Cập nhật thời gian checkout mới và cộng dồn số tiền
+                    booking.PlannedCheckoutTime = booking.ExtendedCheckoutTime.Value;
+                    booking.DepositAmount += payment.Amount;
+                    booking.ExtendedCheckoutTime = null;
+                }
+                else
+                {
+                    // Thanh toán đặt cọc -> Xác nhận đặt cọc thành công
+                    booking.BookingStatus = "Confirmed";
+                    booking.ConfirmedAt = DateTime.UtcNow;
+                }
                 _bookingRepository.Update(booking);
                 await _bookingRepository.SaveChangesAsync();
             }
         }
-        else if (payment.MonthlySubscriptionId.HasValue)
-        {
-            // Thanh toán vé tháng -> Kích hoạt/Gia hạn vé tháng và tính thời điểm hết hạn
-            var subscription = await _subscriptionRepository.GetByIdAsync(payment.MonthlySubscriptionId.Value);
-            if (subscription != null)
-            {
-                subscription.MonthlySubscriptionStatus = PBMS.Domain.Enums.MonthlySubscriptionStatus.Active;
-                
-                var now = DateTime.UtcNow;
-                if (subscription.ActivatedAt == null)
-                {
-                    subscription.ActivatedAt = now;
-                }
 
-                // Gia hạn (Renewal) hoặc kích hoạt mới
-                if (subscription.ExpiredAt.HasValue && subscription.ExpiredAt.Value > now)
-                {
-                    subscription.ExpiredAt = subscription.ExpiredAt.Value.AddMonths(1);
-                }
-                else
-                {
-                    subscription.ExpiredAt = now.AddMonths(1);
-                }
-
-                _subscriptionRepository.Update(subscription);
-                await _subscriptionRepository.SaveChangesAsync();
-
-                // Cập nhật trạng thái thẻ đỗ xe sang Assigned
-                if (subscription.AssignedCardId.HasValue)
-                {
-                    var card = await _cardRepository.GetByIdAsync(subscription.AssignedCardId.Value);
-                    if (card != null)
-                    {
-                        card.CardStatus = PBMS.Domain.Enums.CardStatus.Assigned.ToString();
-                        _cardRepository.Update(card);
-                        await _cardRepository.SaveChangesAsync();
-                    }
-                }
-            }
-        }
 
         await _revenueService.UpdateRevenueAfterPaymentAsync(payment.Id);
+    }
+
+    public async Task<PagedResult<PaymentResponseDto>> GetPaymentsPagedAsync(
+        int pageIndex,
+        int pageSize,
+        DateTime? fromDate,
+        DateTime? toDate,
+        string? method)
+    {
+        var (items, totalCount) = await _paymentRepository.GetPagedAsync(pageIndex, pageSize, fromDate, toDate, method);
+        var dtos = items.Select(MapToDto).ToList();
+        return PagedResult<PaymentResponseDto>.Create(dtos, totalCount, pageIndex, pageSize);
+    }
+
+    public async Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsBySessionIdAsync(int sessionId)
+    {
+        var items = await _paymentRepository.GetBySessionIdAsync(sessionId);
+        return items.Select(MapToDto).ToList();
+    }
+
+    public async Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsByAccountIdAsync(int accountId)
+    {
+        var items = await _paymentRepository.GetByAccountIdAsync(accountId);
+        return items.Select(MapToDto).ToList();
+    }
+
+    public async Task<BaseResponse<PaymentResponseDto>> ProcessRefundAsync(int paymentId)
+    {
+        var payment = await _paymentRepository.GetByIdAsync(paymentId);
+        if (payment == null)
+        {
+            return BaseResponse<PaymentResponseDto>.Fail("NOT_FOUND", $"Payment with ID {paymentId} not found.");
+        }
+
+        if (payment.PaymentStatus != "REFUND_PENDING")
+        {
+            return BaseResponse<PaymentResponseDto>.Fail("INVALID_PAYMENT_STATUS", $"Only REFUND_PENDING payments can be refunded. Current status: {payment.PaymentStatus}.");
+        }
+
+        // Thực hiện hoàn cọc thực tế (Giả lập chuyển khoản/hoàn trả qua VNPay thành công)
+        payment.PaymentStatus = "REFUNDED";
+        payment.PaymentTime = DateTime.UtcNow;
+        
+        _paymentRepository.Update(payment);
+        await _paymentRepository.SaveChangesAsync();
+
+        return BaseResponse<PaymentResponseDto>.Ok(MapToDto(payment), "Payment refunded successfully.");
     }
 
     private static PaymentResponseDto MapToDto(PBMS.Domain.Entities.Payment payment) => new()

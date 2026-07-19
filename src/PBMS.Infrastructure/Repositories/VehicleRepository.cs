@@ -21,6 +21,7 @@ public class VehicleRepository : IVehicleRepository
     {
         return await _context.Vehicles
             .Include(v => v.VehicleType)
+            .Where(v => v.VehicleStatus != Vehicle.StatusArchived)
             .OrderBy(v => v.LicensePlate)
             .ToListAsync();
     }
@@ -29,7 +30,7 @@ public class VehicleRepository : IVehicleRepository
     {
         return await _context.Vehicles
             .Include(v => v.VehicleType)
-            .Where(v => v.AccountId == accountId)
+            .Where(v => v.AccountId == accountId && v.VehicleStatus != Vehicle.StatusArchived)
             .OrderBy(v => v.LicensePlate)
             .ToListAsync();
     }
@@ -50,6 +51,7 @@ public class VehicleRepository : IVehicleRepository
     {
         var normalizedLicensePlate = NormalizeLicensePlate(licensePlate);
         var query = _context.Vehicles.Where(v =>
+            v.LicensePlate == normalizedLicensePlate ||
             v.LicensePlate.ToUpper().Replace(" ", "").Replace("-", "").Replace(".", "") == normalizedLicensePlate);
 
         if (excludeId.HasValue)
@@ -58,6 +60,16 @@ public class VehicleRepository : IVehicleRepository
         }
 
         return await query.AnyAsync();
+    }
+
+    public async Task<Vehicle?> GetByLicensePlateAsync(string licensePlate)
+    {
+        var normalized = NormalizeLicensePlate(licensePlate);
+        return await _context.Vehicles
+            .Include(v => v.VehicleType)
+            .FirstOrDefaultAsync(v =>
+                v.LicensePlate == normalized ||
+                v.LicensePlate.ToUpper().Replace(" ", "").Replace("-", "").Replace(".", "") == normalized);
     }
 
     private static string NormalizeLicensePlate(string licensePlate)

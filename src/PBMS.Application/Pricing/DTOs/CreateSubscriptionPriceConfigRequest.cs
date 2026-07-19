@@ -4,4 +4,6 @@ public class CreateSubscriptionPriceConfigRequest
 {
     public int VehicleTypeId { get; set; }
     public decimal Price { get; set; }
+    public int DurationDays { get; set; } = 30;
+
 }

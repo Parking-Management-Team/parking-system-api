@@ -117,6 +117,24 @@ namespace PBMS.Infrastructure.Configurations
                 .WithMany(bld => bld.Bookings)
                 .HasForeignKey(b => b.BuildingId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Property(b => b.SlotId)
+                .HasColumnName("slot_id");
+
+            builder.Property(b => b.ExtendedCheckoutTime)
+                .HasColumnName("extended_checkout_time");
+
+            // Quan hệ N-1: Nhiều Booking liên kết tới 1 ParkingSlot (ở các khung thời gian khác nhau)
+            builder.HasOne(b => b.ParkingSlot)
+                .WithMany(ps => ps.Bookings)
+                .HasForeignKey(b => b.SlotId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 11. Chỉ mục (Indexes) tối ưu hóa truy vấn định kỳ của Workers
+            builder.HasIndex(b => b.BookingStatus);
+            builder.HasIndex(b => b.PaymentDeadline);
+            builder.HasIndex(b => b.CheckinGraceUntil);
+            builder.HasIndex(b => b.PlannedCheckoutTime);
         }
     }
 }

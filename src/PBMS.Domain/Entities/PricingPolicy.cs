@@ -31,6 +31,11 @@ public class PricingPolicy : BaseEntity
     /// </summary>
     public string PricingPolicyStatus { get; set; } = "Active";
 
+    /// <summary>
+    /// Độ ưu tiên của chính sách giá (Ví dụ: 0 là mặc định, chính sách ngày lễ có priority lớn hơn như 1, 2).
+    /// </summary>
+    public int Priority { get; set; } = 0;
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------
@@ -44,6 +49,11 @@ public class PricingPolicy : BaseEntity
     /// Danh sách các khung giờ tính giá (PricingWindow) thuộc chính sách này.
     /// </summary>
     public virtual ICollection<PricingWindow> PricingWindows { get; set; } = new List<PricingWindow>();
+
+    /// <summary>
+    /// Danh sách các quy tắc tính giá (PricingRule) thuộc chính sách này.
+    /// </summary>
+    public virtual ICollection<PricingRule> PricingRules { get; set; } = new List<PricingRule>();
 
     /// <summary>
     /// Danh sách các giao dịch thanh toán (Payment) đã áp dụng bảng giá này.

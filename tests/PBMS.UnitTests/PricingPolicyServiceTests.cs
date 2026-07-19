@@ -575,4 +575,45 @@ public class PricingPolicyServiceTests
         // Assert
         Assert.Equal("Active", result.PricingPolicyStatus);
     }
+
+    [Fact]
+    public async Task CleanupExpiredPricingPoliciesAsync_ShouldChangeStatusToExpired_WhenEffectiveEndIsPast()
+    {
+        // Arrange
+        var today = DateTime.UtcNow.AddHours(7).Date;
+        var expiredPolicy = new PricingPolicy
+        {
+            Id = 1,
+            PolicyName = "Old Policy",
+            PricingPolicyStatus = "Active",
+            EffectiveStart = today.AddDays(-10),
+            EffectiveEnd = today.AddDays(-1)
+        };
+        var currentPolicy = new PricingPolicy
+        {
+            Id = 2,
+            PolicyName = "Current Policy",
+            PricingPolicyStatus = "Active",
+            EffectiveStart = today,
+            EffectiveEnd = null
+        };
+
+        _policyRepoMock.FindAsync(Arg.Any<System.Linq.Expressions.Expression<System.Func<PricingPolicy, bool>>>())
+            .Returns(x => {
+                var expr = x.Arg<System.Linq.Expressions.Expression<System.Func<PricingPolicy, bool>>>();
+                var func = expr.Compile();
+                var list = new List<PricingPolicy> { expiredPolicy, currentPolicy };
+                return Task.FromResult<IEnumerable<PricingPolicy>>(System.Linq.Enumerable.ToList(System.Linq.Enumerable.Where(list, func)));
+            });
+
+        // Act
+        var count = await _service.CleanupExpiredPricingPoliciesAsync();
+
+        // Assert
+        Assert.Equal(1, count);
+        Assert.Equal("Expired", expiredPolicy.PricingPolicyStatus);
+        Assert.Equal("Active", currentPolicy.PricingPolicyStatus);
+        _policyRepoMock.Received(1).Update(expiredPolicy);
+        await _policyRepoMock.Received(1).SaveChangesAsync();
+    }
 }

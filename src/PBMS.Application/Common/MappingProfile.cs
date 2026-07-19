@@ -1,8 +1,10 @@
 using AutoMapper;
+using PBMS.Application.AuditLog.DTOs;
 using PBMS.Application.Blacklist.DTOs;
 using PBMS.Application.Incident.DTOs;
 using PBMS.Application.ParkingStructure.DTOs;
 using PBMS.Domain.Entities;
+using PBMS.Domain.Enums;
 
 namespace PBMS.Application.Common;
 
@@ -25,12 +27,8 @@ public class MappingProfile : Profile
 
         // ParkingSlot mappings
         CreateMap<ParkingSlot, ParkingSlotDto>()
-            .ForMember(dest => dest.OccupiedLicensePlate, opt => opt.MapFrom(src =>
-                src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active") != null
-                    ? src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active")!.LicensePlateIn
-                    : src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == Domain.Enums.MonthlySubscriptionStatus.Active) != null
-                        ? src.MonthlySubscriptions.FirstOrDefault(ms => ms.MonthlySubscriptionStatus == Domain.Enums.MonthlySubscriptionStatus.Active)!.Vehicle!.LicensePlate
-                        : null));
+            .ForMember(dest => dest.OccupiedLicensePlate, opt => opt.MapFrom(src => GetOccupiedLicensePlate(src)))
+            .ForMember(dest => dest.Subscription, opt => opt.MapFrom(src => GetActiveSubscription(src)));
         CreateMap<ParkingSlotCreateRequest, ParkingSlot>();
         CreateMap<ParkingSlotUpdateRequest, ParkingSlot>();
 
@@ -55,5 +53,23 @@ public class MappingProfile : Profile
         
         CreateMap<PenaltyConfig, PenaltyConfigDto>()
             .ForMember(dest => dest.IncidentTypeName, opt => opt.MapFrom(src => src.IncidentType.IncidentName));
+
+        // AuditLog mappings
+        CreateMap<PBMS.Domain.Entities.AuditLog, AuditLogDto>()
+            .ForMember(dest => dest.AccountName, opt => opt.MapFrom(src => src.Account != null ? src.Account.FullName : null));
+    }
+
+    private static string? GetOccupiedLicensePlate(ParkingSlot src)
+    {
+        var activeSession = src.ParkingSessions.FirstOrDefault(ps => ps.SessionStatus == "ACTIVE" || ps.SessionStatus == "Active");
+        if (activeSession != null)
+            return activeSession.LicensePlateIn;
+
+        return null;
+    }
+
+    private static SlotSubscriptionInfoDto? GetActiveSubscription(ParkingSlot src)
+    {
+        return null;
     }
 }

@@ -69,13 +69,14 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Lấy danh sách toàn bộ Booking trong hệ thống (dành cho Admin/Staff).
     ///
-    /// Route  : GET /api/bookings
+    /// Route  : GET /api/bookings?status=Pending
     /// Returns: 200 OK + Danh sách BookingDto
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetAllBookings()
+    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetAllBookings(
+        [FromQuery] string? status = null)
     {
-        var bookings = await _bookingService.GetAllBookingsAsync();
+        var bookings = await _bookingService.GetAllBookingsAsync(status);
         return Ok(BaseResponse<List<BookingDto>>.Ok(bookings));
     }
 
@@ -104,13 +105,15 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Lấy danh sách Booking của một Driver cụ thể.
     ///
-    /// Route  : GET /api/bookings/by-account/{accountId}
+    /// Route  : GET /api/bookings/by-account/{accountId}?status=Pending
     /// Returns: 200 OK + Danh sách BookingDto của Account đó
     /// </summary>
     [HttpGet("by-account/{accountId:int}")]
-    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByAccount(int accountId)
+    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByAccount(
+        int accountId,
+        [FromQuery] string? status = null)
     {
-        var bookings = await _bookingService.GetBookingsByAccountIdAsync(accountId);
+        var bookings = await _bookingService.GetBookingsByAccountIdAsync(accountId, status);
         return Ok(BaseResponse<List<BookingDto>>.Ok(bookings));
     }
 
@@ -121,13 +124,15 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Lấy danh sách Booking tại một Tòa nhà cụ thể (dành cho Staff quản lý bãi).
     ///
-    /// Route  : GET /api/bookings/by-building/{buildingId}
+    /// Route  : GET /api/bookings/by-building/{buildingId}?status=Pending
     /// Returns: 200 OK + Danh sách BookingDto của Building đó
     /// </summary>
     [HttpGet("by-building/{buildingId:int}")]
-    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByBuilding(int buildingId)
+    public async Task<ActionResult<BaseResponse<List<BookingDto>>>> GetBookingsByBuilding(
+        int buildingId,
+        [FromQuery] string? status = null)
     {
-        var bookings = await _bookingService.GetBookingsByBuildingIdAsync(buildingId);
+        var bookings = await _bookingService.GetBookingsByBuildingIdAsync(buildingId, status);
         return Ok(BaseResponse<List<BookingDto>>.Ok(bookings));
     }
 
@@ -154,6 +159,27 @@ public class BookingsController : ControllerBase
     {
         var booking = await _bookingService.UpdateBookingAsync(id, request);
         return Ok(BaseResponse<BookingDto>.Ok(booking, "Cập nhật thời gian đặt chỗ thành công."));
+    }
+
+    // -----------------------------------------------------------------------
+    // POST /api/bookings/{id}/extend — Gia hạn đặt chỗ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Yêu cầu gia hạn thời gian đỗ xe (PlannedCheckoutTime) của Booking.
+    /// Chỉ hỗ trợ khi Booking ở trạng thái Confirmed hoặc CheckedIn.
+    ///
+    /// Route  : POST /api/bookings/{id}/extend?requestedNewEndTime=...
+    /// Returns: 200 OK + BookingExtensionResultDto
+    /// </summary>
+    [HttpPost("{id:int}/extend")]
+    public async Task<ActionResult<BaseResponse<BookingExtensionResultDto>>> RequestExtension(
+        int id,
+        [FromQuery] DateTime requestedNewEndTime,
+        [FromQuery] bool payLater = false)
+    {
+        var result = await _bookingService.RequestExtensionAsync(id, requestedNewEndTime, payLater);
+        return Ok(BaseResponse<BookingExtensionResultDto>.Ok(result));
     }
 
     // -----------------------------------------------------------------------

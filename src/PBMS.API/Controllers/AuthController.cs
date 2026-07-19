@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Auth.DTOs;
 using PBMS.Application.Auth.Interfaces;
 using PBMS.Application.Common;
+using PBMS.Application.Common.Exceptions;
 using System;
 using System.Threading.Tasks;
 
@@ -32,11 +33,36 @@ namespace PBMS.API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<BaseResponse<LoginResponseDto>>> Login([FromBody] LoginRequest request)
         {
-            // Gọi tầng nghiệp vụ để kiểm tra thông tin đăng nhập
-            var response = await _authService.LoginAsync(request);
+            try
+            {
+                // Gọi tầng nghiệp vụ để kiểm tra thông tin đăng nhập
+                var response = await _authService.LoginAsync(request);
 
-            // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
-            return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
+                // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
+                return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
+            }
+            catch (LoginOtpRequiredException ex)
+            {
+                // Trả về mã lỗi REQUIRE_LOGIN_OTP_VERIFICATION kèm email
+                return Ok(new BaseResponse<LoginResponseDto>
+                {
+                    Success = false,
+                    ErrorCode = "REQUIRE_LOGIN_OTP_VERIFICATION",
+                    Message = ex.Message,
+                    Data = new LoginResponseDto
+                    {
+                        Email = ex.Email
+                    }
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(BaseResponse<LoginResponseDto>.Fail("UNAUTHORIZED", ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<LoginResponseDto>.Fail("BAD_REQUEST", ex.Message));
+            }
         }
 
         /// <summary>
@@ -48,11 +74,120 @@ namespace PBMS.API.Controllers
         [HttpPost("google")]
         public async Task<ActionResult<BaseResponse<LoginResponseDto>>> LoginWithGoogle([FromBody] GoogleLoginRequest request)
         {
-            // Gọi tầng nghiệp vụ để kiểm tra Google ID Token và đăng nhập/đăng ký lái xe
-            var response = await _authService.LoginWithGoogleAsync(request);
+            try
+            {
+                // Gọi tầng nghiệp vụ để kiểm tra Google ID Token và đăng nhập/đăng ký lái xe
+                var response = await _authService.LoginWithGoogleAsync(request);
+                return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
+            }
+            catch (GoogleSignupRequiredException ex)
+            {
+                // Trả về mã lỗi REQUIRE_OTP_VERIFICATION kèm email & tên đầy đủ của Google
+                return Ok(new BaseResponse<LoginResponseDto>
+                {
+                    Success = false,
+                    ErrorCode = "REQUIRE_OTP_VERIFICATION",
+                    Message = ex.Message,
+                    Data = new LoginResponseDto
+                    {
+                        Email = ex.Email,
+                        FullName = ex.FullName
+                    }
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(BaseResponse<LoginResponseDto>.Fail("UNAUTHORIZED", ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<LoginResponseDto>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+        [HttpPost("send-otp")]
+        public async Task<ActionResult<BaseResponse<string>>> SendOtp([FromBody] SendOtpRequest request)
+        {
+            try
+            {
+                await _authService.SendOtpForRegisterAsync(request.Email);
+                return Ok(BaseResponse<string>.Ok(null, "OTP code has been sent to your email successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
 
-            // Trả về kết quả thành công được bọc trong cấu trúc chuẩn BaseResponse
-            return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
+        [HttpPost("verify-otp")]
+        public async Task<ActionResult<BaseResponse<string>>> VerifyOtp([FromBody] VerifyOtpRequest request)
+        {
+            try
+            {
+                var verificationToken = await _authService.VerifyOtpForRegisterAsync(request.Email, request.Otp);
+                return Ok(BaseResponse<string>.Ok(verificationToken, "OTP verified successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        [HttpPost("register-verified")]
+        public async Task<ActionResult<BaseResponse<string>>> RegisterVerified([FromBody] RegisterVerifiedRequest request)
+        {
+            try
+            {
+                await _authService.RegisterVerifiedUserAsync(request);
+                return Ok(BaseResponse<string>.Ok(null, "Account registered successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// API xác thực OTP và hoàn tất đăng ký tài khoản từ liên kết Google.
+        /// Route: POST /api/auth/google-verify-otp
+        /// </summary>
+        [HttpPost("google-verify-otp")]
+        public async Task<ActionResult<BaseResponse<LoginResponseDto>>> VerifyGoogleOtp([FromBody] GoogleVerifyOtpRequest request)
+        {
+            try
+            {
+                var response = await _authService.VerifyGoogleOtpAndRegisterAsync(request);
+                return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Registration and login successful."));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(BaseResponse<LoginResponseDto>.Fail("UNAUTHORIZED", ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<LoginResponseDto>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// API xác thực OTP và hoàn tất đăng nhập cho email thường.
+        /// Route: POST /api/auth/login-verify-otp
+        /// </summary>
+        [HttpPost("login-verify-otp")]
+        public async Task<ActionResult<BaseResponse<LoginResponseDto>>> VerifyLoginOtp([FromBody] LoginVerifyOtpRequest request)
+        {
+            try
+            {
+                var response = await _authService.VerifyLoginOtpAsync(request);
+                return Ok(BaseResponse<LoginResponseDto>.Ok(response, "Login successful."));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(BaseResponse<LoginResponseDto>.Fail("UNAUTHORIZED", ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<LoginResponseDto>.Fail("BAD_REQUEST", ex.Message));
+            }
         }
     }
 }

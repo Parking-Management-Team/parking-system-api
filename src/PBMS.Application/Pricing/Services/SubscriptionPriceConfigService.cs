@@ -68,10 +68,12 @@ public class SubscriptionPriceConfigService : ISubscriptionPriceConfigService
         {
             VehicleTypeId = request.VehicleTypeId,
             Price = request.Price,
+            DurationDays = request.DurationDays,
             EffectiveFrom = now,
             EffectiveTo = null,
             IsActive = true
         };
+
 
         await _repository.AddAsync(newConfig);
         await _repository.SaveChangesAsync();

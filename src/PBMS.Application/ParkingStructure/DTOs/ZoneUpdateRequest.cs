@@ -25,4 +25,14 @@ public class ZoneUpdateRequest
 
     [Required(ErrorMessage = "AccessType is required.")]
     public PBMS.Domain.Enums.ZoneAccessType AccessType { get; set; } = PBMS.Domain.Enums.ZoneAccessType.General;
+
+    /// <summary>
+    /// Maximum percentage (1-100) of zone capacity that can be reserved via booking.
+    /// Defaults to 80 if not supplied.
+    /// </summary>
+    [Range(1, 100, ErrorMessage = "BookingLimitRate must be between 1 and 100.")]
+    public int BookingLimitRate { get; set; } = 80;
+
+    [Required(ErrorMessage = "Status is required.")]
+    public PBMS.Domain.Enums.ZoneStatus Status { get; set; } = PBMS.Domain.Enums.ZoneStatus.Available;
 }

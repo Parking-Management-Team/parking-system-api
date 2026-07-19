@@ -40,6 +40,11 @@ public class VehicleTypeConfiguration : IEntityTypeConfiguration<VehicleType>
             .HasDefaultValue(VehicleType.StatusActive)
             .IsRequired();
 
+        builder.Property(vt => vt.BufferRatio)
+            .HasColumnName("buffer_ratio")
+            .HasDefaultValue(10)
+            .IsRequired();
+
         builder.Property(vt => vt.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")

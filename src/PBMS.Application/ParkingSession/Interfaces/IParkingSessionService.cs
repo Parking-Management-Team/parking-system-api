@@ -6,12 +6,21 @@ namespace PBMS.Application.ParkingSession.Interfaces;
 public interface IParkingSessionService
 {
     Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request);
+    Task<BaseResponse<CheckEntryResult>> CheckEntryConditionsAsync(CheckEntryRequest request);
+    Task<BaseResponse<ParkingSessionDto>> UpdateCheckinInfoAsync(int sessionId, UpdateCheckinRequest request);
+    Task<BaseResponse<CheckInBookingLookupDto>> GetCheckInBookingByLicensePlateAsync(string licensePlate, int? buildingId = null);
     Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request);
     Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetAllAsync();
     Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync();
+    Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetByAccountIdAsync(int accountId);
     Task<BaseResponse<ParkingSessionDto>> GetByIdAsync(int id);
     Task<BaseResponse<ParkingSessionDto>> AssignSlotAsync(int id, AssignParkingSessionSlotRequest request);
     Task<BaseResponse<ParkingSessionDto>> StartCheckoutAsync(int id, StartCheckoutRequest request);
     Task<BaseResponse<ParkingSessionDto>> CompleteAsync(int id);
     Task<BaseResponse<ParkingSessionDto>> RollbackCheckoutAsync(int id);
+    Task<BaseResponse<ParkingSessionDto>> UnpaidCheckoutAsync(int sessionId, UnpaidCheckoutRequest request);
+    Task<BaseResponse<ParkingSessionDto>> ReportLostCardAsync(int sessionId, LostCardRequest request);
+    Task<BaseResponse<ParkingSessionDto>> RollbackLostCardAsync(int sessionId);
+    Task SendOvertimeWarningsAsync();
+    Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode);
 }

@@ -17,6 +17,8 @@ public interface IVehicleRepository
 
     Task<bool> LicensePlateExistsAsync(string licensePlate, int? excludeId = null);
 
+    Task<PBMS.Domain.Entities.Vehicle?> GetByLicensePlateAsync(string licensePlate);
+
     Task<bool> HasActiveParkingSessionAsync(int vehicleId);
 
     Task<PBMS.Domain.Entities.Vehicle> AddAsync(PBMS.Domain.Entities.Vehicle vehicle);

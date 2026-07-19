@@ -136,6 +136,13 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<PricingWindow> PricingWindows { get; set; } = null!;
 
+    public DbSet<PricingRule> PricingRules { get; set; } = null!;
+    public DbSet<BasePricingRuleConfig> BasePricingRuleConfigs { get; set; } = null!;
+    public DbSet<IncrementPricingRuleConfig> IncrementPricingRuleConfigs { get; set; } = null!;
+    public DbSet<DailyCapRuleConfig> DailyCapRuleConfigs { get; set; } = null!;
+    public DbSet<GracePeriodRuleConfig> GracePeriodRuleConfigs { get; set; } = null!;
+    public DbSet<PricingCalculationLog> PricingCalculationLogs { get; set; } = null!;
+
     /// <summary>
     /// Tập hợp dữ liệu bảng Quyền hạn (Permissions).
     /// </summary>
@@ -155,6 +162,16 @@ public class AppDbContext : DbContext
     /// Tập hợp dữ liệu bảng Cấu hình giá phạt sự cố (PenaltyConfigs).
     /// </summary>
     public DbSet<PenaltyConfig> PenaltyConfigs { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Báo cáo ca trực (ShiftReports).
+    /// </summary>
+    public DbSet<ShiftReport> ShiftReports { get; set; } = null!;
+
+    /// <summary>
+    /// Tập hợp dữ liệu bảng Cấu hình hệ thống (ParkingSystemConfigs).
+    /// </summary>
+    public DbSet<ParkingSystemConfig> ParkingSystemConfigs { get; set; } = null!;
     
     // =======================================================
 
@@ -169,6 +186,30 @@ public class AppDbContext : DbContext
         // Lệnh này giúp EF Core tự động quét và áp dụng các file 
         // cấu hình bảng (Fluent API) mà team dev tạo ra trong Assembly này
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Cấu hình Value Converter để tự động giữ nguyên múi giờ Việt Nam (UTC+7) khi ghi/đọc DB
+        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc),
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+            }
+        }
 
         // Áp dụng Global Query Filter cho tất cả các thực thể kế thừa ISoftDeletable
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

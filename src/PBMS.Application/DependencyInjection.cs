@@ -20,11 +20,12 @@ using PBMS.Application.Payment.Interfaces;
 using PBMS.Application.Payment.Services;
 using PBMS.Application.Revenue.Interfaces;
 using PBMS.Application.Revenue.Services;
-using PBMS.Application.MonthlyCard.Interfaces;
-using PBMS.Application.MonthlyCard.Services;
 using PBMS.Application.Booking.Interfaces;
 using PBMS.Application.Booking.Services;
-
+using PBMS.Application.AuditLog.Interfaces;
+using PBMS.Application.AuditLog.Services;
+using PBMS.Application.ParkingSystemConfig.Interfaces;
+using PBMS.Application.ParkingSystemConfig.Services;
 
 
 namespace PBMS.Application;
@@ -65,27 +66,32 @@ public static class DependencyInjection
         // Pricing module
         services.AddScoped<IPricingPolicyService, PricingPolicyService>();
         services.AddScoped<IFeeCalculationService, FeeCalculationService>();
+        services.AddScoped<IPricingCalculationService, PricingCalculationService>();
+        services.AddScoped<PBMS.Domain.Engine.IPricingEngine, PBMS.Domain.Engine.PricingEngine>();
         services.AddScoped<PBMS.Application.Common.IFeeCalculatorService, PBMS.Application.Common.FeeCalculatorService>();
         services.AddScoped<PBMS.Application.Pricing.Interfaces.ISubscriptionPriceConfigService, PBMS.Application.Pricing.Services.SubscriptionPriceConfigService>();
         services.AddScoped<PBMS.Application.Incident.Interfaces.IPenaltyConfigService, PBMS.Application.Incident.Services.PenaltyConfigService>();
         services.AddScoped<IAccountService, AccountService>();
-        if (useInMemoryParkingSession)
-        {
-            services.AddSingleton<IParkingSessionService, InMemoryParkingSessionService>();
-        }
-        else
-        {
-            services.AddScoped<IParkingSessionService, ParkingSessionService>();
-        }
+        services.AddScoped<IParkingSessionService, ParkingSessionService>();
         // Payment module
         services.AddScoped<IPaymentService, PaymentService>();
         // Revenue module
         services.AddScoped<IRevenueService, RevenueService>();
-        // Monthly Subscription module
-        services.AddScoped<IMonthlySubscriptionService, MonthlySubscriptionService>();
 
         // Booking module
         services.AddScoped<IBookingService, BookingService>();
+
+        // AuditLog module
+        services.AddScoped<IAuditLogService, AuditLogService>();
+
+        // Dashboard module
+        services.AddScoped<PBMS.Application.Common.Interfaces.IDashboardService, PBMS.Application.Common.Services.DashboardService>();
+
+        // Shift Report module
+        services.AddScoped<PBMS.Application.ShiftReport.Interfaces.IShiftReportService, PBMS.Application.ShiftReport.Services.ShiftReportService>();
+
+        // ParkingSystemConfig module
+        services.AddScoped<IParkingSystemConfigService, ParkingSystemConfigService>();
 
         return services;
 

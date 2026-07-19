@@ -4,11 +4,13 @@ public class ParkingSessionDto
 {
     public int Id { get; set; }
     public int VehicleId { get; set; }
+    public int? AccountId { get; set; }
     public int BuildingId { get; set; }
     public int CardId { get; set; }
     public int? ZoneId { get; set; }
     public int? SlotId { get; set; }
     public int? BookingId { get; set; }
+    public string? BookingCode { get; set; }
     public int? MonthlySubscriptionId { get; set; }
     public int? InStaffId { get; set; }
     public int? OutStaffId { get; set; }
@@ -20,4 +22,14 @@ public class ParkingSessionDto
     public string? CardCode { get; set; }
     public string? ZoneCode { get; set; }
     public string? SlotCode { get; set; }
+
+    public decimal? TotalFee { get; set; }
+    public decimal? PenaltyFee { get; set; }
+    public decimal? AmountDue { get; set; }
+
+    public string? ImageIn { get; set; }
+    public string? ImageOut { get; set; }
+    
+    public string? VehicleType { get; set; }
+    public string? CustomerType { get; set; }
 }

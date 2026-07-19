@@ -1,4 +1,5 @@
 using PBMS.Application.Common;
+using PBMS.Application.Contracts;
 using PBMS.Application.Vehicle.DTOs;
 using PBMS.Application.Vehicle.Interfaces;
 using PBMS.Domain.Entities;
@@ -11,15 +12,17 @@ namespace PBMS.Application.Vehicle.Services;
 public class VehicleTypeService : IVehicleTypeService
 {
     private readonly IVehicleTypeRepository _repository;
+    private readonly IPricingPolicyRepository _pricingPolicyRepository;
     private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
         VehicleType.StatusActive,
         VehicleType.StatusInactive
     };
 
-    public VehicleTypeService(IVehicleTypeRepository repository)
+    public VehicleTypeService(IVehicleTypeRepository repository, IPricingPolicyRepository pricingPolicyRepository)
     {
         _repository = repository;
+        _pricingPolicyRepository = pricingPolicyRepository;
     }
 
     public async Task<BaseResponse<IEnumerable<VehicleTypeDto>>> GetAllAsync()
@@ -89,11 +92,29 @@ public class VehicleTypeService : IVehicleTypeService
                 );
             }
 
+            var requestedStatus = NormalizeStatus(createDto.VehicleTypeStatus);
+            if (string.Equals(requestedStatus, VehicleType.StatusActive, StringComparison.OrdinalIgnoreCase))
+            {
+                return BaseResponse<VehicleTypeDto>.Fail(
+                    "PRICING_POLICY_REQUIRED",
+                    "A new vehicle type cannot be created as ACTIVE directly because it needs an active Pricing Policy. Please create it as INACTIVE first, configure its Pricing Policy, and then activate it."
+                );
+            }
+
+            if (createDto.BufferRatio < 0 || createDto.BufferRatio > 100)
+            {
+                return BaseResponse<VehicleTypeDto>.Fail(
+                    "INVALID_BUFFER_RATIO",
+                    "Buffer ratio must be between 0 and 100."
+                );
+            }
+
             var vehicleType = new VehicleType
             {
                 TypeName = normalizedName,
                 Description = NormalizeDescription(createDto.Description),
-                VehicleTypeStatus = NormalizeStatus(createDto.VehicleTypeStatus)
+                VehicleTypeStatus = requestedStatus,
+                BufferRatio = createDto.BufferRatio
             };
 
             var created = await _repository.AddAsync(vehicleType);
@@ -141,9 +162,33 @@ public class VehicleTypeService : IVehicleTypeService
                 );
             }
 
+            var targetStatus = NormalizeStatus(requestedStatus);
+            if (string.Equals(targetStatus, VehicleType.StatusActive, StringComparison.OrdinalIgnoreCase))
+            {
+                var activePolicy = await _pricingPolicyRepository.GetActivePolicyAsync(id, DateTime.UtcNow);
+                if (activePolicy == null)
+                {
+                    return BaseResponse<VehicleTypeDto>.Fail(
+                        "PRICING_POLICY_REQUIRED",
+                        $"Vehicle type '{normalizedName}' cannot be activated because it does not have any active Pricing Policy configured. Please create a Pricing Policy for this vehicle type first."
+                    );
+                }
+            }
+
             vehicleType.TypeName = normalizedName;
             vehicleType.Description = NormalizeDescription(updateDto.Description);
-            vehicleType.VehicleTypeStatus = NormalizeStatus(requestedStatus);
+            vehicleType.VehicleTypeStatus = targetStatus;
+            if (updateDto.BufferRatio.HasValue)
+            {
+                if (updateDto.BufferRatio.Value < 0 || updateDto.BufferRatio.Value > 100)
+                {
+                    return BaseResponse<VehicleTypeDto>.Fail(
+                        "INVALID_BUFFER_RATIO",
+                        "Buffer ratio must be between 0 and 100."
+                    );
+                }
+                vehicleType.BufferRatio = updateDto.BufferRatio.Value;
+            }
 
             var updated = await _repository.UpdateAsync(vehicleType);
             return BaseResponse<VehicleTypeDto>.Ok(
@@ -214,7 +259,8 @@ public class VehicleTypeService : IVehicleTypeService
             Id = vehicleType.Id,
             Name = vehicleType.TypeName,
             Description = vehicleType.Description,
-            VehicleTypeStatus = vehicleType.VehicleTypeStatus
+            VehicleTypeStatus = vehicleType.VehicleTypeStatus,
+            BufferRatio = vehicleType.BufferRatio
         };
     }
 

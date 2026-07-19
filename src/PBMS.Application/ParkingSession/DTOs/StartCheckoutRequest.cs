@@ -10,4 +10,6 @@ public class StartCheckoutRequest
     public string? LicensePlateOut { get; set; }
 
     public int? OutStaffId { get; set; }
+
+    public string? ImageOut { get; set; }
 }

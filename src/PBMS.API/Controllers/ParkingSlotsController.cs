@@ -42,6 +42,16 @@ public class ParkingSlotsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy danh sách lịch đặt trước tương lai và đề xuất vị trí đỗ thay thế.
+    /// </summary>
+    [HttpGet("{id:int}/future-bookings")]
+    public async Task<IActionResult> GetFutureBookings(int id)
+    {
+        var result = await _slotService.GetFutureBookingsAndRecommendationsAsync(id);
+        return Ok(BaseResponse<SlotFutureBookingsDto>.Ok(result));
+    }
+
+    /// <summary>
     /// Lấy danh sách tất cả các vị trí đỗ xe.
     /// </summary>
     [HttpGet]
@@ -59,9 +69,11 @@ public class ParkingSlotsController : ControllerBase
         int zoneId, 
         [FromQuery] List<SlotStatus>? statuses = null,
         [FromQuery] List<int>? vehicleTypeIds = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? plannedCheckinTime = null,
+        [FromQuery] DateTime? plannedCheckoutTime = null)
     {
-        var slots = await _slotService.GetSlotsByZoneAsync(zoneId, statuses, vehicleTypeIds, search);
+        var slots = await _slotService.GetSlotsByZoneAsync(zoneId, statuses, vehicleTypeIds, search, plannedCheckinTime, plannedCheckoutTime);
         return Ok(BaseResponse<IEnumerable<ParkingSlotDto>>.Ok(slots));
     }
 
@@ -93,5 +105,35 @@ public class ParkingSlotsController : ControllerBase
     {
         await _slotService.DeleteSlotAsync(id);
         return Ok(BaseResponse<string>.Ok(id.ToString(), "Parking slot deleted successfully."));
+    }
+
+    /// <summary>
+    /// Khóa vị trí đỗ xe (Block).
+    /// </summary>
+    [HttpPost("{id}/block")]
+    public async Task<IActionResult> BlockSlot(int id, [FromBody] SlotStatusChangeRequest request)
+    {
+        var slot = await _slotService.BlockSlotAsync(id, request);
+        return Ok(BaseResponse<ParkingSlotDto>.Ok(slot, "Parking slot blocked successfully."));
+    }
+
+    /// <summary>
+    /// Mở khóa vị trí đỗ xe (Unblock).
+    /// </summary>
+    [HttpPost("{id}/unblock")]
+    public async Task<IActionResult> UnblockSlot(int id, [FromBody] SlotStatusChangeRequest request)
+    {
+        var slot = await _slotService.UnblockSlotAsync(id, request);
+        return Ok(BaseResponse<ParkingSlotDto>.Ok(slot, "Parking slot unblocked successfully."));
+    }
+
+    /// <summary>
+    /// Đặt vị trí đỗ xe vào trạng thái bảo trì.
+    /// </summary>
+    [HttpPost("{id}/maintenance")]
+    public async Task<IActionResult> SetMaintenanceSlot(int id, [FromBody] SlotStatusChangeRequest request)
+    {
+        var slot = await _slotService.SetMaintenanceSlotAsync(id, request);
+        return Ok(BaseResponse<ParkingSlotDto>.Ok(slot, "Parking slot set to maintenance successfully."));
     }
 }

@@ -165,6 +165,55 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("audit_log", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.BasePricingRuleConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("base_pricing_rule_config_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BaseDurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("base_duration_minutes");
+
+                    b.Property<decimal>("BasePriceAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("base_price_amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("VND")
+                        .HasColumnName("currency_code");
+
+                    b.Property<int>("PricingRuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_rule_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PricingRuleId")
+                        .IsUnique();
+
+                    b.ToTable("base_pricing_rule_config", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Blacklist", b =>
                 {
                     b.Property<int>("Id")
@@ -285,6 +334,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("deposit_amount");
 
+                    b.Property<DateTime?>("ExtendedCheckoutTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("extended_checkout_time");
+
                     b.Property<DateTime>("PaymentDeadline")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("payment_deadline");
@@ -303,6 +356,10 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<int?>("SlotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("slot_id");
+
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer")
                         .HasColumnName("vehicle_id");
@@ -315,7 +372,17 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.HasIndex("AccountId");
 
+                    b.HasIndex("BookingStatus");
+
                     b.HasIndex("BuildingId");
+
+                    b.HasIndex("CheckinGraceUntil");
+
+                    b.HasIndex("PaymentDeadline");
+
+                    b.HasIndex("PlannedCheckoutTime");
+
+                    b.HasIndex("SlotId");
 
                     b.HasIndex("VehicleId");
 
@@ -447,6 +514,51 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("card", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.DailyCapRuleConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("daily_cap_rule_config_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("VND")
+                        .HasColumnName("currency_code");
+
+                    b.Property<decimal>("MaximumDailyAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("maximum_daily_amount");
+
+                    b.Property<int>("PricingRuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_rule_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PricingRuleId")
+                        .IsUnique();
+
+                    b.ToTable("daily_cap_rule_config", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Floor", b =>
                 {
                     b.Property<int>("Id")
@@ -496,6 +608,43 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDatabaseName("IX_floor_building_id_floor_number");
 
                     b.ToTable("floor", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.GracePeriodRuleConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("grace_period_rule_config_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("GracePeriodMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("grace_period_minutes");
+
+                    b.Property<int>("PricingRuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_rule_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PricingRuleId")
+                        .IsUnique();
+
+                    b.ToTable("grace_period_rule_config", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Incident", b =>
@@ -630,6 +779,59 @@ namespace PBMS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("incident_type", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.IncrementPricingRuleConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("increment_pricing_rule_config_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("VND")
+                        .HasColumnName("currency_code");
+
+                    b.Property<int>("IncrementIntervalMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("increment_interval_minutes");
+
+                    b.Property<decimal>("IncrementPriceAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("increment_price_amount");
+
+                    b.Property<int>("PricingRuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_rule_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("ThresholdPercentage")
+                        .HasColumnType("integer")
+                        .HasColumnName("threshold_percentage");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PricingRuleId")
+                        .IsUnique();
+
+                    b.ToTable("increment_pricing_rule_config", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.MonthlySubscription", b =>
@@ -795,6 +997,14 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<string>("ImageIn")
+                        .HasColumnType("text")
+                        .HasColumnName("image_in");
+
+                    b.Property<string>("ImageOut")
+                        .HasColumnType("text")
+                        .HasColumnName("image_out");
+
                     b.Property<int?>("InStaffId")
                         .HasColumnType("integer")
                         .HasColumnName("in_staff_id");
@@ -863,6 +1073,9 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasIndex("MonthlySubscriptionId");
 
                     b.HasIndex("OutStaffId");
+
+                    b.HasIndex("SessionStatus")
+                        .HasDatabaseName("IX_parking_session_status");
 
                     b.HasIndex("SlotId")
                         .IsUnique()
@@ -941,6 +1154,49 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasIndex("ZoneId");
 
                     b.ToTable("parking_slot", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.ParkingSystemConfig", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("parking_system_configs", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Key = "BUFFER_TIME_MINUTES",
+                            Description = "Buffer time in minutes between consecutive bookings on the same slot.",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "30"
+                        },
+                        new
+                        {
+                            Key = "WALKIN_STAY_THRESHOLD_HOURS",
+                            Description = "Hours threshold: if booking starts within this many hours from now, walk-in car count is included in zone capacity check.",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "2"
+                        });
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Payment", b =>
@@ -1125,6 +1381,75 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("permission", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingCalculationLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_calculation_log_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_id");
+
+                    b.Property<string>("CalculationDetails")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("calculation_details");
+
+                    b.Property<DateTime>("CheckInTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("check_in_time");
+
+                    b.Property<DateTime>("CheckOutTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("check_out_time");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("MatchedPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("matched_policy_id");
+
+                    b.Property<int?>("ParkingSessionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("parking_session_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_price");
+
+                    b.Property<int>("VehicleTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vehicle_type_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("MatchedPolicyId");
+
+                    b.HasIndex("ParkingSessionId");
+
+                    b.HasIndex("VehicleTypeId");
+
+                    b.ToTable("pricing_calculation_log", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
                 {
                     b.Property<int>("Id")
@@ -1162,6 +1487,12 @@ namespace PBMS.Infrastructure.Migrations
                         .HasDefaultValue("Active")
                         .HasColumnName("pricing_policy_status");
 
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("priority");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1177,6 +1508,54 @@ namespace PBMS.Infrastructure.Migrations
                     b.HasIndex("VehicleTypeId");
 
                     b.ToTable("pricing_policy", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_rule_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("ExecutionOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("execution_order");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<int>("PricingPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("pricing_policy_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("RuleType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("rule_type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PricingPolicyId");
+
+                    b.ToTable("pricing_rule", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.PricingWindow", b =>
@@ -1405,6 +1784,111 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("role_permission", (string)null);
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.ShiftReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("shift_report_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ActualCashAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("actual_cash_amount");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<int?>("ApprovedById")
+                        .HasColumnType("integer")
+                        .HasColumnName("approved_by_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<decimal>("DifferenceAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("difference_amount");
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<decimal>("ExpectedCashAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("expected_cash_amount");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("StaffId")
+                        .HasColumnType("integer")
+                        .HasColumnName("staff_id");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Submitted")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("SystemRevenue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("system_revenue");
+
+                    b.Property<int>("TotalCheckIn")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_check_in");
+
+                    b.Property<int>("TotalCheckOut")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_check_out");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedById");
+
+                    b.HasIndex("StaffId");
+
+                    b.ToTable("shift_report", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.SubscriptionPriceConfig", b =>
                 {
                     b.Property<int>("Id")
@@ -1420,6 +1904,9 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("DeletedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationDays")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("EffectiveFrom")
@@ -1522,6 +2009,12 @@ namespace PBMS.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("BufferRatio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(10)
+                        .HasColumnName("buffer_ratio");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1584,6 +2077,12 @@ namespace PBMS.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("General")
                         .HasColumnName("zone_access_type");
+
+                    b.Property<int>("BookingLimitRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(80)
+                        .HasColumnName("booking_limit_rate");
 
                     b.Property<int>("Capacity")
                         .ValueGeneratedOnAdd()
@@ -1663,6 +2162,17 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Account");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.BasePricingRuleConfig", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingRule", "PricingRule")
+                        .WithOne("BasePricingRuleConfig")
+                        .HasForeignKey("PBMS.Domain.Entities.BasePricingRuleConfig", "PricingRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PricingRule");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.Blacklist", b =>
                 {
                     b.HasOne("PBMS.Domain.Entities.Card", "Card")
@@ -1701,6 +2211,11 @@ namespace PBMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PBMS.Domain.Entities.ParkingSlot", "ParkingSlot")
+                        .WithMany("Bookings")
+                        .HasForeignKey("SlotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PBMS.Domain.Entities.Vehicle", "Vehicle")
                         .WithMany("Bookings")
                         .HasForeignKey("VehicleId")
@@ -1717,9 +2232,22 @@ namespace PBMS.Infrastructure.Migrations
 
                     b.Navigation("Building");
 
+                    b.Navigation("ParkingSlot");
+
                     b.Navigation("Vehicle");
 
                     b.Navigation("VehicleType");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.DailyCapRuleConfig", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingRule", "PricingRule")
+                        .WithOne("DailyCapRuleConfig")
+                        .HasForeignKey("PBMS.Domain.Entities.DailyCapRuleConfig", "PricingRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PricingRule");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Floor", b =>
@@ -1731,6 +2259,17 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Building");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.GracePeriodRuleConfig", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingRule", "PricingRule")
+                        .WithOne("GracePeriodRuleConfig")
+                        .HasForeignKey("PBMS.Domain.Entities.GracePeriodRuleConfig", "PricingRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PricingRule");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.Incident", b =>
@@ -1756,6 +2295,17 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("PenaltyConfig");
 
                     b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.IncrementPricingRuleConfig", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingRule", "PricingRule")
+                        .WithOne("IncrementPricingRuleConfig")
+                        .HasForeignKey("PBMS.Domain.Entities.IncrementPricingRuleConfig", "PricingRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PricingRule");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.MonthlySubscription", b =>
@@ -1946,6 +2496,25 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("IncidentType");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingCalculationLog", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingPolicy", "MatchedPolicy")
+                        .WithMany()
+                        .HasForeignKey("MatchedPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany()
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MatchedPolicy");
+
+                    b.Navigation("VehicleType");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
                 {
                     b.HasOne("PBMS.Domain.Entities.VehicleType", "VehicleType")
@@ -1955,6 +2524,17 @@ namespace PBMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("VehicleType");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingRule", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.PricingPolicy", "PricingPolicy")
+                        .WithMany("PricingRules")
+                        .HasForeignKey("PricingPolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PricingPolicy");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.PricingWindow", b =>
@@ -2022,6 +2602,24 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Permission");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.ShiftReport", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Account", "ApprovedBy")
+                        .WithMany()
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PBMS.Domain.Entities.Account", "Staff")
+                        .WithMany()
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedBy");
+
+                    b.Navigation("Staff");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.SubscriptionPriceConfig", b =>
@@ -2141,6 +2739,8 @@ namespace PBMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PBMS.Domain.Entities.ParkingSlot", b =>
                 {
+                    b.Navigation("Bookings");
+
                     b.Navigation("MonthlySubscriptions");
 
                     b.Navigation("ParkingSessions");
@@ -2165,7 +2765,20 @@ namespace PBMS.Infrastructure.Migrations
                 {
                     b.Navigation("Payments");
 
+                    b.Navigation("PricingRules");
+
                     b.Navigation("PricingWindows");
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.PricingRule", b =>
+                {
+                    b.Navigation("BasePricingRuleConfig");
+
+                    b.Navigation("DailyCapRuleConfig");
+
+                    b.Navigation("GracePeriodRuleConfig");
+
+                    b.Navigation("IncrementPricingRuleConfig");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.RevenueStatistic", b =>

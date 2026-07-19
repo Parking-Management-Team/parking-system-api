@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PBMS.Application.Common;
 using PBMS.Application.Pricing.DTOs;
@@ -12,6 +13,7 @@ namespace PBMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/subscription-price-configs")]
+[Authorize]
 public class SubscriptionPriceConfigsController : ControllerBase
 {
     private readonly ISubscriptionPriceConfigService _service;
@@ -49,6 +51,7 @@ public class SubscriptionPriceConfigsController : ControllerBase
     /// Tạo cấu hình giá vé tháng mới (Tự động vô hiệu hóa giá cũ).
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> Create([FromBody] CreateSubscriptionPriceConfigRequest request)
     {
         var result = await _service.CreateConfigAsync(request);
@@ -59,6 +62,7 @@ public class SubscriptionPriceConfigsController : ControllerBase
     /// Vô hiệu hóa (Inactive) cấu hình giá vé tháng.
     /// </summary>
     [HttpPut("{id}/deactivate")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> Deactivate(int id)
     {
         var success = await _service.DeactivateConfigAsync(id);
@@ -73,6 +77,7 @@ public class SubscriptionPriceConfigsController : ControllerBase
     /// Xóa mềm (Soft Delete) cấu hình giá vé tháng.
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> Delete(int id)
     {
         await _service.DeleteConfigAsync(id);

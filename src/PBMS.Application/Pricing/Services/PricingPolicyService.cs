@@ -101,7 +101,8 @@ public class PricingPolicyService : IPricingPolicyService
             PolicyName = request.PolicyName.Trim(),
             EffectiveStart = request.EffectiveStart.Date,
             EffectiveEnd = request.EffectiveEnd.HasValue ? request.EffectiveEnd.Value.Date : null,
-            PricingPolicyStatus = "Inactive"
+            PricingPolicyStatus = "Inactive",
+            Priority = request.Priority
         };
 
         // Bước 6: Tạo PricingWindow entities gắn vào policy
@@ -118,6 +119,66 @@ public class PricingPolicyService : IPricingPolicyService
                 IncrementPrice = windowReq.IncrementPrice,
                 WindowCap = windowReq.WindowCap,
                 GracePeriodMinutes = windowReq.GracePeriodMinutes
+            });
+        }
+
+        // Bước 6b: Tạo PricingRules tương ứng từ PricingWindows
+        // Mỗi PricingWindow tạo对应的 PricingRules (BasePricing, IncrementPricing, DailyCap, GracePeriod)
+        foreach (var windowReq in request.PricingWindows)
+        {
+            // GracePeriod rule
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "GracePeriod",
+                ExecutionOrder = 1,
+                IsActive = true,
+                GracePeriodRuleConfig = new GracePeriodRuleConfig
+                {
+                    GracePeriodMinutes = windowReq.GracePeriodMinutes
+                }
+            });
+
+            // BasePricing rule
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "BasePricing",
+                ExecutionOrder = 2,
+                IsActive = true,
+                BasePricingRuleConfig = new BasePricingRuleConfig
+                {
+                    BaseDurationMinutes = windowReq.BaseDurationMinutes,
+                    BasePriceAmount = windowReq.BasePrice,
+                    CurrencyCode = "VND"
+                }
+            });
+
+            // IncrementPricing rule
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "IncrementPricing",
+                ExecutionOrder = 3,
+                IsActive = true,
+                IncrementPricingRuleConfig = new IncrementPricingRuleConfig
+                {
+                    IncrementIntervalMinutes = windowReq.IncrementBlockMinutes,
+                    IncrementPriceAmount = windowReq.IncrementPrice,
+                    ThresholdPercentage = 50,
+                    CurrencyCode = "VND"
+                }
+            });
+
+            // DailyCap rule - tự tính = basePrice * 24h / baseDuration
+            var dailyCapAmount = windowReq.BasePrice * 24 * 60 / windowReq.BaseDurationMinutes;
+            policy.PricingRules.Add(new PricingRule
+            {
+                RuleType = "DailyCap",
+                ExecutionOrder = 4,
+                IsActive = true,
+                DailyCapRuleConfig = new DailyCapRuleConfig
+                {
+                    MaximumDailyAmount = dailyCapAmount,
+                    CurrencyCode = "VND"
+                }
             });
         }
 
@@ -169,7 +230,8 @@ public class PricingPolicyService : IPricingPolicyService
             vehicleTypeId: policy.VehicleTypeId,
             effectiveStart: policy.EffectiveStart,
             effectiveEnd: policy.EffectiveEnd,
-            excludePolicyId: policy.Id
+            excludePolicyId: policy.Id,
+            priority: policy.Priority
         );
 
         if (hasOverlap)
@@ -275,6 +337,13 @@ public class PricingPolicyService : IPricingPolicyService
         if (request.EffectiveStart.HasValue)
         {
             policy.EffectiveStart = request.EffectiveStart.Value.Date;
+        }
+
+        // Cập nhật Priority (chỉ khi INACTIVE)
+        if (request.Priority.HasValue)
+        {
+            GuardAgainstModifyingActivePolicy(policy);
+            policy.Priority = request.Priority.Value;
         }
 
         // Cập nhật EffectiveEnd
@@ -424,6 +493,12 @@ public class PricingPolicyService : IPricingPolicyService
             windowName: window.WindowName
         );
 
+        // Đồng bộ PricingRules tương ứng khi PricingWindow thay đổi
+        if (window.PricingPolicyId > 0)
+        {
+            await SyncPricingRulesFromWindowAsync(window);
+        }
+
         _policyRepository.UpdateWindow(window);
         await _policyRepository.SaveChangesAsync();
 
@@ -481,6 +556,44 @@ public class PricingPolicyService : IPricingPolicyService
                 message: $"Cannot modify pricing configuration for active policy (ID={policy.Id}). According to BR-FEE-029: Active policies cannot be modified."
             );
         }
+    }
+
+    /// <summary>
+    /// Đồng bộ PricingRules khi PricingWindow thay đổi.
+    /// Tìm và cập nhật các规则 BasePricing, IncrementPricing, DailyCap tương ứng.
+    /// </summary>
+    private async Task SyncPricingRulesFromWindowAsync(PricingWindow window)
+    {
+        var policy = await _policyRepository.GetByIdWithWindowsAsync(window.PricingPolicyId);
+        if (policy?.PricingRules == null) return;
+
+        foreach (var rule in policy.PricingRules)
+        {
+            switch (rule.RuleType)
+            {
+                case "BasePricing" when rule.BasePricingRuleConfig != null:
+                    rule.BasePricingRuleConfig.BaseDurationMinutes = window.BaseDurationMinutes;
+                    rule.BasePricingRuleConfig.BasePriceAmount = window.BasePrice;
+                    break;
+
+                case "IncrementPricing" when rule.IncrementPricingRuleConfig != null:
+                    rule.IncrementPricingRuleConfig.IncrementIntervalMinutes = window.IncrementBlockMinutes;
+                    rule.IncrementPricingRuleConfig.IncrementPriceAmount = window.IncrementPrice;
+                    break;
+
+                case "DailyCap" when rule.DailyCapRuleConfig != null:
+                    var dailyCapAmount = window.BasePrice * 24 * 60 / window.BaseDurationMinutes;
+                    rule.DailyCapRuleConfig.MaximumDailyAmount = dailyCapAmount;
+                    break;
+
+                case "GracePeriod" when rule.GracePeriodRuleConfig != null:
+                    rule.GracePeriodRuleConfig.GracePeriodMinutes = window.GracePeriodMinutes;
+                    break;
+            }
+        }
+
+        // EF Core sẽ tự track changes khi SaveChanges được gọi
+        _policyRepository.Update(policy);
     }
 
     /// <summary>
@@ -643,6 +756,7 @@ public class PricingPolicyService : IPricingPolicyService
             EffectiveStart = policy.EffectiveStart,
             EffectiveEnd = policy.EffectiveEnd,
             PricingPolicyStatus = policy.PricingPolicyStatus,
+            Priority = policy.Priority,
             CreatedAt = policy.CreatedAt,
             PricingWindows = policy.PricingWindows.Select(MapWindowToDto).ToList()
         };
@@ -668,5 +782,33 @@ public class PricingPolicyService : IPricingPolicyService
             GracePeriodMinutes = window.GracePeriodMinutes,
             CreatedAt = window.CreatedAt
         };
+    }
+
+    /// <summary>
+    /// Tự động quét dọn và chuyển các chính sách giá Active có ngày kết thúc EffectiveEnd đã qua hạn sang trạng thái Expired.
+    /// </summary>
+    public async Task<int> CleanupExpiredPricingPoliciesAsync()
+    {
+        var today = DateTime.UtcNow.AddHours(7).Date; // Sử dụng giờ Việt Nam (UTC+7) để so sánh vì ngày hiệu lực của chính sách lưu theo giờ VN
+        
+        var expiredPolicies = await _policyRepository.FindAsync(pp =>
+            pp.PricingPolicyStatus == "Active" &&
+            pp.EffectiveEnd != null &&
+            pp.EffectiveEnd.Value < today);
+
+        int count = 0;
+        foreach (var policy in expiredPolicies)
+        {
+            policy.PricingPolicyStatus = "Expired";
+            _policyRepository.Update(policy);
+            count++;
+        }
+
+        if (count > 0)
+        {
+            await _policyRepository.SaveChangesAsync();
+        }
+
+        return count;
     }
 }

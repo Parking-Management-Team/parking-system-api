@@ -46,6 +46,13 @@ public class Zone : BaseEntity
     /// </summary>
     public ZoneStatus Status { get; set; } = ZoneStatus.Available;
 
+    /// <summary>
+    /// The maximum percentage of zone capacity that can be reserved via booking.
+    /// Valid range: 1–100. Default is 80 (i.e., 80% of capacity can be booked;
+    /// the remaining 20% is kept as buffer for walk-in vehicles).
+    /// </summary>
+    public int BookingLimitRate { get; set; } = 80;
+
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------
