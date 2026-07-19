@@ -113,10 +113,6 @@ public class ParkingSessionService : IParkingSessionService
         {
             return BaseResponse<ParkingSessionDto>.Fail("PRICING_POLICY_NOT_FOUND", $"No active pricing policy found for vehicle type ID {request.VehicleTypeId} at check-in time.");
         }
-        if (applicablePolicies.Count > 1)
-        {
-            return BaseResponse<ParkingSessionDto>.Fail("MULTIPLE_PRICING_POLICIES", $"Multiple active pricing policies found for vehicle type ID {request.VehicleTypeId} at check-in time.");
-        }
 
         var card = await _cardRepository.GetByCardCodeAsync(normalizedCardCode);
         if (card == null)
@@ -519,7 +515,7 @@ public class ParkingSessionService : IParkingSessionService
             pp.EffectiveStart <= checkInTime.Date &&
             (pp.EffectiveEnd == null || pp.EffectiveEnd.Value >= checkInTime.Date)
         ).ToList();
-        result.PricingPolicyValid = applicablePolicies.Count == 1;
+        result.PricingPolicyValid = applicablePolicies.Count >= 1;
 
         // Determine overall result
         result.Allowed = result.CardAvailable && result.NotBlacklisted && result.NotAlreadyParked && result.ZoneAvailable && result.PricingPolicyValid;

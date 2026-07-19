@@ -143,6 +143,142 @@ public class ParkingSessionServiceTests
     }
 
     [Fact]
+    public async Task CheckInAsync_ShouldNotLinkBooking_WhenVehicleArrivesTooEarly()
+    {
+        // Arrange
+        var request = new CheckInRequest
+        {
+            LicensePlate = "29G1-99999",
+            CardCode = "CARD-999",
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            StaffId = 5
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
+        var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-99999", VehicleTypeId = 1 };
+        var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
+
+        // Booking bắt đầu sau 6 tiếng (đến sớm 6 tiếng)
+        var booking = new Booking
+        {
+            Id = 700,
+            VehicleId = 200,
+            BuildingId = 10,
+            BookingStatus = BookingStatus.Confirmed,
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(6),
+            CheckinGraceUntil = DateTime.UtcNow.AddHours(6).AddMinutes(30),
+            Vehicle = vehicle
+        };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G1-99999").Returns(vehicle);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+
+        // Mock FirstOrDefaultAsync trả về null vì xe đến quá sớm so với giờ booking đặt trước
+        _bookingRepositoryMock.FirstOrDefaultAsync(Arg.Any<System.Linq.Expressions.Expression<Func<Booking, bool>>>())
+            .Returns((Booking)null);
+
+        // Act
+        var result = await _service.CheckInAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success, $"ErrorCode: {result.ErrorCode}, Message: {result.Message}");
+        Assert.NotNull(result.Data);
+        Assert.Null(result.Data.BookingId); // Phải là null (không liên kết Booking)
+        Assert.Equal(BookingStatus.Confirmed, booking.BookingStatus); // Trạng thái Booking của Xe B vẫn giữ nguyên Confirmed
+        _bookingRepositoryMock.DidNotReceive().Update(Arg.Any<Booking>()); // Không cập nhật booking
+    }
+
+    [Fact]
+    public async Task CheckInAsync_ShouldSucceed_WhenMultipleActivePoliciesWithDifferentPrioritiesExist()
+    {
+        // Arrange
+        var request = new CheckInRequest
+        {
+            LicensePlate = "29G1-12345",
+            CardCode = "CARD-999",
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            StaffId = 5
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
+        var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-12345", VehicleTypeId = 1 };
+        var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
+
+        // 2 Active Policies: Default (Priority = 0) and Holiday (Priority = 1)
+        var defaultPolicy = new PricingPolicy { Id = 10, VehicleTypeId = 1, PricingPolicyStatus = "Active", Priority = 0, EffectiveStart = DateTime.UtcNow.Date.AddDays(-10) };
+        var holidayPolicy = new PricingPolicy { Id = 11, VehicleTypeId = 1, PricingPolicyStatus = "Active", Priority = 1, EffectiveStart = DateTime.UtcNow.Date.AddDays(-2), EffectiveEnd = DateTime.UtcNow.Date.AddDays(2) };
+
+        _pricingPolicyRepositoryMock.GetAllWithWindowsAsync(1, "Active")
+            .Returns(new List<PricingPolicy> { defaultPolicy, holidayPolicy });
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G1-12345").Returns(vehicle);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+        _bookingRepositoryMock.FirstOrDefaultAsync(Arg.Any<System.Linq.Expressions.Expression<Func<Booking, bool>>>())
+            .Returns((Booking?)null); // No booking
+
+        // Act
+        var result = await _service.CheckInAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success, $"ErrorCode: {result.ErrorCode}, Message: {result.Message}");
+        Assert.NotNull(result.Data);
+        Assert.Equal("ACTIVE", result.Data.SessionStatus);
+    }
+
+    [Fact]
+    public async Task CheckEntryAsync_ShouldReturnPricingPolicyValidTrue_WhenMultipleActivePoliciesWithDifferentPrioritiesExist()
+    {
+        // Arrange
+        var request = new CheckEntryRequest
+        {
+            LicensePlate = "29G1-12345",
+            CardCode = "CARD-999",
+            VehicleTypeId = 1,
+            BuildingId = 10
+        };
+
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
+        var card = new Card { Id = 100, CardCode = "CARD-999", CardType = "NORMAL", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-12345", VehicleTypeId = 1 };
+        var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
+
+        // 2 Active Policies
+        var defaultPolicy = new PricingPolicy { Id = 10, VehicleTypeId = 1, PricingPolicyStatus = "Active", Priority = 0, EffectiveStart = DateTime.UtcNow.Date.AddDays(-10) };
+        var holidayPolicy = new PricingPolicy { Id = 11, VehicleTypeId = 1, PricingPolicyStatus = "Active", Priority = 1, EffectiveStart = DateTime.UtcNow.Date.AddDays(-2), EffectiveEnd = DateTime.UtcNow.Date.AddDays(2) };
+
+        _pricingPolicyRepositoryMock.GetAllWithWindowsAsync(1, "Active")
+            .Returns(new List<PricingPolicy> { defaultPolicy, holidayPolicy });
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-999").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G1-12345").Returns(vehicle);
+        _sessionRepositoryMock.HasActiveSessionForVehicleAsync(200).Returns(false);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+
+        // Act
+        var result = await _service.CheckEntryConditionsAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.True(result.Data.Allowed);
+        Assert.True(result.Data.PricingPolicyValid);
+    }
+
+    [Fact]
     public async Task AssignSlotAsync_ShouldReleaseOldSlotAndOccupyNewSlot_WhenSlotsAreDifferent()
     {
         // Arrange
