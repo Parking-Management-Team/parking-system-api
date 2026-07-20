@@ -1,0 +1,40 @@
+name: pbms-system
+
+services:
+  pbms-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pbms-api
+    ports:
+      - "5029:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING:-Host=aws-1-ap-southeast-2.pooler.supabase.com;Database=postgres;Username=postgres;Password=your_password;SSL Mode=Require;Trust Server Certificate=true}
+      - Jwt__Key=${JWT_KEY:-YourSuperSecretJwtKeyMinimum256BitsLengthForSecurity123!}
+      - Jwt__Issuer=${JWT_ISSUER:-PBMS.API}
+      - Jwt__Audience=${JWT_AUDIENCE:-PBMS.Web}
+    restart: unless-stopped
+    networks:
+      - pbms-network
+
+  pbms-web:
+    build:
+      context: ../parking-system-web
+      dockerfile: Dockerfile
+    container_name: pbms-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5029}
+    restart: unless-stopped
+    depends_on:
+      - pbms-api
+    networks:
+      - pbms-network
+
+networks:
+  pbms-network:
+    driver: bridge
