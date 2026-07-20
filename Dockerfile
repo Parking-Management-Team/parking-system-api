@@ -21,5 +21,10 @@ RUN dotnet publish "PBMS.API.csproj" -c Release -o /app/publish /p:UseAppHost=fa
 # Use ASP.NET Core runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+
+# Expose HTTP port for ASP.NET Core 8+
+EXPOSE 8080
+ENV ASPNETCORE_HTTP_PORTS=8080
+
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "PBMS.API.dll"]
