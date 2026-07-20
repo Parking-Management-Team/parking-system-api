@@ -34,65 +34,102 @@ public class PricingEngine : IPricingEngine
 
         var result = new PricingResult();
 
-        // 1. Chia nhỏ thành các blocks thời gian
-        var blocks = GenerateBlocksSegmented(getPolicyAtTime, checkIn, checkOut);
+        // 1. Lấy thông tin chính sách tại thời điểm check-in
+        var startPolicy = getPolicyAtTime(checkIn);
+        var activeRulesAtStart = startPolicy.PricingRules
+            .Where(r => r.IsActive)
+            .OrderBy(r => r.ExecutionOrder)
+            .ToList();
+
+        var baseRule = activeRulesAtStart.FirstOrDefault(r => r.RuleType == "BasePricing");
+        var baseMinutes = baseRule?.BasePricingRuleConfig?.BaseDurationMinutes 
+            ?? startPolicy.PricingWindows.FirstOrDefault()?.BaseDurationMinutes 
+            ?? 60;
+        var basePrice = baseRule?.BasePricingRuleConfig?.BasePriceAmount 
+            ?? startPolicy.PricingWindows.FirstOrDefault()?.BasePrice 
+            ?? 0m;
+        var currencyCode = baseRule?.BasePricingRuleConfig?.CurrencyCode ?? "VND";
+
+        var graceRule = activeRulesAtStart.FirstOrDefault(r => r.RuleType == "GracePeriod");
+        var graceMinutes = graceRule?.GracePeriodRuleConfig?.GracePeriodMinutes 
+            ?? startPolicy.PricingWindows.FirstOrDefault()?.GracePeriodMinutes 
+            ?? 0;
+
+        double totalMinutes = (checkOut - checkIn).TotalMinutes;
         decimal baseAmount = 0;
         decimal incrementAmount = 0;
 
-        // 2. Thực thi tính phí cho từng block gửi xe
-        foreach (var block in blocks)
+        // 2. Tính phí Base block
+        var baseBlockDuration = Math.Min(totalMinutes, baseMinutes);
+        baseAmount += basePrice;
+        result.RuleResults.Add(new RuleResult
         {
-            var currentPolicy = getPolicyAtTime(block.StartTime);
-            var activeRules = currentPolicy.PricingRules
-                .Where(r => r.IsActive)
-                .OrderBy(r => r.ExecutionOrder)
-                .ToList();
+            RuleType = "BasePricing",
+            Amount = basePrice,
+            Explanation = $"[{startPolicy.PolicyName}] Áp dụng block đầu tiên ({baseBlockDuration:F1}/{baseMinutes} phút): {basePrice:N0} {currencyCode}"
+        });
 
-            if (block.IsBase)
+        // 3. Tính phí các Increment blocks (nếu đỗ lố quá BaseDuration)
+        double overMinutes = totalMinutes - baseMinutes;
+        if (overMinutes > 0)
+        {
+            if (overMinutes <= graceMinutes)
             {
-                var baseRule = activeRules.FirstOrDefault(r => r.RuleType == "BasePricing");
-                if (baseRule?.BasePricingRuleConfig != null)
+                // Đỗ lố trong thời gian ân hạn -> Miễn phí
+                result.RuleResults.Add(new RuleResult
                 {
-                    var config = baseRule.BasePricingRuleConfig;
-                    baseAmount += config.BasePriceAmount;
-                    result.RuleResults.Add(new RuleResult
-                    {
-                        RuleType = "BasePricing",
-                        Amount = config.BasePriceAmount,
-                        Explanation = $"[{currentPolicy.PolicyName}] Áp dụng block đầu tiên ({block.DurationMinutes:F1}/{config.BaseDurationMinutes} phút): {config.BasePriceAmount:N0} {config.CurrencyCode}"
-                    });
-                }
+                    RuleType = "GracePeriod",
+                    Amount = 0,
+                    Explanation = $"[{startPolicy.PolicyName}] Thời gian đỗ lố ({overMinutes:F1} phút) nằm trong thời gian ân hạn ({graceMinutes} phút): Miễn phí."
+                });
             }
             else
             {
-                var incRule = activeRules.FirstOrDefault(r => r.RuleType == "IncrementPricing");
-                if (incRule?.IncrementPricingRuleConfig != null)
+                double billableOverMinutes = overMinutes - graceMinutes;
+                if (graceMinutes > 0)
                 {
-                    var config = incRule.IncrementPricingRuleConfig;
-                    var actualMinutes = block.DurationMinutes;
-                    var interval = config.IncrementIntervalMinutes;
+                    result.RuleResults.Add(new RuleResult
+                    {
+                        RuleType = "GracePeriod",
+                        Amount = 0,
+                        Explanation = $"[{startPolicy.PolicyName}] Áp dụng thời gian ân hạn {graceMinutes} phút. Thời gian đỗ lố tính phí: {billableOverMinutes:F1} phút."
+                    });
+                }
 
-                    // Tính tỷ lệ xem block lẻ này có vượt ngưỡng ThresholdPercentage hay không
-                    var percentage = (actualMinutes / interval) * 100;
-                    if (percentage >= config.ThresholdPercentage)
+                var currentBlockStart = checkIn.AddMinutes(baseMinutes + graceMinutes);
+                double remainingBillableMinutes = billableOverMinutes;
+                int seq = 1;
+
+                while (remainingBillableMinutes > 0)
+                {
+                    var currentPolicy = getPolicyAtTime(currentBlockStart);
+                    var activeRulesAtCurrent = currentPolicy.PricingRules
+                        .Where(r => r.IsActive)
+                        .OrderBy(r => r.ExecutionOrder)
+                        .ToList();
+
+                    var incRule = activeRulesAtCurrent.FirstOrDefault(r => r.RuleType == "IncrementPricing");
+                    var incInterval = incRule?.IncrementPricingRuleConfig?.IncrementIntervalMinutes 
+                        ?? currentPolicy.PricingWindows.FirstOrDefault()?.IncrementBlockMinutes 
+                        ?? 15;
+                    var incPrice = incRule?.IncrementPricingRuleConfig?.IncrementPriceAmount 
+                        ?? currentPolicy.PricingWindows.FirstOrDefault()?.IncrementPrice 
+                        ?? 0m;
+                    var incCurrency = incRule?.IncrementPricingRuleConfig?.CurrencyCode ?? currencyCode;
+
+                    var blockDuration = Math.Min(remainingBillableMinutes, incInterval);
+                    incrementAmount += incPrice;
+
+                    result.RuleResults.Add(new RuleResult
                     {
-                        incrementAmount += config.IncrementPriceAmount;
-                        result.RuleResults.Add(new RuleResult
-                        {
-                            RuleType = "IncrementPricing",
-                            Amount = config.IncrementPriceAmount,
-                            Explanation = $"[{currentPolicy.PolicyName}] Block phụ thứ {block.BlockSequence} ({actualMinutes:F1}/{interval} phút, tỷ lệ {percentage:F0}% >= ngưỡng {config.ThresholdPercentage}%): {config.IncrementPriceAmount:N0} {config.CurrencyCode}"
-                        });
-                    }
-                    else
-                    {
-                        result.RuleResults.Add(new RuleResult
-                        {
-                            RuleType = "IncrementPricing",
-                            Amount = 0,
-                            Explanation = $"[{currentPolicy.PolicyName}] Block phụ thứ {block.BlockSequence} ({actualMinutes:F1}/{interval} phút, tỷ lệ {percentage:F0}% < ngưỡng {config.ThresholdPercentage}%): Miễn phí."
-                        });
-                    }
+                        RuleType = "IncrementPricing",
+                        Amount = incPrice,
+                        Explanation = $"[{currentPolicy.PolicyName}] Block phụ thứ {seq} ({blockDuration:F1}/{incInterval} phút): {incPrice:N0} {incCurrency}"
+                    });
+
+                    remainingBillableMinutes -= blockDuration;
+                    currentBlockStart = currentBlockStart.AddMinutes(blockDuration);
+                    seq++;
                 }
             }
         }

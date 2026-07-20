@@ -55,9 +55,12 @@ public class IncidentService : IIncidentService
             throw new ValidationException("Cannot report an incident on a completed parking session.");
         }
 
-        // 2. Kiểm tra loại sự cố tồn tại
+        // 2. Kiểm tra loại sự cố tồn tại và chưa bị xóa (IsDeleted = false)
         var incidentType = await _incidentTypeRepository.GetByIdAsync(request.IncidentTypeId);
-        if (incidentType == null) throw new NotFoundException("IncidentType", request.IncidentTypeId);
+        if (incidentType == null || incidentType.IsDeleted) 
+        {
+            throw new ValidationException($"Incident type with ID {request.IncidentTypeId} is invalid or has been deleted.");
+        }
 
         // Ngăn chặn báo cáo sự cố trùng loại (LOST_CARD, LATE_CHECKOUT)
         if (incidentType.IncidentCode != null && (incidentType.IncidentCode.ToUpper() == "LOST_CARD" || incidentType.IncidentCode.ToUpper() == "LATE_CHECKOUT"))
