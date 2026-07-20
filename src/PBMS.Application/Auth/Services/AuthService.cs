@@ -458,5 +458,125 @@ namespace PBMS.Application.Auth.Services
                 RoleName = account.Role?.RoleName ?? "Driver"
             };
         }
+
+        /// <summary>
+        /// Gửi mã OTP khôi phục mật khẩu.
+        /// </summary>
+        public async Task SendPasswordResetOtpAsync(string email)
+        {
+            // 1. Kiểm tra tài khoản có tồn tại không
+            var account = await _accountRepository.GetByEmailAsync(email);
+            if (account == null)
+            {
+                throw new InvalidOperationException("Account with this email does not exist.");
+            }
+
+            if (!account.IsActive)
+            {
+                throw new UnauthorizedAccessException("Your account has been locked or disabled. Please contact the administrator.");
+            }
+
+            // 2. Kiểm tra cooldown (60s)
+            if (!_otpService.CanSendOtp(email))
+            {
+                throw new InvalidOperationException("Please wait 60 seconds before requesting another verification code.");
+            }
+
+            // 3. Kiểm tra trạng thái khóa (Lockout)
+            if (_otpService.IsLockedOut(email))
+            {
+                throw new InvalidOperationException("This email is locked due to too many failed OTP attempts. Please try again in 15 minutes.");
+            }
+
+            // 4. Sinh OTP & Lưu Cache
+            var otp = _otpService.GenerateAndStoreOtp(email);
+
+            // 5. Gửi Mail qua SMTP
+            var subject = "[NexPark] - Password Recovery OTP Code";
+            var body = $@"
+<div style=""background-color: #f0fdf4; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
+    <div style=""max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06); border: 1px solid #d1fae5;"">
+        <div style=""background: linear-gradient(135deg, #065f46, #047857); padding: 35px 20px; text-align: center;"">
+            <h1 style=""color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;"">NexPark</h1>
+            <p style=""color: #a7f3d0; margin: 6px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;"">Smart Parking Solutions</p>
+        </div>
+        <div style=""padding: 40px 32px;"">
+            <h2 style=""color: #064e3b; margin-top: 0; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: -0.5px;"">Password Recovery Request</h2>
+            <p style=""color: #475569; font-size: 15px; line-height: 1.6; text-align: center; margin-bottom: 30px;"">
+                We received a request to reset the password for your NexPark account. Use the OTP verification code below to set a new password:
+            </p>
+            <div style=""background-color: #ecfdf5; border: 2px dashed #6ee7b7; border-radius: 12px; padding: 22px; text-align: center; margin-bottom: 30px;"">
+                <span style=""font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #059669; font-family: 'Courier New', monospace; display: inline-block; padding-left: 8px;"">{otp}</span>
+            </div>
+            <div style=""border-left: 4px solid #f59e0b; background-color: #fef3c7; padding: 16px; border-radius: 6px; margin-bottom: 30px;"">
+                <p style=""color: #b45309; font-size: 13px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.4;"">
+                    ⚠️ Security Notice:
+                </p>
+                <p style=""color: #6b7280; font-size: 13px; margin: 0; line-height: 1.5;"">
+                    This OTP code is valid for <strong>5 minutes</strong>. If you did not request a password reset, please change your password immediately or contact support.
+                </p>
+            </div>
+        </div>
+        <div style=""background-color: #f0fdf4; padding: 24px; border-top: 1px solid #d1fae5; text-align: center;"">
+            <p style=""color: #059669; font-size: 12px; margin: 0 0 4px 0; font-weight: 500;"">Connect. Park. Go.</p>
+            <p style=""color: #a7f3d0; font-size: 11px; margin: 0;"">&copy; 2026 NexPark System. All rights reserved.</p>
+        </div>
+    </div>
+</div>";
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendEmailAsync(email, subject, body);
+                }
+                catch
+                {
+                    // Email logging is handled inside EmailService
+                }
+            });
+        }
+
+        /// <summary>
+        /// Xác thực mã OTP khôi phục mật khẩu và trả về VerificationToken.
+        /// </summary>
+        public async Task<string> VerifyPasswordResetOtpAsync(string email, string otp)
+        {
+            var (isSuccess, message, verificationToken) = _otpService.VerifyOtp(email, otp);
+            if (!isSuccess)
+            {
+                throw new InvalidOperationException(message ?? "OTP verification failed.");
+            }
+
+            return verificationToken!;
+        }
+
+        /// <summary>
+        /// Đặt lại mật khẩu mới bằng VerificationToken đơn dùng.
+        /// </summary>
+        public async Task ResetPasswordWithTokenAsync(string email, string newPassword, string verificationToken)
+        {
+            var isValid = _otpService.ValidateVerificationToken(email, verificationToken);
+            if (!isValid)
+            {
+                throw new InvalidOperationException("Password reset token is invalid or has expired.");
+            }
+
+            var account = await _accountRepository.GetByEmailAsync(email);
+            if (account == null)
+            {
+                throw new InvalidOperationException("Account not found.");
+            }
+
+            if (!account.IsActive)
+            {
+                throw new UnauthorizedAccessException("Account is locked or disabled.");
+            }
+
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            await _accountRepository.SaveChangesAsync();
+
+            _otpService.ClearVerificationToken(email);
+        }
     }
 }
