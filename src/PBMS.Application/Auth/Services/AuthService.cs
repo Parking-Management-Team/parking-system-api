@@ -172,7 +172,17 @@ namespace PBMS.Application.Auth.Services
     </div>
 </div>";
 
-                await _emailService.SendEmailAsync(googleUser.Email, subject, body);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.SendEmailAsync(googleUser.Email, subject, body);
+                    }
+                    catch
+                    {
+                        // Email logging is handled inside EmailService
+                    }
+                });
 
                 // Ném exception để báo client cần nhập OTP kèm theo thông tin của Google
                 throw new GoogleSignupRequiredException(googleUser.Email, googleUser.Name, "Google signup requires email verification.");
@@ -226,7 +236,7 @@ namespace PBMS.Application.Auth.Services
             // 4. Sinh OTP & Lưu Cache
             var otp = _otpService.GenerateAndStoreOtp(email);
 
-            // 5. Gửi Mail qua SMTP mang thương hiệu NexPark (English Version - Emerald Theme)
+            // 5. Gửi Mail qua SMTP mang thương hiệu NexPark (Chạy bất đồng bộ ngầm để API phản hồi tức thì < 0.1s)
             var subject = "[NexPark] - Email Verification Code";
             var body = $@"
 <div style=""background-color: #f0fdf4; padding: 40px 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif;"">
@@ -277,7 +287,17 @@ namespace PBMS.Application.Auth.Services
     </div>
 </div>";
 
-            await _emailService.SendEmailAsync(email, subject, body);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendEmailAsync(email, subject, body);
+                }
+                catch
+                {
+                    // Email logging is handled inside EmailService
+                }
+            });
         }
 
         public async Task<string> VerifyOtpForRegisterAsync(string email, string otp)
