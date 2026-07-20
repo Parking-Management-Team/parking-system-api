@@ -921,7 +921,8 @@ public class ParkingSessionService : IParkingSessionService
                         session.CheckInTime,
                         booking.PlannedCheckinTime,
                         bookingId: null, // Walk-in stay
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
 
                     // Calculate main booking stay fee (from PlannedCheckinTime to checkout time)
                     var mainFeeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
@@ -929,7 +930,8 @@ public class ParkingSessionService : IParkingSessionService
                         booking.PlannedCheckinTime,
                         checkOutTime,
                         bookingId: booking.Id,
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
 
                     totalFee = earlyFeeResult.BaseAmount + earlyFeeResult.IncrementAmount + mainFeeResult.BaseAmount + mainFeeResult.IncrementAmount;
                     totalPenaltyFee = earlyFeeResult.PenaltyAmount + mainFeeResult.PenaltyAmount;
@@ -943,7 +945,8 @@ public class ParkingSessionService : IParkingSessionService
                         calculationStartTime,
                         checkOutTime,
                         bookingId: session.BookingId,
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
                     totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
                     totalPenaltyFee = feeResult.PenaltyAmount;
                     amountDue = feeResult.TotalAmount;
@@ -957,7 +960,8 @@ public class ParkingSessionService : IParkingSessionService
                     calculationStartTime,
                     checkOutTime,
                     bookingId: null,
-                    parkingSessionId: session.Id);
+                    parkingSessionId: session.Id,
+                    calculationPurpose: "CHECKOUT_FINAL");
                 totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
                 totalPenaltyFee = feeResult.PenaltyAmount;
                 amountDue = feeResult.TotalAmount;

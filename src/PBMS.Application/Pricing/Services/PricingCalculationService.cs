@@ -41,6 +41,11 @@ public class PricingCalculationService : IPricingCalculationService
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
     }
 
+    public Task<PricingResult> CalculatePreviewAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut, int? parkingSessionId = null)
+    {
+        return CalculateFeeAsync(vehicleTypeId, checkIn, checkOut, parkingSessionId);
+    }
+
     public async Task<PricingResult> CalculateFeeAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut, int? parkingSessionId = null)
     {
         var config = await _configService.GetByKeyAsync("APPLY_SEGMENTED_PRICING");
@@ -117,13 +122,33 @@ public class PricingCalculationService : IPricingCalculationService
         }
     }
 
-    public async Task<PricingResult> CalculateFeeAndLogAsync(
+    public async Task<PricingResult> CalculateCommittedFeeAsync(
         int vehicleTypeId,
         DateTime checkIn,
         DateTime checkOut,
+        string calculationPurpose,
         int? bookingId = null,
-        int? parkingSessionId = null)
+        int? parkingSessionId = null,
+        int? paymentId = null,
+        string? idempotencyKey = null)
     {
+        // 1. Idempotency Check: nếu đã có log với IdempotencyKey này, trả về kết quả đã tính từ trước mà không ghi đè log
+        if (!string.IsNullOrEmpty(idempotencyKey))
+        {
+            var existingLogs = await _logRepository.FindAsync(l => l.IdempotencyKey == idempotencyKey);
+            var existingLog = existingLogs.FirstOrDefault();
+            if (existingLog != null)
+            {
+                return new PricingResult
+                {
+                    TotalAmount = existingLog.TotalPrice,
+                    RuleResults = !string.IsNullOrEmpty(existingLog.CalculationDetails)
+                        ? JsonSerializer.Deserialize<List<RuleResult>>(existingLog.CalculationDetails) ?? new List<RuleResult>()
+                        : new List<RuleResult>()
+                };
+            }
+        }
+
         var config = await _configService.GetByKeyAsync("APPLY_SEGMENTED_PRICING");
         bool applySegmented = config != null && string.Equals(config.Value, "true", StringComparison.OrdinalIgnoreCase);
 
@@ -194,7 +219,6 @@ public class PricingCalculationService : IPricingCalculationService
         if (applySegmented && getPolicyAtTime != null)
         {
             result = _pricingEngine.CalculateSegmented(getPolicyAtTime, checkIn, checkOut, incidents, penaltyConfigs);
-            // Matched Policy Id defaults to the policy at check-out for the audit log
             matchedPolicyId = getPolicyAtTime(checkOut.AddSeconds(-1)).Id;
         }
         else
@@ -203,11 +227,14 @@ public class PricingCalculationService : IPricingCalculationService
             matchedPolicyId = policy!.Id;
         }
 
-        // Write the fee calculation audit log.
+        // 2. Ghi bản ghi PricingCalculationLog đối soát tài chính chính thức
         var log = new PricingCalculationLog
         {
             BookingId = bookingId,
             ParkingSessionId = parkingSessionId,
+            PaymentId = paymentId,
+            CalculationPurpose = string.IsNullOrWhiteSpace(calculationPurpose) ? "CHECKOUT_FINAL" : calculationPurpose,
+            IdempotencyKey = idempotencyKey,
             VehicleTypeId = vehicleTypeId,
             CheckInTime = checkIn,
             CheckOutTime = checkOut,
@@ -220,5 +247,26 @@ public class PricingCalculationService : IPricingCalculationService
         await _logRepository.SaveChangesAsync();
 
         return result;
+    }
+
+    public Task<PricingResult> CalculateFeeAndLogAsync(
+        int vehicleTypeId,
+        DateTime checkIn,
+        DateTime checkOut,
+        int? bookingId = null,
+        int? parkingSessionId = null,
+        string calculationPurpose = "CHECKOUT_FINAL",
+        int? paymentId = null,
+        string? idempotencyKey = null)
+    {
+        return CalculateCommittedFeeAsync(
+            vehicleTypeId,
+            checkIn,
+            checkOut,
+            calculationPurpose,
+            bookingId,
+            parkingSessionId,
+            paymentId,
+            idempotencyKey);
     }
 }

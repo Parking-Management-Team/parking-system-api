@@ -11,19 +11,39 @@ namespace PBMS.Application.Pricing.Interfaces;
 public interface IPricingCalculationService
 {
     /// <summary>
-    /// Tính toán tổng phí gửi xe dựa trên cấu hình Pricing Policy và các Rules đã cài đặt.
+    /// Tính toán xem trước phí gửi xe (Preview only). KHÔNG ghi log vào CSDL.
     /// </summary>
-    /// <param name="vehicleTypeId">ID loại phương tiện</param>
-    /// <param name="checkIn">Thời điểm xe vào bãi</param>
-    /// <param name="checkOut">Thời điểm xe ra bãi</param>
-    /// <returns>PricingResult chứa tổng tiền và chi tiết chạy của từng rule</returns>
+    Task<PricingResult> CalculatePreviewAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut, int? parkingSessionId = null);
+
     /// <summary>
-    /// Tính toán tổng phí gửi xe dựa trên cấu hình Pricing Policy, các Rules và các sự cố liên quan.
+    /// Tính toán tổng phí gửi xe dựa trên cấu hình Pricing Policy (Preview only). Alias cho CalculatePreviewAsync.
     /// </summary>
     Task<PricingResult> CalculateFeeAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut, int? parkingSessionId = null);
 
     /// <summary>
-    /// Tính toán phí gửi xe và ghi log audit vào cơ sở dữ liệu.
+    /// Tính toán và ghi duy nhất 1 bản ghi PricingCalculationLog đối soát giao dịch tài chính chính thức (Committed).
+    /// Hỗ trợ kiểm tra idempotency để tránh ghi trùng log.
     /// </summary>
-    Task<PricingResult> CalculateFeeAndLogAsync(int vehicleTypeId, DateTime checkIn, DateTime checkOut, int? bookingId = null, int? parkingSessionId = null);
+    Task<PricingResult> CalculateCommittedFeeAsync(
+        int vehicleTypeId,
+        DateTime checkIn,
+        DateTime checkOut,
+        string calculationPurpose,
+        int? bookingId = null,
+        int? parkingSessionId = null,
+        int? paymentId = null,
+        string? idempotencyKey = null);
+
+    /// <summary>
+    /// Tính toán phí gửi xe và ghi log audit (Backward compatibility alias cho CalculateCommittedFeeAsync).
+    /// </summary>
+    Task<PricingResult> CalculateFeeAndLogAsync(
+        int vehicleTypeId,
+        DateTime checkIn,
+        DateTime checkOut,
+        int? bookingId = null,
+        int? parkingSessionId = null,
+        string calculationPurpose = "CHECKOUT_FINAL",
+        int? paymentId = null,
+        string? idempotencyKey = null);
 }
