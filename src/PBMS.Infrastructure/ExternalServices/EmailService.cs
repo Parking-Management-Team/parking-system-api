@@ -1,6 +1,7 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MimeKit;
 using MimeKit.Text;
 using PBMS.Application.Auth.Interfaces;
@@ -12,10 +13,12 @@ namespace PBMS.Infrastructure.ExternalServices
     public class EmailService : IEmailService
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IConfiguration configuration)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
         {
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
@@ -27,31 +30,45 @@ namespace PBMS.Infrastructure.ExternalServices
             var rawPassword = _configuration["Smtp:Password"] ?? throw new InvalidOperationException("SMTP Password is not configured.");
             var displayName = _configuration["Smtp:DisplayName"] ?? "PBMS Team";
 
-            // Tự động làm sạch Username và Password (loại bỏ dấu cách và dấu ngoặc kép thừa từ Render/Local)
             var username = rawUsername.Trim().Trim('"');
             var password = rawPassword.Replace(" ", "").Trim().Trim('"');
 
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(displayName, username));
-            message.To.Add(MailboxAddress.Parse(toEmail));
-            message.Subject = subject;
-            message.Body = new TextPart(TextFormat.Html) { Text = body };
+            _logger.LogInformation("Attempting to send email via SMTP host {Host}:{Port} with SSL option for user {Username}", host, port, username);
 
-            using var client = new SmtpClient();
-            client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-
-            // Tự động chọn chế độ mã hóa SSL/TLS phù hợp với Linux Container & Render
-            var socketOptions = port switch
+            try
             {
-                465 => SecureSocketOptions.SslOnConnect,
-                587 => SecureSocketOptions.StartTls,
-                _ => enableSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None
-            };
+                var message = new MimeMessage();
+                message.From.Add(new MailboxAddress(displayName, username));
+                message.To.Add(MailboxAddress.Parse(toEmail));
+                message.Subject = subject;
+                message.Body = new TextPart(TextFormat.Html) { Text = body };
 
-            await client.ConnectAsync(host, port, socketOptions);
-            await client.AuthenticateAsync(username, password);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+                using var client = new SmtpClient();
+                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                var socketOptions = port switch
+                {
+                    465 => SecureSocketOptions.SslOnConnect,
+                    587 => SecureSocketOptions.StartTls,
+                    _ => enableSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None
+                };
+
+                await client.ConnectAsync(host, port, socketOptions);
+                _logger.LogInformation("SMTP connected successfully to {Host}:{Port}", host, port);
+
+                await client.AuthenticateAsync(username, password);
+                _logger.LogInformation("SMTP authenticated successfully for user {Username}", username);
+
+                await client.SendAsync(message);
+                _logger.LogInformation("Email sent successfully to {ToEmail}", toEmail);
+
+                await client.DisconnectAsync(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "FAILED to send email to {ToEmail}. Error: {ErrorMessage}", toEmail, ex.Message);
+                throw;
+            }
         }
     }
 }
