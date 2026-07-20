@@ -6,5 +6,5 @@
 **/obj
 **/out
 **/appsettings.Development.json
-docker/Dockerfile
-docker-compose.yml
+*.log
+temp_build_dir/
