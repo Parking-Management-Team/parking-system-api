@@ -38,6 +38,7 @@ namespace PBMS.Infrastructure.ExternalServices
             message.Body = new TextPart(TextFormat.Html) { Text = body };
 
             using var client = new SmtpClient();
+            client.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
             // Tự động chọn chế độ mã hóa SSL/TLS phù hợp với Linux Container & Render
             var socketOptions = port switch
