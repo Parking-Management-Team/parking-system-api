@@ -987,7 +987,7 @@ public class ParkingSessionService : IParkingSessionService
                     // Apply the deposit deduction first.
                     amountDue = Math.Max(0, amountDue - booking.DepositAmount);
                     // Update the displayed total after the deposit deduction.
-                    totalFee = Math.Max(0, totalFee - booking.DepositAmount);
+                    totalFee = Math.Max(0, totalFee - booking.DepositAmount); 
                 }
             }
         }

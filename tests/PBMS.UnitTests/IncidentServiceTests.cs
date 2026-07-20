@@ -221,5 +221,77 @@ namespace PBMS.UnitTests
             Assert.Equal(CardStatus.Blocked.ToString(), card.CardStatus); // Phải khóa vĩnh viễn (Blocked)
             _cardRepositoryMock.Received(1).Update(card);
         }
+
+        [Fact]
+        public async Task ReportIncidentAsync_ShouldFail_WhenIncidentTypeIsDeleted()
+        {
+            // Arrange
+            var request = new ReportIncidentRequest
+            {
+                SessionId = 1,
+                IncidentTypeId = 2,
+                Description = "Car scratch report"
+            };
+
+            var session = new PBMS.Domain.Entities.ParkingSession
+            {
+                Id = 1,
+                SessionStatus = "ACTIVE"
+            };
+
+            var deletedIncidentType = new IncidentType
+            {
+                Id = 2,
+                IncidentCode = "SCRATCH",
+                IncidentName = "Car Scratch",
+                IsDeleted = true // Khóa/xóa loại sự cố này
+            };
+
+            _sessionRepositoryMock.GetByIdAsync(1).Returns(session);
+            _incidentTypeRepositoryMock.GetByIdAsync(2).Returns(deletedIncidentType);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<ValidationException>(() => 
+                _incidentService.ReportIncidentAsync(request));
+            Assert.Contains("invalid or has been deleted", exception.Message);
+        }
+
+        [Fact]
+        public async Task ReportIncidentAsync_ShouldSucceed_ForActiveIncidentTypeAndActiveSession()
+        {
+            // Arrange
+            var request = new ReportIncidentRequest
+            {
+                SessionId = 1,
+                IncidentTypeId = 2,
+                Description = "Valid text-only incident description"
+            };
+
+            var session = new PBMS.Domain.Entities.ParkingSession
+            {
+                Id = 1,
+                SessionStatus = "ACTIVE"
+            };
+
+            var activeIncidentType = new IncidentType
+            {
+                Id = 2,
+                IncidentCode = "OTHER",
+                IncidentName = "Other Issue",
+                IsDeleted = false
+            };
+
+            _sessionRepositoryMock.GetByIdAsync(1).Returns(session);
+            _incidentTypeRepositoryMock.GetByIdAsync(2).Returns(activeIncidentType);
+
+            // Act
+            await _incidentService.ReportIncidentAsync(request);
+
+            // Assert
+            await _incidentRepositoryMock.Received(1).AddAsync(Arg.Is<PBMS.Domain.Entities.Incident>(i => 
+                i.SessionId == 1 && 
+                i.IncidentTypeId == 2 && 
+                i.Description == "Valid text-only incident description"));
+        }
     }
 }

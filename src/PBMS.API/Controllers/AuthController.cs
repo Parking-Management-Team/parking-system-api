@@ -189,5 +189,68 @@ namespace PBMS.API.Controllers
                 return BadRequest(BaseResponse<LoginResponseDto>.Fail("BAD_REQUEST", ex.Message));
             }
         }
+
+        /// <summary>
+        /// API gửi OTP khôi phục mật khẩu.
+        /// Route: POST /api/auth/password-recovery/request
+        /// </summary>
+        [HttpPost("password-recovery/request")]
+        public async Task<ActionResult<BaseResponse<string>>> RequestPasswordRecovery([FromBody] PasswordRecoveryRequest request)
+        {
+            try
+            {
+                await _authService.SendPasswordResetOtpAsync(request.Email);
+                return Ok(BaseResponse<string>.Ok(null, "Password recovery OTP sent to your email successfully."));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(BaseResponse<string>.Fail("UNAUTHORIZED", ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// API xác thực OTP khôi phục mật khẩu và lấy verificationToken.
+        /// Route: POST /api/auth/password-recovery/verify
+        /// </summary>
+        [HttpPost("password-recovery/verify")]
+        public async Task<ActionResult<BaseResponse<string>>> VerifyPasswordRecovery([FromBody] PasswordRecoveryVerifyRequest request)
+        {
+            try
+            {
+                var token = await _authService.VerifyPasswordResetOtpAsync(request.Email, request.Otp);
+                return Ok(BaseResponse<string>.Ok(token, "OTP verified successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// API đổi mật khẩu mới sử dụng verificationToken đơn dùng.
+        /// Route: POST /api/auth/password-recovery/reset & /api/auth/reset-password
+        /// </summary>
+        [HttpPost("password-recovery/reset")]
+        [HttpPost("reset-password")]
+        public async Task<ActionResult<BaseResponse<string>>> ResetPassword([FromBody] ResetPasswordWithTokenRequest request)
+        {
+            try
+            {
+                await _authService.ResetPasswordWithTokenAsync(request.Email, request.NewPassword, request.VerificationToken);
+                return Ok(BaseResponse<string>.Ok(null, "Password has been reset successfully."));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(BaseResponse<string>.Fail("UNAUTHORIZED", ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
     }
 }

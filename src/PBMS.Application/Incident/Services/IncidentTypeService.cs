@@ -21,7 +21,7 @@ public class IncidentTypeService : IIncidentTypeService
 
     public async Task<IEnumerable<IncidentTypeDto>> GetAllIncidentTypesAsync()
     {
-        var items = await _incidentTypeRepository.GetAllAsync();
+        var items = await _incidentTypeRepository.FindAsync(it => !it.IsDeleted);
         return _mapper.Map<IEnumerable<IncidentTypeDto>>(items);
     }
 
