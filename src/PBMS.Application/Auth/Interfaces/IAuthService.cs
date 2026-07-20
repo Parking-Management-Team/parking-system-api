@@ -49,5 +49,20 @@ namespace PBMS.Application.Auth.Interfaces
         /// Xác thực mã OTP và hoàn tất đăng nhập cho email thường.
         /// </summary>
         Task<LoginResponseDto> VerifyLoginOtpAsync(LoginVerifyOtpRequest request);
+
+        /// <summary>
+        /// Gửi mã OTP khôi phục mật khẩu.
+        /// </summary>
+        Task SendPasswordResetOtpAsync(string email);
+
+        /// <summary>
+        /// Xác thực mã OTP khôi phục mật khẩu và trả về VerificationToken.
+        /// </summary>
+        Task<string> VerifyPasswordResetOtpAsync(string email, string otp);
+
+        /// <summary>
+        /// Đặt lại mật khẩu mới bằng VerificationToken đơn dùng.
+        /// </summary>
+        Task ResetPasswordWithTokenAsync(string email, string newPassword, string verificationToken);
     }
 }
