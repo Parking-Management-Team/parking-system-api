@@ -81,19 +81,29 @@ jobs:
 
     - name: Start API Server
       run: |
-        dotnet run --project src/PBMS.API --no-build --configuration Release --urls=http://localhost:5000 &
+        dotnet run --project src/PBMS.API --no-build --configuration Release --urls=http://localhost:5000 > api.log 2>&1 &
         echo "Waiting for API server to start..."
-        sleep 15
+        for i in {1..30}; do
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/swagger/v1/swagger.json || echo "000")
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "API server started successfully!"
+            break
+          fi
+          echo "Waiting for API server... ($i/30)"
+          sleep 1
+        done
 
     - name: Verify Swagger JSON
       run: |
         echo "=== Checking Swagger endpoint ==="
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/swagger/v1/swagger.json)
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/swagger/v1/swagger.json || echo "000")
         if [ "$HTTP_STATUS" -eq 200 ]; then
           echo "Swagger endpoint is accessible (HTTP $HTTP_STATUS)"
           curl -s http://localhost:5000/swagger/v1/swagger.json | jq '.info.title, .info.version' || true
         else
           echo "::error::Swagger endpoint returned HTTP $HTTP_STATUS"
+          echo "=== API SERVER LOGS ==="
+          cat api.log || true
           exit 1
         fi
 

@@ -14,19 +14,19 @@ Tài liệu này hướng dẫn cách build và triển khai ứng dụng PBMS A
 
 ## 2. Quy Trình Deploy Thủ Công Bằng Docker
 
-Hệ thống được cấu hình sẵn Dockerfile tại thư mục [docker/Dockerfile](file:///D:/FPT/SWP391/parking-system-api/docker/Dockerfile).
+Hệ thống được cấu hình sẵn Dockerfile tại root của dự án backend: [Dockerfile](file:///d:/Semester_5/SWP391/PBMS-Source/parking-system-api/Dockerfile).
 
 ### Bước 1: Build Docker Image
-Đứng tại thư mục gốc của dự án (root directory), chạy lệnh build image:
+Đứng tại thư mục gốc của dự án `parking-system-api`, chạy lệnh build image:
 ```bash
-docker build -f docker/Dockerfile -t pbms-api:latest .
+docker build -t pbms-api:latest .
 ```
 
 ### Bước 2: Chạy Container trên Server Production
 Khi khởi chạy Container, cần ghi đè các tham số môi trường (Environment Variables) để kết nối trực tiếp đến Database thật và thiết lập JWT bảo mật cao:
 ```bash
 docker run -d \
-  -p 8080:5029 \
+  -p 5029:8080 \
   --name pbms-api-prod \
   -e ASPNETCORE_ENVIRONMENT=Production \
   -e ConnectionStrings__DefaultConnection="Host=aws-1-ap-southeast-2.pooler.supabase.com;Database=postgres;Username=[REDACTED];Password=[REDACTED];SSL Mode=Require;Trust Server Certificate=true" \
