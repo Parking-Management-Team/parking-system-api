@@ -41,7 +41,14 @@ namespace PBMS.API.Workers
                     _logger.LogError(ex, "Error occurred in ExpiredBookingCleanupWorker.");
                 }
 
-                await Task.Delay(_period, stoppingToken);
+                try
+                {
+                    await Task.Delay(_period, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Shutdown requested — exit gracefully
+                }
             }
 
             _logger.LogInformation("ExpiredBookingCleanupWorker is stopping.");
