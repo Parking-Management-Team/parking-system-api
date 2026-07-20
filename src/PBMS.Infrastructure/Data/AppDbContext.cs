@@ -144,16 +144,6 @@ public class AppDbContext : DbContext
     public DbSet<PricingCalculationLog> PricingCalculationLogs { get; set; } = null!;
 
     /// <summary>
-    /// Tập hợp dữ liệu bảng Quyền hạn (Permissions).
-    /// </summary>
-    public DbSet<Permission> Permissions { get; set; } = null!;
-
-    /// <summary>
-    /// Tập hợp dữ liệu bảng trung gian Vai trò - Quyền hạn (RolePermissions).
-    /// </summary>
-    public DbSet<RolePermission> RolePermissions { get; set; } = null!;
-
-    /// <summary>
     /// Tập hợp dữ liệu bảng Cấu hình giá vé tháng (SubscriptionPriceConfigs).
     /// </summary>
     public DbSet<SubscriptionPriceConfig> SubscriptionPriceConfigs { get; set; } = null!;
