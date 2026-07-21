@@ -208,7 +208,7 @@ public class PricingEngine : IPricingEngine
                     {
                         RuleType = $"PenaltySurcharge_{incident.IncidentType?.IncidentCode ?? incident.IncidentTypeId.ToString()}",
                         Amount = incidentFee,
-                        Explanation = $"Phụ thu phạt sự cố [{(incident.IncidentType?.IncidentName ?? "Sự cố ID: " + incident.IncidentTypeId)}]: {incidentFee:N0} VND"
+                        Explanation = $"Phụ thu phạt sự cố [{(incident.IncidentType?.IncidentName ?? "Sự cố ID: " + incident.IncidentTypeId)}]: {incidentFee:N0} đ"
                     });
                 }
             }

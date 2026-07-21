@@ -173,7 +173,7 @@ public class PaymentService : IPaymentService
             description = $"Parking fee payment for session {session.Id}";
             if (totalPenaltyFee > 0)
             {
-                description += $" (Includes incident penalty fee of {totalPenaltyFee:N0} VND)";
+                description += $" (Includes incident penalty fee of {totalPenaltyFee:N0} đ)";
             }
 
         }

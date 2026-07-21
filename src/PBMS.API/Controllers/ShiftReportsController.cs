@@ -8,8 +8,10 @@ namespace PBMS.API.Controllers;
 
 /// <summary>
 /// Controller quản lý Báo cáo ca trực (Shift Reports) dành cho Staff và Manager.
+/// (Bị ẩn trong Swagger API Docs release hiện tại theo SHIFT-01)
 /// </summary>
 [ApiController]
+[ApiExplorerSettings(IgnoreApi = true)]
 [Route("api/shift-reports")]
 public class ShiftReportsController : ControllerBase
 {

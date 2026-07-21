@@ -7,6 +7,7 @@ using PBMS.API.Middlewares;
 using PBMS.Application;
 using PBMS.Infrastructure;
 using PBMS.API.Workers;
+using System.Diagnostics;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +40,10 @@ if (builder.Environment.IsDevelopment())
 // Cấu hình OpenAPI (Swagger) phục vụ việc chạy tài liệu API và authorize test
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
 
 // Đăng ký các dịch vụ của tầng Application và Infrastructure
 var useInMemoryParkingSession = builder.Configuration.GetValue<bool>("ParkingSession:UseInMemoryStore");
@@ -121,6 +126,29 @@ else if (app.Environment.IsDevelopment())
 
 // Middleware xử lý lỗi toàn cục (Global Exception Handling)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseResponseCompression();
+
+app.Use(async (context, next) =>
+{
+    var stopwatch = Stopwatch.StartNew();
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        stopwatch.Stop();
+        var logger = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("PBMS.Performance");
+        logger.LogInformation(
+            "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMilliseconds} ms",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode,
+            stopwatch.ElapsedMilliseconds);
+    }
+});
 
 if (app.Environment.IsDevelopment())
 {

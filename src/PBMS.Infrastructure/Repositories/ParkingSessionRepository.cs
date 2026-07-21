@@ -145,53 +145,32 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             query = query.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
         }
 
-        // Loại trừ các Slot đang bị giữ chỗ bởi Booking đang hoạt động hoặc chuẩn bị check-in (trong vòng 30 phút tới)
-        var reservedSlotIds = await _context.Set<Booking>()
-            .Where(b =>
-                b.SlotId != null &&
+        // Keep the existing allocation rules, but let PostgreSQL filter and rank in one round-trip.
+        return await query
+            .Where(s => !_context.Set<Booking>().Any(b =>
+                b.SlotId == s.Id &&
                 b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
-                b.PlannedCheckoutTime > now)
-            .Select(b => b.SlotId!.Value)
-            .ToListAsync();
-
-        if (reservedSlotIds.Any())
-        {
-            query = query.Where(s => !reservedSlotIds.Contains(s.Id));
-        }
-
-        var candidateSlots = await query.ToListAsync();
-        if (!candidateSlots.Any())
-        {
-            return null;
-        }
-
-        var candidateSlotIds = candidateSlots.Select(s => s.Id).ToList();
-        var futureBookings = await _context.Set<Booking>()
-            .Where(b =>
-                b.SlotId != null &&
-                candidateSlotIds.Contains(b.SlotId.Value) &&
-                (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
-                b.PlannedCheckinTime > now)
-            .ToListAsync();
-
-        var rankedSlots = candidateSlots
-            .Select(slot =>
+                b.PlannedCheckoutTime > now))
+            .Select(s => new
             {
-                var slotBookings = futureBookings.Where(b => b.SlotId == slot.Id).ToList();
-                var nextBooking = slotBookings.OrderBy(b => b.PlannedCheckinTime).FirstOrDefault();
-                return new
-                {
-                    Slot = slot,
-                    BookingCount = slotBookings.Count,
-                    NextCheckin = nextBooking?.PlannedCheckinTime ?? DateTime.MaxValue
-                };
+                Slot = s,
+                BookingCount = _context.Set<Booking>().Count(b =>
+                    b.SlotId == s.Id &&
+                    (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+                    b.PlannedCheckinTime > now),
+                NextCheckin = _context.Set<Booking>()
+                    .Where(b =>
+                        b.SlotId == s.Id &&
+                        (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+                        b.PlannedCheckinTime > now)
+                    .Min(b => (DateTime?)b.PlannedCheckinTime)
             })
             .OrderBy(x => x.BookingCount)
+            .ThenByDescending(x => x.NextCheckin == null)
             .ThenByDescending(x => x.NextCheckin)
-            .ToList();
-
-        return rankedSlots.FirstOrDefault()?.Slot;
+            .Select(x => x.Slot)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<List<ParkingSlot>> FindAllAvailableGeneralSlotsAsync(int vehicleTypeId, int? buildingId = null)
@@ -214,22 +193,13 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             query = query.Where(s => s.Zone.Floor.BuildingId == buildingId.Value);
         }
 
-        // Exclude slots reserved by active/upcoming bookings
-        var reservedSlotIds = await _context.Set<Booking>()
-            .Where(b =>
-                b.SlotId != null &&
+        return await query
+            .Where(s => !_context.Set<Booking>().Any(b =>
+                b.SlotId == s.Id &&
                 b.BookingStatus == BookingStatus.Confirmed &&
                 b.PlannedCheckinTime <= startGrace &&
-                b.PlannedCheckoutTime > now)
-            .Select(b => b.SlotId!.Value)
+                b.PlannedCheckoutTime > now))
             .ToListAsync();
-
-        if (reservedSlotIds.Any())
-        {
-            query = query.Where(s => !reservedSlotIds.Contains(s.Id));
-        }
-
-        return await query.ToListAsync();
     }
 
     public async Task<ParkingSessionEntity?> GetSessionWithDetailsAsync(int id)
@@ -237,6 +207,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
         return await _context.ParkingSessions
             .Include(s => s.Vehicle)
             .Include(s => s.Building)
+            .Include(s => s.Booking)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
@@ -273,6 +244,7 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
     public async Task<IEnumerable<ParkingSessionEntity>> GetActiveSessionsWithDetailsAsync()
     {
         return await _context.ParkingSessions
+            .AsNoTracking()
             .Include(s => s.Vehicle)
                 .ThenInclude(v => v.VehicleType)
             .Include(s => s.Card)
