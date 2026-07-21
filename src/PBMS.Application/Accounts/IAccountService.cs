@@ -43,5 +43,11 @@ namespace PBMS.Application.Accounts
         /// Deactivate tài khoản tự nguyện (Soft Delete / Deactivate).
         /// </summary>
         Task<bool> DeactivateAccountAsync(int id);
+
+        /// <summary>
+        /// Khởi tạo tài khoản người dùng mới (Dành cho Admin/Manager).
+        /// </summary>
+        /// <param name="dto">Thông tin tài khoản mới cần tạo.</param>
+        Task<AccountDto> CreateAccountAsync(CreateAccountDto dto);
     }
 }
