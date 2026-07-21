@@ -53,7 +53,7 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Đăng ký các hosted services chạy nền (Workers)
 builder.Services.AddHostedService<ExpiredBookingCleanupWorker>();
-builder.Services.AddHostedService<OvertimeWarningWorker>();
+// builder.Services.AddHostedService<OvertimeWarningWorker>(); // Disabled per NOTIF-01 (CR-GEN-003)
 builder.Services.AddHostedService<ExpiredPricingPolicyCleanupWorker>();
 
 // Cấu hình CORS (Cross-Origin Resource Sharing)

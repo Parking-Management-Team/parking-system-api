@@ -39,8 +39,4 @@ public interface IPaymentService
     /// </summary>
     Task<System.Collections.Generic.IEnumerable<PaymentResponseDto>> GetPaymentsByAccountIdAsync(int accountId);
 
-    /// <summary>
-    /// Xử lý hoàn tiền cho giao dịch đang ở trạng thái REFUND_PENDING.
-    /// </summary>
-    Task<BaseResponse<PaymentResponseDto>> ProcessRefundAsync(int paymentId);
 }

@@ -598,34 +598,7 @@ public class BookingService : IBookingService
             );
         }
 
-        // Kiểm tra chính sách hoàn tiền khi hủy
-        if (booking.BookingStatus == BookingStatus.Confirmed)
-        {
-            var timeRemaining = booking.PlannedCheckinTime - DateTime.UtcNow;
-
-            // Tìm payment đã thanh toán cho booking này
-            var payments = await _paymentRepository.FindAsync(p => p.BookingId == booking.Id && p.PaymentStatus == "PAID");
-            var payment = payments.FirstOrDefault();
-
-            if (timeRemaining.TotalMinutes >= 60) // Hủy trước 60 phút hoặc sớm hơn -> Hoàn tiền
-            {
-                if (payment != null)
-                {
-                    payment.PaymentStatus = "REFUND_PENDING";
-                    _paymentRepository.Update(payment);
-                }
-                booking.CancelReason = $"{(reason ?? "Khách hàng hủy")} (Chờ hoàn cọc)";
-            }
-            else // Hủy trong vòng 60 phút trước check-in -> Mất cọc
-            {
-                booking.CancelReason = $"{(reason ?? "Khách hàng hủy muộn")} (Mất cọc)";
-            }
-        }
-        else
-        {
-            booking.CancelReason = reason ?? "Khách hàng hủy";
-        }
-
+        booking.CancelReason = reason ?? "Khách hàng hủy";
         booking.BookingStatus = BookingStatus.Cancelled;
         booking.CancelledAt = DateTime.UtcNow;
 

@@ -156,15 +156,5 @@ namespace PBMS.API.Controllers
             return Ok(BaseResponse<System.Collections.Generic.IEnumerable<PaymentResponseDto>>.Ok(result));
         }
 
-        /// <summary>
-        /// POST /api/payments/{id}/refund
-        /// Thực hiện duyệt hoàn tiền cho giao dịch đang chờ hoàn (REFUND_PENDING).
-        /// </summary>
-        [HttpPost("{id:int}/refund")]
-        public async Task<ActionResult<BaseResponse<PaymentResponseDto>>> ProcessRefund(int id)
-        {
-            var result = await _paymentService.ProcessRefundAsync(id);
-            return result.Success ? Ok(result) : BadRequest(result);
-        }
     }
 }
