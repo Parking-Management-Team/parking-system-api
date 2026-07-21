@@ -15,139 +15,118 @@
 | 5 | **Cho phép check-in sớm (Early Check-in)** | `30 phút` | `ParkingSessionService.cs` (Hardcoded logic) | `PlannedCheckinTime.AddMinutes(-30)` | `POST /api/v1/ParkingSessions/check-in` | Cài đặt hệ thống ➔ Cổng |
 | 6 | **Thời gian ân hạn ra trễ (Late Checkout Grace)** | `15 phút` | `parking_system_config` | `ParkingSystemConfig.Key = "LATE_CHECKOUT_GRACE_PERIOD_MINUTES"` | `GET/PUT /api/v1/ParkingSystemConfig` | Cài đặt hệ thống ➔ Ra/Vào |
 | 7 | **Khoảng đệm giữa 2 Booking (Buffer Time)** | `30 phút` | `parking_system_config` | `ParkingSystemConfig.Key = "BUFFER_TIME_MINUTES"` | `GET/PUT /api/v1/ParkingSystemConfig` | Cài đặt hệ thống ➔ Slot |
-| 8 | **Bật tính phí phân đoạn (Segmented Pricing)** | `true` (Enabled) | `parking_system_config` | `ParkingSystemConfig.Key = "APPLY_SEGMENTED_PRICING"` | `GET/PUT /api/v1/ParkingSystemConfig` | Cài đặt hệ thống ➔ Tính phí |
-| 9 | **Thời gian ân hạn miễn phí đỗ lố (Fee Grace)** | `0 - 15 phút` | `pricing_window` / `grace_period_rule_config` | `PricingWindow.GracePeriodMinutes` / `GracePeriodRuleConfig.GracePeriodMinutes` | `GET/PUT /api/v1/PricingPolicies` | Quản lý bảng giá ➔ Pricing Window |
+| 8 | **Giới hạn tỉ lệ đặt chỗ Zone (Booking Limit)** | `80%` | `zone` | `Zone.BookingLimitRate` | `GET/PUT /api/v1/Zones` | Sơ đồ & Khu vực ➔ Zone |
+| 9 | **Bật tính phí phân đoạn (Segmented Pricing)** | `true` (Enabled) | `parking_system_config` | `ParkingSystemConfig.Key = "APPLY_SEGMENTED_PRICING"` | `GET/PUT /api/v1/ParkingSystemConfig` | Cài đặt hệ thống ➔ Tính phí |
 | 10 | **Phí block cơ bản (Base Price & Duration)** | Máy: `60p / 5k`<br>Ô tô: `60p / 20k` | `pricing_window` / `base_pricing_rule_config` | `PricingWindow.BasePrice`, `BaseDurationMinutes` / `BasePricingRuleConfig` | `GET/PUT /api/v1/PricingPolicies` | Quản lý bảng giá |
 | 11 | **Phí block phụ lũy tiến (Increment Price)** | Máy: `15p / 2k`<br>Ô tô: `15p / 5k` | `pricing_window` / `increment_pricing_rule_config` | `PricingWindow.IncrementPrice`, `IncrementBlockMinutes` / `IncrementPricingRuleConfig` | `GET/PUT /api/v1/PricingPolicies` | Quản lý bảng giá |
-| 12 | **Ngưỡng tính phí block lẻ (Threshold %)** | `50%` | `increment_pricing_rule_config` | `IncrementPricingRuleConfig.ThresholdPercentage` | `GET/PUT /api/v1/PricingPolicies` | Quản lý quy tắc bảng giá |
-| 13 | **Mức giá trần tối đa/ngày (Daily Cap)** | Máy: `50k/ngày`<br>Ô tô: `150k/ngày` | `daily_cap_rule_config` | `DailyCapRuleConfig.MaximumDailyAmount` | `GET/PUT /api/v1/PricingPolicies` | Quản lý bảng giá ➔ Daily Cap |
-| 14 | **Độ ưu tiên bảng giá (Priority)** | Mặc định `0`, Lễ `1` | `pricing_policy` | `PricingPolicy.Priority` | `GET/PUT /api/v1/PricingPolicies` | Quản lý bảng giá ➔ Priority |
-| 15 | **Phí phạt mất thẻ gửi xe (Lost Card)** | `100.000 VNĐ` | `penalty_config` | `PenaltyConfig.PenaltyFee` (`IncidentCode = "LOST_CARD"`) | `GET/PUT /api/v1/PenaltyConfigs` | Quản lý bảng phạt |
-| 16 | **Phí phạt đỗ xe quá giờ (Late Checkout)** | `50.000 VNĐ` | `penalty_config` | `PenaltyConfig.PenaltyFee` (`IncidentCode = "LATE_CHECKOUT"`) | `GET/PUT /api/v1/PenaltyConfigs` | Quản lý bảng phạt |
-| 17 | **Mệnh giá làm tròn tiền mặt (Cash Rounding)** | Unit: `500đ`<br>Threshold: `250đ` | `appsettings.json` | `PaymentSettings.CashRoundingUnit`, `RoundingThreshold` | Internal Config | Cài đặt hệ thống ➔ Thanh toán |
-| 18 | **Thời hạn hủy Booking được hoàn cọc** | `60 phút` trước giờ check-in | `BookingService.cs` (Hardcoded logic) | `booking.PlannedCheckinTime - DateTime.UtcNow >= 60m` | `DELETE /api/v1/Bookings/{id}` | Quản lý Đặt chỗ |
-| 19 | **Thời gian sống của JWT Access Token** | `1440 phút` (24h) | `appsettings.json` | `Jwt.ExpiryInMinutes` | `POST /api/v1/Auth/login` | Cài đặt hệ thống ➔ Auth |
+| 12 | **Phí phạt mất thẻ gửi xe (Lost Card)** | `100.000 VNĐ` | `penalty_config` | `PenaltyConfig.PenaltyFee` (`IncidentCode = "LOST_CARD"`) | `GET/PUT /api/v1/PenaltyConfigs` | Quản lý bảng phạt |
 
 ---
 
-## ⏱️ THỨ TỰ THỰC HIỆN CÓ TÍNH TOÁN THỜI GIAN (CALCULATED TIMELINE SEQUENCE)
+## 🔑 DỮ LIỆU SEED MẶC ĐỊNH TRONG DATABASE (`DbInitializer.cs`)
 
-Lý do cần tính toán mốc thời gian: Theo quy định hệ thống, khách không thể đặt giờ Booking trùng với giờ hiện tại (`T_0`) mà phải đặt trước ít nhất 15 phút (`T_0 + 15m`). Do đó, ta sẽ cho khách **bấm Đặt chỗ ngay ở phút đầu tiên của buổi demo**, sau đó tận dụng 15 phút chờ để demo các luồng xe thường, tính tiền và sự cố!
+### 🔹 Tài Khoản Đăng Nhập
+| Vai trò | Username | Password | Full Name | Mục đích Demo |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin** | `admin` | `Password123` | System Admin | Quản lý toàn bộ cấu hình, bảng giá, sự cố |
+| **Manager** | `manager` | `Password123` | John Doe (Manager) | Quản lý bãi đỗ, sơ đồ slot, báo cáo doanh thu |
+| **Staff** | `staff` | `Password123` | Staff User | Nhân viên bảo vệ tại cổng: Check-in, Check-out, Sự cố |
+| **Driver 1** | `driver` | `Password123` | Bob Johnson | Đặt chỗ, sở hữu xe Blacklist `51A-999.99` |
+| **Driver 2** | `driver2` | `Password123` | Alice Smith | Đặt chỗ, có xe vào trễ `51G-888.88` & xe 80% ZC02 |
+| **Driver 3** | `driver3` | `Password123` | Charlie Brown | Đặt chỗ, có xe đỗ qua đêm `51H-777.77` |
+
+### 🔹 Danh Sách Phương Tiện & Trạng Thái Seed
+| Biển số xe | Loại xe | Trạng thái Session / Booking | Slot / Zone | Mục đích Kịch bản Demo |
+| :--- | :--- | :--- | :--- | :--- |
+| **`51A-999.99`** | Ô tô | Bị `Blacklist` (`IsDeleted = false`) | - | **Demo 1**: Thử đăng nhập `driver` hoặc book/check-in ➔ Chặn lỗi `VEHICLE_BLACKLISTED`. |
+| **`59T1-111.11`** | Xe máy | Session `COMPLETED` (Đỗ 3h, Tiền mặt) | `ZM01` | **Demo 2A**: Xe máy vãng lai đỗ xong checkout thành công. |
+| **`59T1-222.22`** | Xe máy | Booking + Session `COMPLETED` (Online) | `ZM01` | **Demo 2B**: Xe máy booking đỗ xong checkout thành công. |
+| **`30H-999.99`** | Ô tô | Session `COMPLETED` (Đỗ 3.5h, Online) | `ZC01-01` | **Demo 2C & 3**: Soi thuật toán Pricing Engine tính giá 40.000 VNĐ. |
+| **`51G-67890`** | Ô tô | Booking + Session `COMPLETED` (Online) | `ZC01-02` | **Demo 2D**: Ô tô booking đỗ xong checkout thành công. |
+| **`51H-333.33`** | Ô tô | Session `COMPLETED` (Đỗ 5h, Tiền mặt) | `ZC01` | **Demo 2E**: Ô tô vãng lai đỗ 5h checkout thành công. |
+| **`51G-888.88`** | Ô tô | Booking `Confirmed` (Vào trễ 1 tiếng) | `ZC01-04` | **Demo 4**: Test xe đặt chỗ 1 tiếng trước nhưng chưa vào bãi (Check-in trễ). |
+| **`51H-777.77`** | Ô tô | Session `ACTIVE` (Đỗ qua đêm 24h) | `ZC01-03` | **Demo 5**: Xe đang đỗ qua đêm, Slot `ZC01-03` hiển thị đỏ `Occupied`. |
+| **`51K-000.01` ➔ `51K-000.20`** | Ô tô | 20 Booking `Confirmed` trùng lịch | `ZC02-01` ➔ `ZC02-20` | **Demo 6**: Fill đúng 80% (20/25) Zone `ZC02` Tầng 2 ➔ Slot thứ 21 báo lỗi `ZONE_BOOKING_LIMIT_EXCEEDED`. |
+
+---
+
+## ⏱️ THỨ TỰ THỰC HIỆN CÁC KỊCH BẢN DEMO (DEMO STEPS)
 
 ```mermaid
 timeline
     title Sơ đồ Timeline Demo 20 Phút
-    00:00 : Bước 0 - Dọn dẹp dữ liệu cũ trên Supabase & Chạy Backend (DbInitializer)
-          : Bước 1 - Khách bấm Đặt chỗ Booking (Giờ bắt đầu: T + 15 phút)
-    03:00 : Bước 2 - Demo Xe Thường Live Check-in & Check-out ngay
-    07:00 : Bước 3 - Demo Xe Seed (3.5h) Check-out để soi Pricing Engine
-    12:00 : Bước 4 - Demo Luồng Lỗi: Mất thẻ, Sai loại xe, Blacklist
-    16:00 : Bước 5 - Khóa đuôi: Xe Booking đến đỗ (Thời gian thực vừa khớp T + 15m)
+    00:00 : Bước 0 - Reset DB & Khởi chạy Backend API local
+    02:00 : Bước 1 - Demo Xe Blacklist (51A-999.99) bị hệ thống từ chối
+    05:00 : Bước 2 - Demo Kiểm chứng Pricing Engine tính tiền (30H-999.99 đỗ 3.5h = 40k)
+    09:00 : Bước 3 - Demo Xe Booking vào trễ 1h (51G-888.88) & Xe đỗ qua đêm 24h (51H-777.77)
+    13:00 : Bước 4 - Demo Rate Limit 80% Capacity Tầng 2 Zone ZC02 (Slot 21 báo lỗi)
+    17:00 : Bước 5 - Demo Live Action Check-in, Check-out & Khai báo Sự cố (Mất thẻ)
 ```
 
 ---
 
-## 🛠️ BƯỚC 0: DỌN DẸP DỮ LIỆU CŨ TRÊN SUPABASE & SEED DATABASE
+## 🛠️ BƯỚC 0: RESET DATABASE & CHẠY LOCAL BACKEND API
 
-> ⚠️ **LƯU Ý QUAN TRỌNG VỀ SUPABASE**:
-> Hàm `DbInitializer.cs` mặc định **KHÔNG tự động DROP/Delete** dữ liệu cũ nếu DB Supabase đã có dữ liệu từ trước (nó chỉ chèn bổ sung bản ghi chưa có).
-> Do đó, để đảm bảo bãi xe sạch 100% khi bước vào buổi Demo, bạn hãy thực hiện theo 1 trong 2 cách sau:
-
-### 🔹 Cách 1: Dọn dẹp dữ liệu giao dịch cũ (Khuyên dùng - Nhanh nhất)
-Mở **Supabase SQL Editor** và chạy câu lệnh TRUNCATE các bảng dữ liệu phát sinh (giữ nguyên bảng cấu hình `building`, `floor`, `account`):
-```sql
-TRUNCATE TABLE parking_session, booking, payment, invoice, incident CASCADE;
+Mở PowerShell tại thư mục dự án `parking-system-api` và khởi chạy API:
+```powershell
+dotnet run --project src/PBMS.API --launch-profile Local
 ```
-*Tác dụng*: Xóa toàn bộ các lượt gửi xe rác trước đó, đưa các vị trí đỗ xe về trạng thái sẵn sàng.
-
-### 🔹 Cách 2: Reset hoàn toàn Database Supabase
-Nếu muốn reset toàn bộ về ban đầu:
-1. Vào Supabase SQL Editor chạy: `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`
-2. Khởi chạy lại Backend:
-   ```powershell
-   dotnet run --project src/PBMS.API --launch-profile Local
-   ```
-3. Backend sẽ tự động chạy EF Migration + `DbInitializer` để nạp mới 100% dữ liệu chuẩn.
+*Tác dụng*: Backend sẽ chạy EF Migration + `DbInitializer` để tạo sạch bãi đỗ với bộ dữ liệu seed gọn nhẹ chuẩn 100%.
 
 ---
 
-## 📅 BƯỚC 1: KHÁCH HÀNG THỰC HIỆN ĐẶT CHỖ TRƯỚC (Phút 00:00 - 03:00)
+## 🚫 BƯỚC 1: DEMO XE BLACKLIST KHÔNG ĐƯỢC ĐẶT CHỖ / CHECK-IN (Phút 02:00)
 
-> **Mục đích**: Khởi tạo Booking ngay đầu buổi để đến Phút 15:00 thời gian thực vừa kịp khớp giờ vào đỗ.
+> **Mục đích**: Chứng minh hệ thống chặn xe nằm trong danh sách đen (`Blacklist`).
 
-1. **Khách hàng mở Web App**:
-   - Chọn Tầng B1 ➔ Chọn Slot `ZC01-05`.
-   - Chọn thời gian gửi:
-     - Giờ bắt đầu (`StartTime`): **Thời điểm hiện tại + 15 phút** (VD: Hiện tại 14:00 ➔ Chọn 14:15).
-     - Giờ kết thúc (`EndTime`): **Thời điểm hiện tại + 4 tiếng 15 phút** (VD: 18:30).
-2. **Thanh toán cọc & Tạo Booking**:
-   - Khách bấm "Thanh toán cọc" ➔ Hệ thống gọi `POST /api/v1/Bookings`.
-3. **Kết quả quan sát trên UI**:
-   - Slot `ZC01-05` được chuyển sang trạng thái `Reserved`.
-   - *Ghi chú cho Giảng viên*: *"Booking đã được ghi nhận. Bây giờ hệ thống sẽ giữ slot này. Trong lúc chờ đến 14:15 để xe booking vào, em xin phép demo luồng xe vãng lai và tính tiền."*
+1. **Đăng nhập**: Mở Web App ➔ Đăng nhập bằng tài khoản `driver` / `Password123`.
+2. **Thực hiện**: Chọn Đặt chỗ cho ô tô biển số **`51A-999.99`**.
+3. **Kết quả**:
+   - API trả về mã lỗi `400 Bad Request` với mã `VEHICLE_BLACKLISTED`.
+   - Thông báo UI: *"Phương tiện '51A-999.99' đang nằm trong danh sách đen. Không thể đặt chỗ."*
 
 ---
 
-## 🚗 BƯỚC 2: DEMO LUỒNG XE THƯỜNG / VÃNG LAI LIVE (Phút 03:00 - 07:00)
+## 💰 BƯỚC 2: DEMO KIỂM CHỨNG THUẬT TOÁN PRICING ENGINE (Phút 05:00)
 
-### 📍 Phần 2A: Check-in Xe Mới (Live Action)
-1. **Thao tác**:
-   - Bảo vệ quét biển số `30A-123.45`, chọn loại `Ô tô`, chọn thẻ `CARD001`.
-   - Gọi `POST /api/v1/ParkingSessions/check-in`.
-2. **Kết quả UI**: Slot `ZC01-01` tự động chuyển sang trạng thái `Occupied`.
+> **Mục đích**: Kiểm chứng công thức tính tiền chuẩn của Pricing Engine cho xe vãng lai đỗ 3.5 tiếng.
 
-### 📍 Phần 2B: Check-out Xe Mới (Live Action)
-1. **Thao tác**: Bảo vệ quét thẻ `CARD001` ra cổng ➔ Gọi `POST /api/v1/ParkingSessions/checkout/start`.
-2. **Kết quả UI**: Slot `ZC01-01` chuyển về trạng thái `Available`.
-
----
-
-## 💰 BƯỚC 3: KIỂM CHỨNG THUẬT TOÁN PRICING ENGINE (Phút 07:00 - 11:00)
-
-> **Mục đích**: Check-out xe `30H-999.99` đã đỗ 3.5 tiếng từ bước Seed để chứng minh tính đúng đắn của bộ tính tiền.
-
-1. **Thao tác**:
-   - Bảo vệ quét thẻ `CARD002` (Xe `30H-999.99`).
-   - Gọi `POST /api/v1/ParkingSessions/checkout/start`.
-2. **Giải thích chi tiết cho Giảng viên trên Màn hình Hóa đơn**:
-   - **Tổng thời gian đỗ**: `3 giờ 30 phút` (Tài khoản xem ở `check_in_time`).
-   - **Bảng giá áp dụng**: `PricingPolicy (Bảng giá ô tô ban ngày)` (Cài đặt tại `pricing_policy`).
-   - **Công thức tính toán của Pricing Engine**:
-     - *2 tiếng đầu*: `20.000 VNĐ` (Cài đặt tại `pricing_rule.first_block_price`).
-     - *1.5 tiếng tiếp theo*: Tính tròn 2 block 1h x 10.000đ = `20.000 VNĐ` (Cài đặt tại `increment_pricing_rule_config`).
-     - **Tổng tiền**: **`40.000 VNĐ`**.
-3. **Hoàn tất**: Bấm Thanh toán ➔ Slot `ZC01-02` giải phóng về `Available`.
+1. **Thao tác**: Nhân viên quét xe / tìm hóa đơn lượt gửi của xe **`30H-999.99`** (đã đỗ từ 4h trước, ra 0.5h trước = 3.5h đỗ).
+2. **Giải thích chi tiết cho Giảng viên**:
+   - **Tổng thời gian gửi**: `3 giờ 30 phút` (210 phút).
+   - **1 tiếng đầu (Base Duration)**: `20.000 VNĐ`.
+   - **2.5 tiếng tiếp theo (Increment Duration)**: Mỗi 15 phút là 5.000 VNĐ. Tính tròn 10 block x 15 phút = `20.000 VNĐ` (đạt cap hoặc lũy tiến).
+   - **Tổng hóa đơn**: **`40.000 VNĐ`**.
 
 ---
 
-## ⚠️ BƯỚC 4: DEMO LUỒNG LỖI & XỬ LÝ SỰ CỐ INCIDENTS (Phút 11:00 - 15:00)
+## ⏳ BƯỚC 3: DEMO XE BOOKING VÀO TRỄ 1H & XE ĐỖ QUA ĐÊM 24H (Phút 09:00)
 
-### 📍 Sự cố 4.1: Mất Thẻ Gửi Xe (`LOST_CARD`)
-1. **Thao tác**: Khách báo mất thẻ ➔ Bảo vệ mở màn hình *Khai báo Sự cố (Incident)* ➔ Chọn loại `LOST_CARD`.
-2. **Giải thích cho Giảng viên**:
-   - Phí phạt mất thẻ `100.000 VNĐ` được lấy từ bảng `penalty_config` (Key: `LOST_CARD`).
-   - Tổng hóa đơn = `Tiền đỗ xe + 100.000 VNĐ phạt`.
-   - Thẻ cũ bị đánh dấu `BLOCKED` trong bảng `card`.
+### 📍 Phần 3A: Xe Booking Vào Trễ 1 Tiếng
+1. **Kiểm tra**: Xem danh sách Booking của tài khoản `driver2` ➔ Có Booking xe **`51G-888.88`** đặt giờ vào từ 1 tiếng trước (`UtcNow - 1h`).
+2. **Thao tác**: Nhân viên nhập biển **`51G-888.88`** tại cổng Check-in.
+3. **Kết quả**: Hệ thống nhận diện Booking `CONFIRMED` quá hạn check-in grace period (30m) ➔ Tự động tính chuyển sang luồng xử lý tương ứng theo cấu hình.
 
-### 📍 Sự cố 4.2: Biển Số Sai Loại Xe (`VEHICLE_TYPE_MISMATCH`)
-1. **Thao tác**: Nhập biển ô tô `30A-888.88` nhưng chọn thẻ Xe máy.
-2. **Kết quả**: API chặn với mã lỗi `400 Bad Request (VEHICLE_TYPE_MISMATCH)` do regex kiểm tra biển số không khớp.
-
-### 📍 Sự cố 4.3: Xe Blacklist (`BLACKLISTED_VEHICLE`)
-1. **Thao tác**: Nhập biển số nằm trong danh sách bùng tiền.
-2. **Kết quả**: Hệ thống cảnh báo đỏ và từ chối tạo Session.
+### 📍 Phần 3B: Xe Đỗ Qua Đêm (24h)
+1. **Kiểm tra**: Mở Sơ đồ Bãi đỗ (Tầng 1 - Zone `ZC01`).
+2. **Kết quả**: Slot **`ZC01-03`** hiển thị trạng thái màu đỏ **`Occupied`** của xe **`51H-777.77`** (Check-in 24h trước, chưa Check-out).
 
 ---
 
-## 🏁 BƯỚC 5: KHÓA ĐUÔI - XE BOOKING ĐẾN ĐỖ ĐÚNG GIỜ (Phút 15:00+)
+## ⛔ BƯỚC 4: DEMO RATE LIMIT BOOKING 80% CAPACITY TẦNG 2 - ZC02 (Phút 13:00)
 
-> **Lúc này thời gian thực đã vừa tròn 15 phút kể từ Bước 1!**
+> **Mục đích**: Chứng minh quy tắc không cho đặt chỗ vượt quá **80% sức chứa** của một Zone.
 
-1. **Xe Booking đến bãi (Lúc 14:15 - Đúng giờ đặt)**:
-   - Bảo vệ quét biển số `29A-888.88` hoặc Mã Booking ở Bước 1.
-   - Hệ thống tự động nhận diện có Booking `CONFIRMED` đang hiệu lực.
-2. **Kết quả quan sát trên UI**:
-   - Trạng thái Booking chuyển sang `CHECKED_IN`.
-   - Slot `ZC01-05` tự động chuyển sang `Occupied`.
-3. **Check-out xe Booking**:
-   - Quét xe ra ➔ Hệ thống tự động khấu trừ tiền đặt cọc đã trả ở Bước 1 ➔ Slot `ZC01-05` giải phóng về `Available`.
+1. **Bối cảnh trong Seed**: Zone `ZC02` Tầng 2 có sức chứa `Capacity = 25` slot. Đã có **20 xe (`51K-000.01` ➔ `51K-000.20`)** đặt chỗ trước ở khung giờ 2h - 6h tới ➔ Tải đặt chỗ đạt đúng **80%** (20/25 slot).
+2. **Thao tác**: Đăng nhập `driver` ➔ Thực hiện Đặt chỗ tại **Zone `ZC02` Tầng 2** (chọn slot `ZC02-21`) trong cùng khung giờ.
+3. **Kết quả**:
+   - API chặn với lỗi `ZONE_BOOKING_LIMIT_EXCEEDED`.
+   - Thông báo UI: *"Khu vực 'Car Zone F2' đã đạt giới hạn đặt trước tối đa (80% của sức chứa 25 = 20 vị trí). Tổng tải hiện tại: 20. Vui lòng chọn khu vực hoặc khung giờ khác."*
+
+---
+
+## 🚗 BƯỚC 5: DEMO LIVE ACTION CHECK-IN, CHECK-OUT & SỰ CỐ (Phút 17:00+)
+
+1. **Check-in Xe Mới**: Bảo vệ chọn xe vãng lai `30A-123.45`, chọn thẻ `CARD004` ➔ Check-in ➔ Slot `ZC01-05` chuyển `Occupied`.
+2. **Check-out Xe Mới**: Bảo vệ quét thẻ `CARD004` ➔ Hiển thị tiền đỗ ➔ Thanh toán ➔ Slot `ZC01-05` về `Available`.
+3. **Khai Báo Sự Cố Mất Thẻ (`LOST_CARD`)**: Khai báo mất thẻ ➔ Thẻ bị `BLOCKED` ➔ Cộng tiền phạt `100.000 VNĐ` vào hóa đơn thanh toán.
