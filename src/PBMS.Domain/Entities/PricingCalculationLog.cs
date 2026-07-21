@@ -19,17 +19,32 @@ public class PricingCalculationLog : BaseEntity
     public int? ParkingSessionId { get; set; }
 
     /// <summary>
+    /// ID thanh toán tương ứng (nếu có).
+    /// </summary>
+    public int? PaymentId { get; set; }
+
+    /// <summary>
+    /// Mục đích tính toán phí: BOOKING_DEPOSIT, SESSION_EXTENSION, CHECKOUT_FINAL.
+    /// </summary>
+    public string CalculationPurpose { get; set; } = "CHECKOUT_FINAL";
+
+    /// <summary>
+    /// Mã tương quan / idempotency key phục vụ chống trùng lặp log đối soát.
+    /// </summary>
+    public string? IdempotencyKey { get; set; }
+
+    /// <summary>
     /// ID loại phương tiện.
     /// </summary>
     public int VehicleTypeId { get; set; }
 
     /// <summary>
-    /// Thời điểm xe vào bãi.
+    /// Thời điểm xe vào bãi / bắt đầu khoảng tính phí.
     /// </summary>
     public DateTime CheckInTime { get; set; }
 
     /// <summary>
-    /// Thời điểm xe ra bãi.
+    /// Thời điểm xe ra bãi / kết thúc khoảng tính phí.
     /// </summary>
     public DateTime CheckOutTime { get; set; }
 
@@ -51,6 +66,11 @@ public class PricingCalculationLog : BaseEntity
     // -----------------------------------------------------------------------
     // NAVIGATION PROPERTIES
     // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Giao dịch thanh toán liên quan (nếu có).
+    /// </summary>
+    public virtual Payment? Payment { get; set; }
 
     /// <summary>
     /// Loại phương tiện áp dụng.

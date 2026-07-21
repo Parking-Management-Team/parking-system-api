@@ -24,6 +24,20 @@ public class PricingCalculationLogConfiguration : IEntityTypeConfiguration<Prici
             .HasColumnName("parking_session_id")
             .IsRequired(false);
 
+        builder.Property(l => l.PaymentId)
+            .HasColumnName("payment_id")
+            .IsRequired(false);
+
+        builder.Property(l => l.CalculationPurpose)
+            .HasColumnName("calculation_purpose")
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(l => l.IdempotencyKey)
+            .HasColumnName("idempotency_key")
+            .HasMaxLength(128)
+            .IsRequired(false);
+
         builder.Property(l => l.VehicleTypeId)
             .HasColumnName("vehicle_type_id")
             .IsRequired();
@@ -58,6 +72,12 @@ public class PricingCalculationLogConfiguration : IEntityTypeConfiguration<Prici
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
+        // Mối quan hệ với Payment
+        builder.HasOne(l => l.Payment)
+            .WithMany()
+            .HasForeignKey(l => l.PaymentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Mối quan hệ với VehicleType
         builder.HasOne(l => l.VehicleType)
             .WithMany()
@@ -73,6 +93,8 @@ public class PricingCalculationLogConfiguration : IEntityTypeConfiguration<Prici
         // Indexes phục vụ hiệu năng tìm kiếm và đối soát nhanh
         builder.HasIndex(l => l.BookingId);
         builder.HasIndex(l => l.ParkingSessionId);
+        builder.HasIndex(l => l.PaymentId);
+        builder.HasIndex(l => l.IdempotencyKey);
         builder.HasIndex(l => l.CreatedAt);
     }
 }

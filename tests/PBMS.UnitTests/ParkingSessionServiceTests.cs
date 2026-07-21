@@ -143,6 +143,96 @@ public class ParkingSessionServiceTests
     }
 
     [Fact]
+    public async Task CheckInAsync_ShouldReuseBookingReturnedByPlateLookup()
+    {
+        var request = new CheckInRequest
+        {
+            LicensePlate = "29G1-12345",
+            CardCode = "CARD-100",
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            StaffId = 5
+        };
+        var vehicleType = new VehicleTypeEntity { Id = 1, TypeName = VehicleTypeEntity.MotorcycleTypeName };
+        var card = new Card { Id = 100, CardCode = "CARD-100", CardStatus = CardStatus.Available.ToString() };
+        var vehicle = new VehicleEntity { Id = 200, LicensePlate = "29G1-12345", VehicleTypeId = 1 };
+        var booking = new Booking
+        {
+            Id = 700,
+            VehicleId = vehicle.Id,
+            VehicleTypeId = 1,
+            BuildingId = 10,
+            BookingStatus = BookingStatus.Confirmed,
+            PlannedCheckinTime = DateTime.UtcNow.AddMinutes(-5),
+            PlannedCheckoutTime = DateTime.UtcNow.AddHours(1),
+            CheckinGraceUntil = DateTime.UtcNow.AddMinutes(30),
+            Vehicle = vehicle
+        };
+        var zone = new Zone { Id = 9, Code = "M-ZONE", Floor = new Floor { BuildingId = 10 } };
+
+        _vehicleTypeRepositoryMock.GetByIdAsync(1).Returns(vehicleType);
+        _cardRepositoryMock.GetByCardCodeAsync("CARD-100").Returns(card);
+        _sessionRepositoryMock.GetVehicleByLicensePlateAsync("29G112345").Returns(vehicle);
+        _sessionRepositoryMock.GetActiveBookingForCheckInByLicensePlateAsync("29G112345", 10).Returns(booking);
+        _sessionRepositoryMock.FindAvailableZoneAsync(1, 10).Returns(zone);
+
+        var result = await _service.CheckInAsync(request);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(booking.Id, result.Data?.BookingId);
+        await _sessionRepositoryMock.DidNotReceive().GetBookingForCheckInAsync(Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task StartCheckoutAsync_ShouldReuseBookingLoadedWithSession()
+    {
+        const int sessionId = 25;
+        var checkOutTime = DateTime.UtcNow;
+        var booking = new Booking
+        {
+            Id = 700,
+            PlannedCheckinTime = checkOutTime.AddHours(-2),
+            PlannedCheckoutTime = checkOutTime.AddHours(1),
+            DepositAmount = 10000
+        };
+        var session = new ParkingSession
+        {
+            Id = sessionId,
+            VehicleId = 200,
+            CardId = 100,
+            BuildingId = 10,
+            BookingId = booking.Id,
+            Booking = booking,
+            CheckInTime = checkOutTime.AddHours(-1),
+            LicensePlateIn = "29G1-12345",
+            SessionStatus = "ACTIVE",
+            Vehicle = new VehicleEntity { Id = 200, VehicleTypeId = 1 }
+        };
+        _sessionRepositoryMock.GetSessionWithDetailsAsync(sessionId).Returns(session);
+        _pricingCalculationServiceMock.CalculateFeeAndLogAsync(
+                1,
+                Arg.Any<DateTime>(),
+                Arg.Any<DateTime>(),
+                booking.Id,
+                sessionId,
+                "CHECKOUT_FINAL",
+                null,
+                null)
+            .Returns(new PricingResult { BaseAmount = 20000, TotalAmount = 20000 });
+
+        var result = await _service.StartCheckoutAsync(sessionId, new StartCheckoutRequest
+        {
+            CheckOutTime = checkOutTime,
+            LicensePlateOut = session.LicensePlateIn,
+            OutStaffId = 5
+        });
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(20000, result.Data?.TotalFee);
+        await _bookingRepositoryMock.DidNotReceive().GetByIdAsync(Arg.Any<int>());
+    }
+
+    [Fact]
     public async Task CheckInAsync_ShouldNotLinkBooking_WhenVehicleArrivesTooEarly()
     {
         // Arrange
