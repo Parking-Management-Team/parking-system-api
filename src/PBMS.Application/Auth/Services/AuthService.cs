@@ -172,17 +172,7 @@ namespace PBMS.Application.Auth.Services
     </div>
 </div>";
 
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _emailService.SendEmailAsync(googleUser.Email, subject, body);
-                    }
-                    catch
-                    {
-                        // Email logging is handled inside EmailService
-                    }
-                });
+                await _emailService.SendEmailAsync(googleUser.Email, subject, body);
 
                 // Ném exception để báo client cần nhập OTP kèm theo thông tin của Google
                 throw new GoogleSignupRequiredException(googleUser.Email, googleUser.Name, "Google signup requires email verification.");
@@ -287,17 +277,7 @@ namespace PBMS.Application.Auth.Services
     </div>
 </div>";
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _emailService.SendEmailAsync(email, subject, body);
-                }
-                catch
-                {
-                    // Email logging is handled inside EmailService
-                }
-            });
+            await _emailService.SendEmailAsync(email, subject, body);
         }
 
         public async Task<string> VerifyOtpForRegisterAsync(string email, string otp)
@@ -524,17 +504,7 @@ namespace PBMS.Application.Auth.Services
     </div>
 </div>";
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _emailService.SendEmailAsync(email, subject, body);
-                }
-                catch
-                {
-                    // Email logging is handled inside EmailService
-                }
-            });
+            await _emailService.SendEmailAsync(email, subject, body);
         }
 
         /// <summary>
