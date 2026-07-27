@@ -157,5 +157,64 @@ namespace PBMS.Application.Accounts
             await _accountRepository.SaveChangesAsync();
             return true;
         }
+
+        /// <summary>
+        /// Khởi tạo tài khoản người dùng mới từ Admin/Manager.
+        /// </summary>
+        public async Task<AccountDto> CreateAccountAsync(CreateAccountDto dto)
+        {
+            // 1. Kiểm tra Username đã tồn tại chưa
+            var existingUsername = await _accountRepository.FirstOrDefaultAsync(a => a.Username == dto.Username);
+            if (existingUsername != null)
+            {
+                throw new InvalidOperationException("Username is already taken.");
+            }
+
+            // 2. Kiểm tra Email đã tồn tại chưa
+            if (!string.IsNullOrEmpty(dto.Email))
+            {
+                var existingEmail = await _accountRepository.GetByEmailAsync(dto.Email);
+                if (existingEmail != null)
+                {
+                    throw new InvalidOperationException("Email is already registered.");
+                }
+            }
+
+            // 3. Mã hóa mật khẩu (Mặc định là "123456" nếu người dùng không nhập)
+            string rawPassword = string.IsNullOrWhiteSpace(dto.Password) ? "123456" : dto.Password;
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
+
+            // 4. Khởi tạo đối tượng Account
+            var account = new Account
+            {
+                Username = dto.Username,
+                Email = dto.Email,
+                PasswordHash = passwordHash,
+                FullName = dto.FullName,
+                Phone = dto.Phone,
+                RoleId = dto.RoleId,
+                AccountStatus = "Active",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _accountRepository.AddAsync(account);
+            await _accountRepository.SaveChangesAsync();
+
+            // 5. Lấy lại thông tin đầy đủ kèm RoleName
+            var createdAccount = await _accountRepository.GetByIdWithRoleAsync(account.Id);
+
+            return new AccountDto
+            {
+                Id = createdAccount?.Id ?? account.Id,
+                Username = account.Username,
+                FullName = account.FullName,
+                Email = account.Email,
+                Phone = account.Phone,
+                RoleId = account.RoleId,
+                RoleName = createdAccount?.Role?.RoleName ?? "Unknown",
+                AccountStatus = account.AccountStatus,
+                CreatedAt = account.CreatedAt
+            };
+        }
     }
 }
