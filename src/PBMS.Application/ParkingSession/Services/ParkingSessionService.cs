@@ -138,19 +138,20 @@ public class ParkingSessionService : IParkingSessionService
         }
 
         BookingEntity? booking = null;
+        BookingEntity? plateBooking = null;
 
         var vehicle = await _sessionRepository.GetVehicleByLicensePlateAsync(normalizedPlate);
 
         var effectiveBookingId = request.BookingId;
         if (!effectiveBookingId.HasValue)
         {
-            var plateBooking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, request.BuildingId);
+            plateBooking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, request.BuildingId);
             effectiveBookingId = plateBooking?.Id;
         }
 
         if (effectiveBookingId.HasValue)
         {
-            booking = await _sessionRepository.GetBookingForCheckInAsync(effectiveBookingId.Value);
+            booking = plateBooking ?? await _sessionRepository.GetBookingForCheckInAsync(effectiveBookingId.Value);
             if (booking == null)
             {
                 return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Booking with ID {effectiveBookingId.Value} not found.");
@@ -864,11 +865,12 @@ public class ParkingSessionService : IParkingSessionService
             : PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlateOut);
         session.OutStaffId = request.OutStaffId;
         session.ImageOut = request.ImageOut;
+        var checkoutBooking = session.Booking;
 
         // Create a LATE_CHECKOUT incident when a booked vehicle overstays.
         if (session.BookingId.HasValue)
         {
-            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            var booking = checkoutBooking;
             if (booking != null && checkOutTime > booking.PlannedCheckoutTime.AddMinutes(LateCheckoutGracePeriodMinutes))
             {
                 var lateCheckoutType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LATE_CHECKOUT");
@@ -912,7 +914,7 @@ public class ParkingSessionService : IParkingSessionService
         {
             if (session.BookingId.HasValue)
             {
-                var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+                var booking = checkoutBooking;
                 if (booking != null && session.CheckInTime < booking.PlannedCheckinTime && checkOutTime > booking.PlannedCheckinTime)
                 {
                     // Calculate early check-in fee (vãng lai stay from CheckInTime to PlannedCheckinTime)
@@ -921,7 +923,8 @@ public class ParkingSessionService : IParkingSessionService
                         session.CheckInTime,
                         booking.PlannedCheckinTime,
                         bookingId: null, // Walk-in stay
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
 
                     // Calculate main booking stay fee (from PlannedCheckinTime to checkout time)
                     var mainFeeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
@@ -929,7 +932,8 @@ public class ParkingSessionService : IParkingSessionService
                         booking.PlannedCheckinTime,
                         checkOutTime,
                         bookingId: booking.Id,
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
 
                     totalFee = earlyFeeResult.BaseAmount + earlyFeeResult.IncrementAmount + mainFeeResult.BaseAmount + mainFeeResult.IncrementAmount;
                     totalPenaltyFee = earlyFeeResult.PenaltyAmount + mainFeeResult.PenaltyAmount;
@@ -943,7 +947,8 @@ public class ParkingSessionService : IParkingSessionService
                         calculationStartTime,
                         checkOutTime,
                         bookingId: session.BookingId,
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
                     totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
                     totalPenaltyFee = feeResult.PenaltyAmount;
                     amountDue = feeResult.TotalAmount;
@@ -957,7 +962,8 @@ public class ParkingSessionService : IParkingSessionService
                     calculationStartTime,
                     checkOutTime,
                     bookingId: null,
-                    parkingSessionId: session.Id);
+                    parkingSessionId: session.Id,
+                    calculationPurpose: "CHECKOUT_FINAL");
                 totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
                 totalPenaltyFee = feeResult.PenaltyAmount;
                 amountDue = feeResult.TotalAmount;
@@ -978,7 +984,7 @@ public class ParkingSessionService : IParkingSessionService
         // Deduct the booking deposit from the final amount due.
         if (session.BookingId.HasValue)
         {
-            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            var booking = checkoutBooking;
             if (booking != null)
             {
                 var isDepositPaid = await _sessionRepository.HasPaidPaymentForBookingAsync(booking.Id);

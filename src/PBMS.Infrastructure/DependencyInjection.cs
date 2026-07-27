@@ -117,12 +117,33 @@ public static class DependencyInjection
             var resetDb = configuration.GetValue<bool>("Db:ResetOnStartup", false);
             if (resetDb)
             {
-                context.Database.EnsureDeleted();
-                Console.WriteLine("--> Existing database deleted successfully.");
-            }
+                try
+                {
+                    context.Database.EnsureDeleted();
+                    Console.WriteLine("--> Existing database deleted successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"--> EnsureDeleted notice: {ex.Message}");
+                }
 
-            context.Database.Migrate();
-            Console.WriteLine("--> Database migration completed successfully.");
+                context.Database.EnsureCreated();
+                Console.WriteLine("--> Database created successfully via EnsureCreated.");
+            }
+            else
+            {
+                try
+                {
+                    context.Database.Migrate();
+                    Console.WriteLine("--> Database migration completed successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"--> Migration notice: {ex.Message}. Falling back to EnsureCreated...");
+                    context.Database.EnsureCreated();
+                    Console.WriteLine("--> Database created successfully via EnsureCreated.");
+                }
+            }
 
             var resetPasswords = configuration.GetValue<bool>("Db:ResetDemoPasswordsOnStartup", false);
             await DbInitializer.SeedAsync(context, resetPasswords);

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PBMS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PBMS.Infrastructure.Data;
 namespace PBMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260720145102_AddPricingCalculationLogBoundaryFields")]
+    partial class AddPricingCalculationLogBoundaryFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1327,6 +1330,60 @@ namespace PBMS.Infrastructure.Migrations
                     b.ToTable("PenaltyConfigs");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Permission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("permission_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("PermissionCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("permission_code");
+
+                    b.Property<string>("PermissionName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("permission_name");
+
+                    b.Property<string>("PermissionStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Active")
+                        .HasColumnName("permission_status");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermissionCode")
+                        .IsUnique();
+
+                    b.ToTable("permission", (string)null);
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.PricingCalculationLog", b =>
                 {
                     b.Property<int>("Id")
@@ -1730,6 +1787,23 @@ namespace PBMS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("role", (string)null);
+                });
+
+            modelBuilder.Entity("PBMS.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("permission_id");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("role_permission", (string)null);
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.ShiftReport", b =>
@@ -2540,6 +2614,25 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("RevenueStatistic");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.RolePermission", b =>
+                {
+                    b.HasOne("PBMS.Domain.Entities.Permission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PBMS.Domain.Entities.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.ShiftReport", b =>
                 {
                     b.HasOne("PBMS.Domain.Entities.Account", "ApprovedBy")
@@ -2692,6 +2785,11 @@ namespace PBMS.Infrastructure.Migrations
                     b.Navigation("Incidents");
                 });
 
+            modelBuilder.Entity("PBMS.Domain.Entities.Permission", b =>
+                {
+                    b.Navigation("RolePermissions");
+                });
+
             modelBuilder.Entity("PBMS.Domain.Entities.PricingPolicy", b =>
                 {
                     b.Navigation("Payments");
@@ -2720,6 +2818,8 @@ namespace PBMS.Infrastructure.Migrations
             modelBuilder.Entity("PBMS.Domain.Entities.Role", b =>
                 {
                     b.Navigation("Accounts");
+
+                    b.Navigation("RolePermissions");
                 });
 
             modelBuilder.Entity("PBMS.Domain.Entities.SubscriptionPriceConfig", b =>
