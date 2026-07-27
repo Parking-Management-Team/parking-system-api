@@ -1163,33 +1163,52 @@ public class ParkingSessionService : IParkingSessionService
         await _notificationRepository.SaveChangesAsync();
     }
 
-    private static ParkingSessionDto Map(ParkingSessionEntity session) => new()
+    private static ParkingSessionDto Map(ParkingSessionEntity session)
     {
-        Id = session.Id,
-        VehicleId = session.VehicleId,
-        AccountId = session.Vehicle?.AccountId,
-        BuildingId = session.BuildingId,
-        CardId = session.CardId,
-        ZoneId = session.ZoneId,
-        SlotId = session.SlotId,
-        BookingId = session.BookingId,
-        BookingCode = session.BookingId.HasValue ? FormatBookingCode(session.BookingId.Value) : null,
-        MonthlySubscriptionId = null,
-        InStaffId = session.InStaffId,
-        OutStaffId = session.OutStaffId,
-        CheckInTime = session.CheckInTime,
-        CheckOutTime = session.CheckOutTime,
-        LicensePlateIn = session.LicensePlateIn,
-        LicensePlateOut = session.LicensePlateOut,
-        ImageIn = session.ImageIn,
-        ImageOut = session.ImageOut,
-        SessionStatus = session.SessionStatus,
-        CardCode = session.Card?.CardCode,
-        ZoneCode = session.Zone?.Code,
-        SlotCode = session.ParkingSlot?.Code,
-        VehicleType = session.Vehicle?.VehicleType?.TypeName,
-        CustomerType = session.BookingId.HasValue ? "BOOKING" : "WALK_IN"
-    };
+        // Tính tổng tiền đã thanh toán thực tế:
+        // = tổng Payment PAID gắn với session này (checkout fee)
+        //   + tổng Payment PAID gắn với Booking của session (deposit đặt cọc)
+        decimal sessionPayments = session.Payments
+            .Where(p => p.PaymentStatus.Equals("PAID", StringComparison.OrdinalIgnoreCase))
+            .Sum(p => p.Amount);
+
+        decimal bookingDeposit = session.BookingId.HasValue && session.Booking != null
+            ? session.Booking.Payments
+                .Where(p => p.PaymentStatus.Equals("PAID", StringComparison.OrdinalIgnoreCase))
+                .Sum(p => p.Amount)
+            : 0m;
+
+        decimal totalPaid = sessionPayments + bookingDeposit;
+
+        return new ParkingSessionDto
+        {
+            Id = session.Id,
+            VehicleId = session.VehicleId,
+            AccountId = session.Vehicle?.AccountId,
+            BuildingId = session.BuildingId,
+            CardId = session.CardId,
+            ZoneId = session.ZoneId,
+            SlotId = session.SlotId,
+            BookingId = session.BookingId,
+            BookingCode = session.BookingId.HasValue ? FormatBookingCode(session.BookingId.Value) : null,
+            MonthlySubscriptionId = null,
+            InStaffId = session.InStaffId,
+            OutStaffId = session.OutStaffId,
+            CheckInTime = session.CheckInTime,
+            CheckOutTime = session.CheckOutTime,
+            LicensePlateIn = session.LicensePlateIn,
+            LicensePlateOut = session.LicensePlateOut,
+            ImageIn = session.ImageIn,
+            ImageOut = session.ImageOut,
+            SessionStatus = session.SessionStatus,
+            CardCode = session.Card?.CardCode,
+            ZoneCode = session.Zone?.Code,
+            SlotCode = session.ParkingSlot?.Code,
+            VehicleType = session.Vehicle?.VehicleType?.TypeName,
+            CustomerType = session.BookingId.HasValue ? "BOOKING" : "WALK_IN",
+            TotalFee = totalPaid > 0 ? totalPaid : null
+        };
+    }
 
     public async Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode)
     {

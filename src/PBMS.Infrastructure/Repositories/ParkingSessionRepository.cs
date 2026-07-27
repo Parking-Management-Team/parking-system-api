@@ -236,6 +236,9 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Include(s => s.Card)
             .Include(s => s.Zone)
             .Include(s => s.ParkingSlot)
+            .Include(s => s.Payments)
+            .Include(s => s.Booking)
+                .ThenInclude(b => b!.Payments)
             .Where(s => s.Vehicle.AccountId == accountId)
             .OrderByDescending(s => s.CheckInTime)
             .ToListAsync();
