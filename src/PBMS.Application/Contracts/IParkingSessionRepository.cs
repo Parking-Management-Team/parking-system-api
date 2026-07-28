@@ -60,7 +60,7 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     /// Camera images are intentionally excluded so PostgreSQL does not read large
     /// base64 payloads for every active session.
     /// </summary>
-    Task<IEnumerable<ParkingSessionDto>> GetActiveSessionSummariesAsync();
+    Task<IEnumerable<ActiveParkingSessionSummaryDto>> GetActiveSessionSummariesAsync();
 
     /// <summary>
     /// Returns the active parking session currently occupying the specified slot,

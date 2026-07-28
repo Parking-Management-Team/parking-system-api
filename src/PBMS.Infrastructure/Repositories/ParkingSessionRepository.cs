@@ -258,13 +258,13 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<ParkingSessionDto>> GetActiveSessionSummariesAsync()
+    public async Task<IEnumerable<ActiveParkingSessionSummaryDto>> GetActiveSessionSummariesAsync()
     {
         return await _context.ParkingSessions
             .AsNoTracking()
             .Where(s => s.SessionStatus.ToUpper() == "ACTIVE")
             .OrderByDescending(s => s.CheckInTime)
-            .Select(s => new ParkingSessionDto
+            .Select(s => new ActiveParkingSessionSummaryDto
             {
                 Id = s.Id,
                 VehicleId = s.VehicleId,
@@ -287,6 +287,10 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
                 SlotCode = s.ParkingSlot != null ? s.ParkingSlot.Code : null,
                 VehicleType = s.Vehicle.VehicleType.TypeName,
                 CustomerType = s.BookingId.HasValue ? "BOOKING" : "WALK_IN",
+                PricingVehicleTypeId = s.Vehicle.VehicleTypeId,
+                BookingPlannedCheckoutTime = s.BookingId.HasValue
+                    ? s.Booking!.PlannedCheckoutTime
+                    : null,
                 TotalFee =
                     s.Payments.Where(p => p.PaymentStatus.ToUpper() == "PAID").Sum(p => (decimal?)p.Amount) +
                     (s.BookingId.HasValue

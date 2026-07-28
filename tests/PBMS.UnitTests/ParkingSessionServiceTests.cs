@@ -108,8 +108,9 @@ public class ParkingSessionServiceTests
     [Fact]
     public async Task GetActiveAsync_ShouldUseLightweightSummaryProjection()
     {
+        var checkInTime = DateTime.UtcNow.AddHours(-2);
         _sessionRepositoryMock.GetActiveSessionSummariesAsync()
-            .Returns(new List<ParkingSessionDto>
+            .Returns(new List<ActiveParkingSessionSummaryDto>
             {
                 new()
                 {
@@ -117,9 +118,18 @@ public class ParkingSessionServiceTests
                     BookingId = 34,
                     LicensePlateIn = "51A12345",
                     SessionStatus = "ACTIVE",
+                    CheckInTime = checkInTime,
+                    PricingVehicleTypeId = 2,
                     ImageIn = null,
                     ImageOut = null
                 }
+            });
+        _pricingCalculationServiceMock
+            .CalculateFeeAsync(2, checkInTime, Arg.Any<DateTime>(), 12)
+            .Returns(new PricingResult
+            {
+                TotalAmount = 20_000,
+                PenaltyAmount = 1_000
             });
 
         var result = await _service.GetActiveAsync();
@@ -127,8 +137,13 @@ public class ParkingSessionServiceTests
         Assert.True(result.Success);
         var session = Assert.Single(result.Data!);
         Assert.Equal("BK-000034", session.BookingCode);
+        Assert.Equal(20_000, session.TotalFee);
+        Assert.Equal(1_000, session.PenaltyFee);
+        Assert.Equal(21_000, session.AmountDue);
         Assert.Null(session.ImageIn);
         Assert.Null(session.ImageOut);
+        await _pricingCalculationServiceMock.Received(1)
+            .CalculateFeeAsync(2, checkInTime, Arg.Any<DateTime>(), 12);
         await _sessionRepositoryMock.DidNotReceive()
             .GetActiveSessionsWithDetailsAsync();
     }
