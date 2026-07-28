@@ -37,6 +37,25 @@ namespace PBMS.API.Controllers
         }
 
         /// <summary>
+        /// Tạo tài khoản người dùng mới (Chỉ Admin và Manager được khởi tạo).
+        /// Route: POST /api/accounts
+        /// </summary>
+        [HttpPost]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> CreateAccount([FromBody] CreateAccountDto dto)
+        {
+            try
+            {
+                var account = await _accountService.CreateAccountAsync(dto);
+                return Ok(BaseResponse<AccountDto>.Ok(account, "Account created successfully."));
+            }
+            catch (System.InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<object>.Fail("BAD_REQUEST", ex.Message));
+            }
+        }
+
+        /// <summary>
         /// Lấy chi tiết tài khoản theo ID.
         /// Route: GET /api/accounts/{id}
         /// </summary>

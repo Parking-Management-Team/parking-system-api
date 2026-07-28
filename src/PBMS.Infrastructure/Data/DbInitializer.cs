@@ -28,6 +28,7 @@ public static class DbInitializer
             };
             await context.AddRangeAsync(roles);
             await context.SaveChangesAsync();
+            Console.WriteLine($"[DIAG] Roles section finished. Role count: {await context.Set<Role>().CountAsync()}");
         }
 
         // 2. Seed Vehicle Types
@@ -48,6 +49,7 @@ public static class DbInitializer
             await context.AddAsync(carType);
             await context.SaveChangesAsync();
         }
+        Console.WriteLine($"[DIAG] VehicleTypes section finished. VehicleType count: {await context.Set<VehicleType>().CountAsync()}");
 
         // 3. Seed/Update Accounts (Admin, Manager, Staff, Driver)
         var adminRole = await context.Set<Role>().FirstOrDefaultAsync(r => r.RoleName == "Admin")
@@ -144,6 +146,7 @@ public static class DbInitializer
         }
 
         await context.SaveChangesAsync();
+        Console.WriteLine($"[DIAG] Accounts section finished. Account count: {await context.Set<Account>().CountAsync()}");
 
         // 4. Seed Building, Floor, Zone, Slot
         if (!await context.Set<Building>().AnyAsync())
@@ -189,13 +192,13 @@ public static class DbInitializer
                 Status = ZoneStatus.Available
             };
 
-            // Floor 2 has Car Zone (ZC02 - 50 slots)
+            // Floor 2 has Car Zone (ZC02 - 25 slots)
             var zoneCarF2 = new Zone 
             { 
                 FloorId = floor2.Id, 
                 Code = "ZC02", 
                 Name = "Car Zone F2", 
-                Capacity = 50, 
+                Capacity = 25, 
                 VehicleTypeId = carType.Id,
                 AccessType = ZoneAccessType.General,
                 Status = ZoneStatus.Available
@@ -230,8 +233,8 @@ public static class DbInitializer
                 });
             }
 
-            // Seed Slots for Floor 2 - Car Zone (50 slots)
-            for (int i = 1; i <= 50; i++)
+            // Seed Slots for Floor 2 - Car Zone (25 slots)
+            for (int i = 1; i <= 25; i++)
             {
                 context.Set<ParkingSlot>().Add(new ParkingSlot
                 {
@@ -622,8 +625,9 @@ public static class DbInitializer
 
         await transaction.CommitAsync();
     }
-    catch (Exception)
+    catch (Exception ex)
     {
+        Console.WriteLine($"--> Error seeding database: {ex.Message}");
         await transaction.RollbackAsync();
         throw;
     }
@@ -677,24 +681,34 @@ public static class DbInitializer
             ?? throw new InvalidOperationException("Required role 'Driver' was not found in the database.");
         var carType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Car" || v.VehicleTypeCode == "CAR")
             ?? throw new InvalidOperationException("Required VehicleType 'Car' was not found in the database.");
+        var motorcycleType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.TypeName == "Motorcycle" || v.VehicleTypeCode == "MOTOR")
+            ?? throw new InvalidOperationException("Required VehicleType 'Motorcycle' was not found in the database.");
         var staff = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "staff")
             ?? throw new InvalidOperationException("Required staff account was not found.");
         var testDriver = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver")
             ?? throw new InvalidOperationException("Required default driver account was not found.");
-        var testVehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-12345")
-            ?? throw new InvalidOperationException("Required default vehicle '51G-12345' was not found.");
-        var card1 = await context.Set<Card>().FirstOrDefaultAsync(c => c.CardCode == "CARD001")
-            ?? throw new InvalidOperationException("Required card 'CARD001' was not found.");
-        var card2 = await context.Set<Card>().FirstOrDefaultAsync(c => c.CardCode == "CARD002")
-            ?? throw new InvalidOperationException("Required card 'CARD002' was not found.");
         var building = await context.Set<Building>().FirstOrDefaultAsync(b => b.Code == "BLD01")
             ?? throw new InvalidOperationException("Required building 'BLD01' was not found.");
-        var zone = await context.Set<Zone>().FirstOrDefaultAsync(z => z.Code == "ZC01")
-            ?? throw new InvalidOperationException("Required zone 'ZC01' was not found.");
-        var slot1 = await context.Set<ParkingSlot>().FirstOrDefaultAsync(s => s.Code == "ZC01-01")
-            ?? throw new InvalidOperationException("Required slot 'ZC01-01' was not found.");
 
-        // Seeding driver2
+        // Zones
+        var zoneMotorF1 = await context.Set<Zone>().FirstOrDefaultAsync(z => z.Code == "ZM01")
+            ?? throw new InvalidOperationException("Required zone 'ZM01' was not found.");
+        var zoneCarF1 = await context.Set<Zone>().FirstOrDefaultAsync(z => z.Code == "ZC01")
+            ?? throw new InvalidOperationException("Required zone 'ZC01' was not found.");
+        var zoneCarF2 = await context.Set<Zone>().FirstOrDefaultAsync(z => z.Code == "ZC02")
+            ?? throw new InvalidOperationException("Required zone 'ZC02' was not found.");
+
+        // Slots
+        var slotsF1 = await context.Set<ParkingSlot>().Where(s => s.ZoneId == zoneCarF1.Id).ToListAsync();
+        var slotsMotor = await context.Set<ParkingSlot>().Where(s => s.ZoneId == zoneMotorF1.Id).ToListAsync();
+        var slotsF2 = await context.Set<ParkingSlot>().Where(s => s.ZoneId == zoneCarF2.Id).ToListAsync();
+
+        var cards = await context.Set<Card>().ToListAsync();
+        var card1 = cards.FirstOrDefault(c => c.CardCode == "CARD001") ?? cards[0];
+        var card2 = cards.FirstOrDefault(c => c.CardCode == "CARD002") ?? cards[1];
+        var card3 = cards.FirstOrDefault(c => c.CardCode == "CARD003") ?? cards[2];
+
+        // Seed additional driver accounts if not present
         var driver2 = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver2");
         if (driver2 == null)
         {
@@ -711,23 +725,6 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // Seeding vehicle2
-        var vehicle2 = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-67890");
-        if (vehicle2 == null)
-        {
-            vehicle2 = new Vehicle
-            {
-                AccountId = driver2.Id,
-                VehicleTypeId = carType.Id,
-                LicensePlate = "51G-67890",
-                RegisteredDay = DateTime.UtcNow.AddHours(7),
-                VehicleStatus = "ACTIVE"
-            };
-            await context.AddAsync(vehicle2);
-            await context.SaveChangesAsync();
-        }
-
-        // Seeding driver3
         var driver3 = await context.Set<Account>().FirstOrDefaultAsync(a => a.Username == "driver3");
         if (driver3 == null)
         {
@@ -744,297 +741,9 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // Seeding vehicle3
-        var vehicle3 = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51G-88888");
-        if (vehicle3 == null)
-        {
-            vehicle3 = new Vehicle
-            {
-                AccountId = driver3.Id,
-                VehicleTypeId = carType.Id,
-                LicensePlate = "51G-88888",
-                RegisteredDay = DateTime.UtcNow.AddHours(7),
-                VehicleStatus = "ACTIVE"
-            };
-            await context.AddAsync(vehicle3);
-            await context.SaveChangesAsync();
-        }
-
-        // ----------------------------------------------------
-        // A. Past Data (Completed sessions and bookings)
-        // ----------------------------------------------------
-        var pastBooking = new Booking
-        {
-            AccountId = testDriver.Id,
-            VehicleId = testVehicle.Id,
-            VehicleTypeId = carType.Id,
-            BuildingId = building.Id,
-            PlannedCheckinTime = DateTime.UtcNow.AddDays(-3).AddHours(-4),
-            PlannedCheckoutTime = DateTime.UtcNow.AddDays(-3).AddHours(2),
-            DepositAmount = CalculateEstimatedFee(false, DateTime.UtcNow.AddDays(-3).AddHours(-4), DateTime.UtcNow.AddDays(-3).AddHours(2)),
-            BookingStatus = BookingStatus.CheckedIn,
-            PaymentDeadline = DateTime.UtcNow.AddDays(-3).AddHours(-4).AddMinutes(15),
-            CheckinGraceUntil = DateTime.UtcNow.AddDays(-3).AddHours(-4).AddMinutes(30),
-            SlotId = slot1.Id
-        };
-        await context.AddAsync(pastBooking);
-        await context.SaveChangesAsync();
-
-        var pastSession = new ParkingSession
-        {
-            VehicleId = testVehicle.Id,
-            BuildingId = building.Id,
-            CardId = card1.Id,
-            ZoneId = zone.Id,
-            SlotId = slot1.Id,
-            BookingId = pastBooking.Id,
-            CheckInTime = DateTime.UtcNow.AddDays(-3).AddHours(-3).AddMinutes(45),
-            CheckOutTime = DateTime.UtcNow.AddDays(-3).AddHours(1).AddMinutes(30),
-            LicensePlateIn = testVehicle.LicensePlate,
-            LicensePlateOut = testVehicle.LicensePlate,
-            SessionStatus = "COMPLETED",
-            InStaffId = staff.Id,
-            OutStaffId = staff.Id
-        };
-        await context.AddAsync(pastSession);
-        await context.SaveChangesAsync();
-
-        var pastPayment = new Payment
-        {
-            SessionId = pastSession.Id,
-            Amount = 100000m,
-            PaymentMethod = "ONLINE",
-            PaymentStatus = "PAID",
-            OrderCode = DateTime.UtcNow.AddDays(-3).Ticks,
-            PaymentTime = DateTime.UtcNow.AddDays(-3).AddHours(-3).AddMinutes(40)
-        };
-        await context.AddAsync(pastPayment);
-        await context.SaveChangesAsync();
-
-        // ----------------------------------------------------
-        // B. Present Data (Active sessions / Overdue booking)
-        // ----------------------------------------------------
-        var activeBookingD2 = new Booking
-        {
-            AccountId = driver2.Id,
-            VehicleId = vehicle2.Id,
-            VehicleTypeId = carType.Id,
-            BuildingId = building.Id,
-            PlannedCheckinTime = DateTime.UtcNow.AddHours(-3),
-            PlannedCheckoutTime = DateTime.UtcNow.AddMinutes(-30), // Overdue Checkout!
-            DepositAmount = CalculateEstimatedFee(false, DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddMinutes(-30)),
-            BookingStatus = BookingStatus.CheckedIn,
-            PaymentDeadline = DateTime.UtcNow.AddHours(-3).AddMinutes(15),
-            CheckinGraceUntil = DateTime.UtcNow.AddHours(-3).AddMinutes(30),
-            SlotId = slot1.Id
-        };
-        await context.AddAsync(activeBookingD2);
-        await context.SaveChangesAsync();
-
-        var activeSessionD2 = new ParkingSession
-        {
-            VehicleId = vehicle2.Id,
-            BuildingId = building.Id,
-            CardId = card2.Id,
-            ZoneId = zone.Id,
-            SlotId = slot1.Id,
-            BookingId = activeBookingD2.Id,
-            CheckInTime = DateTime.UtcNow.AddHours(-2).AddMinutes(50),
-            CheckOutTime = null,
-            LicensePlateIn = vehicle2.LicensePlate,
-            SessionStatus = "ACTIVE",
-            InStaffId = staff.Id
-        };
-        await context.AddAsync(activeSessionD2);
-        await context.SaveChangesAsync();
-
-        card2.CardStatus = CardStatus.Active.ToString();
-        context.Update(card2);
-
-        slot1.Status = SlotStatus.Occupied;
-        context.Update(slot1);
-        await context.SaveChangesAsync();
-
-        // ----------------------------------------------------
-        // C. Future Data (Confirmed bookings in the future)
-        // ----------------------------------------------------
-        var futureBookingD3Deposit = CalculateEstimatedFee(false, DateTime.UtcNow.AddMinutes(15), DateTime.UtcNow.AddHours(4).AddMinutes(15));
-        var futureBookingD3 = new Booking
-        {
-            AccountId = driver3.Id,
-            VehicleId = vehicle3.Id,
-            VehicleTypeId = carType.Id,
-            BuildingId = building.Id,
-            PlannedCheckinTime = DateTime.UtcNow.AddMinutes(15),
-            PlannedCheckoutTime = DateTime.UtcNow.AddHours(4).AddMinutes(15),
-            DepositAmount = futureBookingD3Deposit,
-            BookingStatus = BookingStatus.Confirmed,
-            PaymentDeadline = DateTime.UtcNow.AddMinutes(15).AddMinutes(15),
-            CheckinGraceUntil = DateTime.UtcNow.AddMinutes(15).AddMinutes(30),
-            SlotId = slot1.Id
-        };
-        await context.AddAsync(futureBookingD3);
-        await context.SaveChangesAsync();
-
-        var paymentD3 = new Payment
-        {
-            BookingId = futureBookingD3.Id,
-            Amount = futureBookingD3Deposit,
-            PaymentMethod = "ONLINE",
-            PaymentStatus = "PAID",
-            OrderCode = DateTime.UtcNow.Ticks,
-            PaymentTime = DateTime.UtcNow.AddMinutes(-5)
-        };
-        await context.AddAsync(paymentD3);
-        await context.SaveChangesAsync();
-
-        // ----------------------------------------------------
-        // D. Historical Data for the last 30 days
-        // ----------------------------------------------------
-        var random = new Random();
-        var allVehicles = await context.Set<Vehicle>().ToListAsync();
-        var allCards = await context.Set<Card>().ToListAsync();
-        var allSlots = await context.Set<ParkingSlot>().ToListAsync();
-        var allZones = await context.Set<Zone>().ToListAsync();
-        var incidentTypes = await context.Set<IncidentType>().ToListAsync();
-        var penaltyConfigs = await context.Set<PenaltyConfig>().ToListAsync();
-
-        var motorcycleType = await context.Set<VehicleType>().FirstOrDefaultAsync(v => v.VehicleTypeCode == "MOTOR");
-
-        // Create extra vehicles to make historical data richer
-        if (allVehicles.Count < 6)
-        {
-            var extraVehicles = new List<Vehicle>
-            {
-                new Vehicle { AccountId = testDriver.Id, VehicleTypeId = motorcycleType!.Id, LicensePlate = "59T1-11111", RegisteredDay = DateTime.UtcNow.AddDays(-40), VehicleStatus = "ACTIVE" },
-                new Vehicle { AccountId = testDriver.Id, VehicleTypeId = carType.Id, LicensePlate = "51H-22222", RegisteredDay = DateTime.UtcNow.AddDays(-40), VehicleStatus = "ACTIVE" },
-                new Vehicle { AccountId = driver2.Id, VehicleTypeId = motorcycleType!.Id, LicensePlate = "59T1-33333", RegisteredDay = DateTime.UtcNow.AddDays(-40), VehicleStatus = "ACTIVE" },
-                new Vehicle { AccountId = driver3.Id, VehicleTypeId = motorcycleType!.Id, LicensePlate = "59T1-44444", RegisteredDay = DateTime.UtcNow.AddDays(-40), VehicleStatus = "ACTIVE" },
-                new Vehicle { AccountId = driver3.Id, VehicleTypeId = carType.Id, LicensePlate = "51H-55555", RegisteredDay = DateTime.UtcNow.AddDays(-40), VehicleStatus = "ACTIVE" }
-            };
-            await context.AddRangeAsync(extraVehicles);
-            await context.SaveChangesAsync();
-            allVehicles.AddRange(extraVehicles);
-        }
-
-        var today = DateTime.UtcNow.Date;
-        var histBookings = new List<Booking>();
-        var histSessions = new List<ParkingSession>();
-        var histPayments = new List<Payment>();
-        var histIncidents = new List<Incident>();
-
-        for (int dayOffset = 30; dayOffset >= 1; dayOffset--)
-        {
-            var targetDate = today.AddDays(-dayOffset);
-            int sessionCount = random.Next(3, 8); // 3 to 7 sessions per day
-            
-            for (int s = 0; s < sessionCount; s++)
-            {
-                var vehicle = allVehicles[random.Next(allVehicles.Count)];
-                var isMotor = vehicle.VehicleTypeId == motorcycleType!.Id;
-                
-                var card = allCards[random.Next(allCards.Count)];
-                var availableSlots = allSlots.Where(sl => sl.VehicleTypeId == vehicle.VehicleTypeId).ToList();
-                if (!availableSlots.Any()) continue;
-                
-                var slot = availableSlots[random.Next(availableSlots.Count)];
-                var currentZone = allZones.FirstOrDefault(z => z.Id == slot.ZoneId);
-                
-                int checkinHour = random.Next(7, 19);
-                int checkinMinute = random.Next(0, 60);
-                var checkInTime = targetDate.AddHours(checkinHour).AddMinutes(checkinMinute);
-                
-                int durationMinutes = random.Next(60, 480); // 1 to 8 hours
-                var checkOutTime = checkInTime.AddMinutes(durationMinutes);
-                
-                Booking? booking = null;
-                var isBooking = random.Next(0, 100) < 30;
-                
-                if (isBooking)
-                {
-                    var plannedCheckin = checkInTime.AddMinutes(random.Next(-30, 15));
-                    var plannedCheckout = checkOutTime.AddMinutes(random.Next(-15, 30));
-                    booking = new Booking
-                    {
-                        AccountId = vehicle.AccountId ?? testDriver.Id,
-                        VehicleId = vehicle.Id,
-                        VehicleTypeId = vehicle.VehicleTypeId,
-                        BuildingId = building.Id,
-                        PlannedCheckinTime = plannedCheckin,
-                        PlannedCheckoutTime = plannedCheckout,
-                        DepositAmount = CalculateEstimatedFee(isMotor, plannedCheckin, plannedCheckout),
-                        BookingStatus = BookingStatus.CheckedIn,
-                        PaymentDeadline = plannedCheckin.AddMinutes(-30),
-                        CheckinGraceUntil = plannedCheckin.AddMinutes(30),
-                        SlotId = isMotor ? null : slot.Id
-                    };
-                    histBookings.Add(booking);
-                }
-                
-                var session = new ParkingSession
-                {
-                    VehicleId = vehicle.Id,
-                    BuildingId = building.Id,
-                    CardId = card.Id,
-                    ZoneId = currentZone?.Id,
-                    SlotId = slot.Id,
-                    Booking = booking,
-                    CheckInTime = checkInTime,
-                    CheckOutTime = checkOutTime,
-                    LicensePlateIn = vehicle.LicensePlate,
-                    LicensePlateOut = vehicle.LicensePlate,
-                    SessionStatus = SessionStatus.Completed,
-                    InStaffId = staff.Id,
-                    OutStaffId = staff.Id
-                };
-                histSessions.Add(session);
-                
-                // Calculate amount
-                decimal calculatedAmount = CalculateEstimatedFee(isMotor, checkInTime, checkOutTime);
-                
-                var payment = new Payment
-                {
-                    Session = session,
-                    Amount = calculatedAmount,
-                    PaymentMethod = random.Next(0, 100) < 50 ? "CASH" : "ONLINE",
-                    PaymentStatus = "PAID",
-                    OrderCode = checkOutTime.Ticks,
-                    PaymentTime = checkOutTime
-                };
-                histPayments.Add(payment);
-                
-                // 3% Incident rate
-                if (random.Next(0, 100) < 3 && incidentTypes.Any())
-                {
-                    var it = incidentTypes[random.Next(incidentTypes.Count)];
-                    var pc = penaltyConfigs.FirstOrDefault(c => c.IncidentTypeId == it.Id);
-                    
-                    var incident = new Incident
-                    {
-                        Session = session,
-                        IncidentTypeId = it.Id,
-                        Description = $"Demo incident: {it.IncidentName}",
-                        PenaltyFee = pc?.PenaltyFee ?? 50000m,
-                        PenaltyConfigId = pc?.Id,
-                        Status = IncidentStatus.Resolved,
-                        ResolvedAt = checkOutTime
-                    };
-                    histIncidents.Add(incident);
-                    payment.Amount += incident.PenaltyFee ?? 0;
-                }
-            }
-        }
-
-        if (histBookings.Any()) await context.AddRangeAsync(histBookings);
-        await context.AddRangeAsync(histSessions);
-        await context.AddRangeAsync(histPayments);
-        if (histIncidents.Any()) await context.AddRangeAsync(histIncidents);
-        
-        await context.SaveChangesAsync();
-
-        // ----------------------------------------------------
-        // E. Blacklisted Vehicle Seeding (Merged from develop)
-        // ----------------------------------------------------
+        // =========================================================================
+        // SCENARIO 1: Blacklisted Vehicle & Driver Account Demo (51A-999.99)
+        // =========================================================================
         var blacklistedVehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == "51A-999.99");
         if (blacklistedVehicle == null)
         {
@@ -1062,28 +771,327 @@ public static class DbInitializer
             await context.AddAsync(blacklistEntry);
             await context.SaveChangesAsync();
         }
+
+        // =========================================================================
+        // SCENARIO 2: 2 Motorcycles + 3 Cars Completed Checkout (COMPLETED)
+        // =========================================================================
+
+        // 2A. Motorcycle 1 (Walk-in / Checkout Thường): 59T1-111.11
+        var motor1 = await GetOrCreateVehicleAsync(context, testDriver.Id, motorcycleType.Id, "59T1-111.11");
+        var motorSession1 = new ParkingSession
+        {
+            VehicleId = motor1.Id,
+            BuildingId = building.Id,
+            CardId = card1.Id,
+            ZoneId = zoneMotorF1.Id,
+            CheckInTime = DateTime.UtcNow.AddHours(-6),
+            CheckOutTime = DateTime.UtcNow.AddHours(-3),
+            LicensePlateIn = motor1.LicensePlate,
+            LicensePlateOut = motor1.LicensePlate,
+            SessionStatus = SessionStatus.Completed,
+            InStaffId = staff.Id,
+            OutStaffId = staff.Id
+        };
+        await context.AddAsync(motorSession1);
+        await context.SaveChangesAsync();
+
+        var paymentMotor1 = new Payment
+        {
+            SessionId = motorSession1.Id,
+            Amount = 5000m,
+            PaymentMethod = "CASH",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddHours(-3).Ticks,
+            PaymentTime = DateTime.UtcNow.AddHours(-3)
+        };
+        await context.AddAsync(paymentMotor1);
+
+        // 2B. Motorcycle 2 (Booking / Checkout Booking): 59T1-222.22
+        var motor2 = await GetOrCreateVehicleAsync(context, driver2.Id, motorcycleType.Id, "59T1-222.22");
+        var motorBooking2 = new Booking
+        {
+            AccountId = driver2.Id,
+            VehicleId = motor2.Id,
+            VehicleTypeId = motorcycleType.Id,
+            BuildingId = building.Id,
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(-5),
+            PlannedCheckoutTime = DateTime.UtcNow.AddHours(-3),
+            DepositAmount = 13000m,
+            BookingStatus = BookingStatus.CheckedIn,
+            PaymentDeadline = DateTime.UtcNow.AddHours(-5).AddMinutes(-15),
+            CheckinGraceUntil = DateTime.UtcNow.AddHours(-5).AddMinutes(30)
+        };
+        await context.AddAsync(motorBooking2);
+        await context.SaveChangesAsync();
+
+        var motorSession2 = new ParkingSession
+        {
+            VehicleId = motor2.Id,
+            BuildingId = building.Id,
+            CardId = card2.Id,
+            ZoneId = zoneMotorF1.Id,
+            BookingId = motorBooking2.Id,
+            CheckInTime = DateTime.UtcNow.AddHours(-5),
+            CheckOutTime = DateTime.UtcNow.AddHours(-3),
+            LicensePlateIn = motor2.LicensePlate,
+            LicensePlateOut = motor2.LicensePlate,
+            SessionStatus = SessionStatus.Completed,
+            InStaffId = staff.Id,
+            OutStaffId = staff.Id
+        };
+        await context.AddAsync(motorSession2);
+        await context.SaveChangesAsync();
+
+        var paymentMotor2 = new Payment
+        {
+            BookingId = motorBooking2.Id,
+            Amount = 13000m,
+            PaymentMethod = "ONLINE",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddHours(-5).Ticks,
+            PaymentTime = DateTime.UtcNow.AddHours(-5)
+        };
+        await context.AddAsync(paymentMotor2);
+
+        // 2C. Car 1 (Walk-in / Checkout Thường - Demo tính giá 40k): 30H-999.99
+        var car1 = await GetOrCreateVehicleAsync(context, testDriver.Id, carType.Id, "30H-999.99");
+        var slotCar1 = slotsF1.FirstOrDefault(s => s.Code == "ZC01-01") ?? slotsF1[0];
+        var carSession1 = new ParkingSession
+        {
+            VehicleId = car1.Id,
+            BuildingId = building.Id,
+            CardId = card2.Id,
+            ZoneId = zoneCarF1.Id,
+            SlotId = slotCar1.Id,
+            CheckInTime = DateTime.UtcNow.AddHours(-4),
+            CheckOutTime = DateTime.UtcNow.AddHours(-0.5), // 3.5h stay
+            LicensePlateIn = car1.LicensePlate,
+            LicensePlateOut = car1.LicensePlate,
+            SessionStatus = SessionStatus.Completed,
+            InStaffId = staff.Id,
+            OutStaffId = staff.Id
+        };
+        await context.AddAsync(carSession1);
+        await context.SaveChangesAsync();
+
+        var paymentCar1 = new Payment
+        {
+            SessionId = carSession1.Id,
+            Amount = 40000m,
+            PaymentMethod = "ONLINE",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddHours(-0.5).Ticks,
+            PaymentTime = DateTime.UtcNow.AddHours(-0.5)
+        };
+        await context.AddAsync(paymentCar1);
+
+        // 2D. Car 2 (Booking / Checkout Booking): 51G-67890
+        var car2 = await GetOrCreateVehicleAsync(context, driver2.Id, carType.Id, "51G-67890");
+        var slotCar2 = slotsF1.FirstOrDefault(s => s.Code == "ZC01-02") ?? slotsF1[1];
+        var carBooking2 = new Booking
+        {
+            AccountId = driver2.Id,
+            VehicleId = car2.Id,
+            VehicleTypeId = carType.Id,
+            BuildingId = building.Id,
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(-5),
+            PlannedCheckoutTime = DateTime.UtcNow.AddHours(-1),
+            DepositAmount = 80000m,
+            BookingStatus = BookingStatus.CheckedIn,
+            PaymentDeadline = DateTime.UtcNow.AddHours(-5).AddMinutes(-15),
+            CheckinGraceUntil = DateTime.UtcNow.AddHours(-5).AddMinutes(30),
+            SlotId = slotCar2.Id
+        };
+        await context.AddAsync(carBooking2);
+        await context.SaveChangesAsync();
+
+        var carSession2 = new ParkingSession
+        {
+            VehicleId = car2.Id,
+            BuildingId = building.Id,
+            CardId = card1.Id,
+            ZoneId = zoneCarF1.Id,
+            SlotId = slotCar2.Id,
+            BookingId = carBooking2.Id,
+            CheckInTime = DateTime.UtcNow.AddHours(-5),
+            CheckOutTime = DateTime.UtcNow.AddHours(-1),
+            LicensePlateIn = car2.LicensePlate,
+            LicensePlateOut = car2.LicensePlate,
+            SessionStatus = SessionStatus.Completed,
+            InStaffId = staff.Id,
+            OutStaffId = staff.Id
+        };
+        await context.AddAsync(carSession2);
+        await context.SaveChangesAsync();
+
+        var paymentCar2 = new Payment
+        {
+            BookingId = carBooking2.Id,
+            Amount = 80000m,
+            PaymentMethod = "ONLINE",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddHours(-5).Ticks,
+            PaymentTime = DateTime.UtcNow.AddHours(-5)
+        };
+        await context.AddAsync(paymentCar2);
+
+        // 2E. Car 3 (Walk-in / Checkout Thường): 51H-333.33
+        var car3 = await GetOrCreateVehicleAsync(context, driver3.Id, carType.Id, "51H-333.33");
+        var carSession3 = new ParkingSession
+        {
+            VehicleId = car3.Id,
+            BuildingId = building.Id,
+            CardId = card3.Id,
+            ZoneId = zoneCarF1.Id,
+            CheckInTime = DateTime.UtcNow.AddHours(-7),
+            CheckOutTime = DateTime.UtcNow.AddHours(-2), // 5h stay
+            LicensePlateIn = car3.LicensePlate,
+            LicensePlateOut = car3.LicensePlate,
+            SessionStatus = SessionStatus.Completed,
+            InStaffId = staff.Id,
+            OutStaffId = staff.Id
+        };
+        await context.AddAsync(carSession3);
+        await context.SaveChangesAsync();
+
+        var paymentCar3 = new Payment
+        {
+            SessionId = carSession3.Id,
+            Amount = 60000m,
+            PaymentMethod = "CASH",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddHours(-2).Ticks,
+            PaymentTime = DateTime.UtcNow.AddHours(-2)
+        };
+        await context.AddAsync(paymentCar3);
+
+        // =========================================================================
+        // SCENARIO 3: 1 Late Booking (Checked in 1 hour late / Planned 1 hour ago) (51G-888.88)
+        // =========================================================================
+        var lateCar = await GetOrCreateVehicleAsync(context, driver2.Id, carType.Id, "51G-888.88");
+        var slotCar4 = slotsF1.FirstOrDefault(s => s.Code == "ZC01-04") ?? slotsF1[3];
+        var lateBooking = new Booking
+        {
+            AccountId = driver2.Id,
+            VehicleId = lateCar.Id,
+            VehicleTypeId = carType.Id,
+            BuildingId = building.Id,
+            PlannedCheckinTime = DateTime.UtcNow.AddHours(-1), // Planned 1h ago
+            PlannedCheckoutTime = DateTime.UtcNow.AddHours(3),
+            DepositAmount = 80000m,
+            BookingStatus = BookingStatus.Confirmed,
+            PaymentDeadline = DateTime.UtcNow.AddHours(-1).AddMinutes(-15),
+            CheckinGraceUntil = DateTime.UtcNow.AddHours(-1).AddMinutes(30),
+            SlotId = slotCar4.Id
+        };
+        await context.AddAsync(lateBooking);
+        await context.SaveChangesAsync();
+
+        var paymentLateBooking = new Payment
+        {
+            BookingId = lateBooking.Id,
+            Amount = 80000m,
+            PaymentMethod = "ONLINE",
+            PaymentStatus = "PAID",
+            OrderCode = DateTime.UtcNow.AddHours(-1).Ticks,
+            PaymentTime = DateTime.UtcNow.AddHours(-1).AddMinutes(-10)
+        };
+        await context.AddAsync(paymentLateBooking);
+
+        // =========================================================================
+        // SCENARIO 4: 1 Overnight Active Car Session (Checked in 24 hours ago) (51H-777.77)
+        // =========================================================================
+        var overnightCar = await GetOrCreateVehicleAsync(context, driver3.Id, carType.Id, "51H-777.77");
+        var slotCar3 = slotsF1.FirstOrDefault(s => s.Code == "ZC01-03") ?? slotsF1[2];
+        var overnightSession = new ParkingSession
+        {
+            VehicleId = overnightCar.Id,
+            BuildingId = building.Id,
+            CardId = card3.Id,
+            ZoneId = zoneCarF1.Id,
+            SlotId = slotCar3.Id,
+            CheckInTime = DateTime.UtcNow.AddDays(-1),
+            CheckOutTime = null,
+            LicensePlateIn = overnightCar.LicensePlate,
+            SessionStatus = SessionStatus.Active,
+            InStaffId = staff.Id
+        };
+        await context.AddAsync(overnightSession);
+        await context.SaveChangesAsync();
+
+        card3.CardStatus = CardStatus.Active.ToString();
+        context.Update(card3);
+        slotCar3.Status = SlotStatus.Occupied;
+        context.Update(slotCar3);
+
+        // =========================================================================
+        // SCENARIO 5: Fill Booking 80% Capacity for Floor 2 Zone (ZC02)
+        // Zone ZC02 Capacity = 25, 80% = 20 Confirmed Bookings (51K-000.01 to 51K-000.20)
+        // =========================================================================
+        var zc02Bookings = new List<Booking>();
+        var zc02Payments = new List<Payment>();
+
+        var futureStart = DateTime.UtcNow.AddHours(2);
+        var futureEnd = DateTime.UtcNow.AddHours(6);
+
+        int countToFill = 20; // 80% of 25 slots
+        for (int i = 1; i <= countToFill; i++)
+        {
+            var plate = $"51K-000.{i:D2}";
+            var fillVehicle = await GetOrCreateVehicleAsync(context, driver2.Id, carType.Id, plate);
+            var fillSlot = slotsF2.FirstOrDefault(s => s.Code == $"ZC02-{i:D2}") ?? (i - 1 < slotsF2.Count ? slotsF2[i - 1] : null);
+
+            var fillBooking = new Booking
+            {
+                AccountId = driver2.Id,
+                VehicleId = fillVehicle.Id,
+                VehicleTypeId = carType.Id,
+                BuildingId = building.Id,
+                PlannedCheckinTime = futureStart,
+                PlannedCheckoutTime = futureEnd,
+                DepositAmount = 80000m,
+                BookingStatus = BookingStatus.Confirmed,
+                PaymentDeadline = futureStart.AddMinutes(-15),
+                CheckinGraceUntil = futureStart.AddMinutes(30),
+                SlotId = fillSlot?.Id
+            };
+            zc02Bookings.Add(fillBooking);
+        }
+
+        await context.AddRangeAsync(zc02Bookings);
+        await context.SaveChangesAsync();
+
+        foreach (var b in zc02Bookings)
+        {
+            zc02Payments.Add(new Payment
+            {
+                BookingId = b.Id,
+                Amount = b.DepositAmount,
+                PaymentMethod = "ONLINE",
+                PaymentStatus = "PAID",
+                OrderCode = DateTime.UtcNow.Ticks + b.Id,
+            });
+        }
+        await context.AddRangeAsync(zc02Payments);
+        await context.SaveChangesAsync();
     }
 
-    private static decimal CalculateEstimatedFee(bool isMotor, DateTime start, DateTime end)
+    private static async Task<Vehicle> GetOrCreateVehicleAsync(AppDbContext context, int accountId, int vehicleTypeId, string licensePlate)
     {
-        double durationMinutes = (end - start).TotalMinutes;
-        if (durationMinutes <= 0) return 0;
-        
-        decimal basePrice = isMotor ? 5000m : 20000m;
-        decimal calculatedAmount = basePrice;
-        if (durationMinutes > 60)
+        var vehicle = await context.Set<Vehicle>().FirstOrDefaultAsync(v => v.LicensePlate == licensePlate);
+        if (vehicle == null)
         {
-            var extraMinutes = durationMinutes - 60;
-            var incrementBlock = 15;
-            var incrementPrice = isMotor ? 2000m : 5000m;
-            var blocks = (int)Math.Ceiling(extraMinutes / incrementBlock);
-            calculatedAmount += blocks * incrementPrice;
+            vehicle = new Vehicle
+            {
+                AccountId = accountId,
+                VehicleTypeId = vehicleTypeId,
+                LicensePlate = licensePlate,
+                RegisteredDay = DateTime.UtcNow.AddDays(-30),
+                VehicleStatus = "ACTIVE"
+            };
+            await context.AddAsync(vehicle);
+            await context.SaveChangesAsync();
         }
-        var maxCap = isMotor ? 50000m : 150000m;
-        if (calculatedAmount > maxCap)
-        {
-            calculatedAmount = maxCap;
-        }
-        return calculatedAmount;
+        return vehicle;
     }
 }

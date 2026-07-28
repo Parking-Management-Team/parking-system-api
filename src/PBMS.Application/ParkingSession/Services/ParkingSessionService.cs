@@ -5,6 +5,7 @@ using PBMS.Application.Contracts;
 using PBMS.Application.ParkingSession.DTOs;
 using PBMS.Application.ParkingSession.Interfaces;
 using PBMS.Application.Pricing.Interfaces;
+using PBMS.Application.Vehicle.Validation;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using BookingEntity = PBMS.Domain.Entities.Booking;
@@ -73,9 +74,14 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<ParkingSessionDto>> CheckInAsync(CheckInRequest request)
     {
+        if (!LicensePlateValidation.IsValid(request.LicensePlate))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail(
+                "INVALID_LICENSE_PLATE",
+                "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
+        }
 
-
-        var normalizedPlate = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlate);
+        var normalizedPlate = LicensePlateValidation.Normalize(request.LicensePlate);
         var normalizedCardCode = Normalize(request.CardCode);
         var checkInTime = DateTime.UtcNow;
 
@@ -138,19 +144,20 @@ public class ParkingSessionService : IParkingSessionService
         }
 
         BookingEntity? booking = null;
+        BookingEntity? plateBooking = null;
 
         var vehicle = await _sessionRepository.GetVehicleByLicensePlateAsync(normalizedPlate);
 
         var effectiveBookingId = request.BookingId;
         if (!effectiveBookingId.HasValue)
         {
-            var plateBooking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, request.BuildingId);
+            plateBooking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, request.BuildingId);
             effectiveBookingId = plateBooking?.Id;
         }
 
         if (effectiveBookingId.HasValue)
         {
-            booking = await _sessionRepository.GetBookingForCheckInAsync(effectiveBookingId.Value);
+            booking = plateBooking ?? await _sessionRepository.GetBookingForCheckInAsync(effectiveBookingId.Value);
             if (booking == null)
             {
                 return BaseResponse<ParkingSessionDto>.Fail("NOT_FOUND", $"Booking with ID {effectiveBookingId.Value} not found.");
@@ -435,7 +442,14 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<CheckEntryResult>> CheckEntryConditionsAsync(CheckEntryRequest request)
     {
-        var normalizedPlate = Normalize(request.LicensePlate);
+        if (!LicensePlateValidation.IsValid(request.LicensePlate))
+        {
+            return BaseResponse<CheckEntryResult>.Fail(
+                "INVALID_LICENSE_PLATE",
+                "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
+        }
+
+        var normalizedPlate = LicensePlateValidation.Normalize(request.LicensePlate);
         var normalizedCardCode = Normalize(request.CardCode);
 
         var result = new CheckEntryResult();
@@ -554,7 +568,14 @@ public class ParkingSessionService : IParkingSessionService
         // Update license plate
         if (!string.IsNullOrWhiteSpace(request.LicensePlate))
         {
-            var normalizedPlate = Normalize(request.LicensePlate);
+            if (!LicensePlateValidation.IsValid(request.LicensePlate))
+            {
+                return BaseResponse<ParkingSessionDto>.Fail(
+                    "INVALID_LICENSE_PLATE",
+                    "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
+            }
+
+            var normalizedPlate = LicensePlateValidation.Normalize(request.LicensePlate);
             session.LicensePlateIn = normalizedPlate;
 
             // Also update the vehicle's license plate
@@ -665,12 +686,14 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<CheckInBookingLookupDto>> GetCheckInBookingByLicensePlateAsync(string licensePlate, int? buildingId = null)
     {
-        if (string.IsNullOrWhiteSpace(licensePlate))
+        if (!LicensePlateValidation.IsValid(licensePlate))
         {
-            return BaseResponse<CheckInBookingLookupDto>.Fail("INVALID_LICENSE_PLATE", "License plate is required.");
+            return BaseResponse<CheckInBookingLookupDto>.Fail(
+                "INVALID_LICENSE_PLATE",
+                "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
         }
 
-        var normalizedPlate = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(licensePlate);
+        var normalizedPlate = LicensePlateValidation.Normalize(licensePlate);
         var booking = await _sessionRepository.GetActiveBookingForCheckInByLicensePlateAsync(normalizedPlate, buildingId);
         if (booking == null)
         {
@@ -694,7 +717,12 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<ParkingSessionDto>> CreateAsync(CreateParkingSessionRequest request)
     {
-
+        if (!LicensePlateValidation.IsValid(request.LicensePlateIn))
+        {
+            return BaseResponse<ParkingSessionDto>.Fail(
+                "INVALID_LICENSE_PLATE",
+                "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
+        }
 
         if (await _sessionRepository.AnyAsync(s => s.VehicleId == request.VehicleId && s.SessionStatus.ToUpper() == ActiveStatus))
         {
@@ -723,7 +751,7 @@ public class ParkingSessionService : IParkingSessionService
             MonthlySubscriptionId = null,
             InStaffId = request.InStaffId,
             CheckInTime = ToUtc(request.CheckInTime ?? DateTime.UtcNow),
-            LicensePlateIn = PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlateIn),
+            LicensePlateIn = LicensePlateValidation.Normalize(request.LicensePlateIn),
             SessionStatus = ActiveStatus
         };
 
@@ -857,18 +885,38 @@ public class ParkingSessionService : IParkingSessionService
             return BaseResponse<ParkingSessionDto>.Fail("SESSION_NOT_ACTIVE", "Only active sessions can start checkout.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.LicensePlateOut))
+        {
+            if (!LicensePlateValidation.IsValid(request.LicensePlateOut))
+            {
+                return BaseResponse<ParkingSessionDto>.Fail(
+                    "INVALID_LICENSE_PLATE",
+                    "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
+            }
+
+            var normalizedPlateOut = LicensePlateValidation.Normalize(request.LicensePlateOut);
+            var normalizedPlateIn = LicensePlateValidation.Normalize(session.LicensePlateIn);
+            if (!string.Equals(normalizedPlateOut, normalizedPlateIn, StringComparison.Ordinal))
+            {
+                return BaseResponse<ParkingSessionDto>.Fail(
+                    "LICENSE_PLATE_MISMATCH",
+                    "Check-out license plate does not match the check-in license plate.");
+            }
+        }
+
         var checkOutTime = ToUtc(request.CheckOutTime ?? DateTime.UtcNow);
         session.CheckOutTime = checkOutTime;
         session.LicensePlateOut = string.IsNullOrWhiteSpace(request.LicensePlateOut)
             ? session.LicensePlateIn
-            : PBMS.Application.Vehicle.Services.VehicleService.NormalizeLicensePlate(request.LicensePlateOut);
+            : LicensePlateValidation.Normalize(request.LicensePlateOut);
         session.OutStaffId = request.OutStaffId;
         session.ImageOut = request.ImageOut;
+        var checkoutBooking = session.Booking;
 
         // Create a LATE_CHECKOUT incident when a booked vehicle overstays.
         if (session.BookingId.HasValue)
         {
-            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            var booking = checkoutBooking;
             if (booking != null && checkOutTime > booking.PlannedCheckoutTime.AddMinutes(LateCheckoutGracePeriodMinutes))
             {
                 var lateCheckoutType = await _incidentTypeRepository.FirstOrDefaultAsync(it => it.IncidentCode == "LATE_CHECKOUT");
@@ -912,7 +960,7 @@ public class ParkingSessionService : IParkingSessionService
         {
             if (session.BookingId.HasValue)
             {
-                var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+                var booking = checkoutBooking;
                 if (booking != null && session.CheckInTime < booking.PlannedCheckinTime && checkOutTime > booking.PlannedCheckinTime)
                 {
                     // Calculate early check-in fee (vãng lai stay from CheckInTime to PlannedCheckinTime)
@@ -921,7 +969,8 @@ public class ParkingSessionService : IParkingSessionService
                         session.CheckInTime,
                         booking.PlannedCheckinTime,
                         bookingId: null, // Walk-in stay
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
 
                     // Calculate main booking stay fee (from PlannedCheckinTime to checkout time)
                     var mainFeeResult = await _pricingCalculationService.CalculateFeeAndLogAsync(
@@ -929,7 +978,8 @@ public class ParkingSessionService : IParkingSessionService
                         booking.PlannedCheckinTime,
                         checkOutTime,
                         bookingId: booking.Id,
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
 
                     totalFee = earlyFeeResult.BaseAmount + earlyFeeResult.IncrementAmount + mainFeeResult.BaseAmount + mainFeeResult.IncrementAmount;
                     totalPenaltyFee = earlyFeeResult.PenaltyAmount + mainFeeResult.PenaltyAmount;
@@ -943,7 +993,8 @@ public class ParkingSessionService : IParkingSessionService
                         calculationStartTime,
                         checkOutTime,
                         bookingId: session.BookingId,
-                        parkingSessionId: session.Id);
+                        parkingSessionId: session.Id,
+                        calculationPurpose: "CHECKOUT_FINAL");
                     totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
                     totalPenaltyFee = feeResult.PenaltyAmount;
                     amountDue = feeResult.TotalAmount;
@@ -957,7 +1008,8 @@ public class ParkingSessionService : IParkingSessionService
                     calculationStartTime,
                     checkOutTime,
                     bookingId: null,
-                    parkingSessionId: session.Id);
+                    parkingSessionId: session.Id,
+                    calculationPurpose: "CHECKOUT_FINAL");
                 totalFee = feeResult.BaseAmount + feeResult.IncrementAmount;
                 totalPenaltyFee = feeResult.PenaltyAmount;
                 amountDue = feeResult.TotalAmount;
@@ -978,7 +1030,7 @@ public class ParkingSessionService : IParkingSessionService
         // Deduct the booking deposit from the final amount due.
         if (session.BookingId.HasValue)
         {
-            var booking = await _bookingRepository.GetByIdAsync(session.BookingId.Value);
+            var booking = checkoutBooking;
             if (booking != null)
             {
                 var isDepositPaid = await _sessionRepository.HasPaidPaymentForBookingAsync(booking.Id);
@@ -1157,33 +1209,52 @@ public class ParkingSessionService : IParkingSessionService
         await _notificationRepository.SaveChangesAsync();
     }
 
-    private static ParkingSessionDto Map(ParkingSessionEntity session) => new()
+    private static ParkingSessionDto Map(ParkingSessionEntity session)
     {
-        Id = session.Id,
-        VehicleId = session.VehicleId,
-        AccountId = session.Vehicle?.AccountId,
-        BuildingId = session.BuildingId,
-        CardId = session.CardId,
-        ZoneId = session.ZoneId,
-        SlotId = session.SlotId,
-        BookingId = session.BookingId,
-        BookingCode = session.BookingId.HasValue ? FormatBookingCode(session.BookingId.Value) : null,
-        MonthlySubscriptionId = null,
-        InStaffId = session.InStaffId,
-        OutStaffId = session.OutStaffId,
-        CheckInTime = session.CheckInTime,
-        CheckOutTime = session.CheckOutTime,
-        LicensePlateIn = session.LicensePlateIn,
-        LicensePlateOut = session.LicensePlateOut,
-        ImageIn = session.ImageIn,
-        ImageOut = session.ImageOut,
-        SessionStatus = session.SessionStatus,
-        CardCode = session.Card?.CardCode,
-        ZoneCode = session.Zone?.Code,
-        SlotCode = session.ParkingSlot?.Code,
-        VehicleType = session.Vehicle?.VehicleType?.TypeName,
-        CustomerType = session.BookingId.HasValue ? "BOOKING" : "WALK_IN"
-    };
+        // Tính tổng tiền đã thanh toán thực tế:
+        // = tổng Payment PAID gắn với session này (checkout fee)
+        //   + tổng Payment PAID gắn với Booking của session (deposit đặt cọc)
+        decimal sessionPayments = session.Payments
+            .Where(p => p.PaymentStatus.Equals("PAID", StringComparison.OrdinalIgnoreCase))
+            .Sum(p => p.Amount);
+
+        decimal bookingDeposit = session.BookingId.HasValue && session.Booking != null
+            ? session.Booking.Payments
+                .Where(p => p.PaymentStatus.Equals("PAID", StringComparison.OrdinalIgnoreCase))
+                .Sum(p => p.Amount)
+            : 0m;
+
+        decimal totalPaid = sessionPayments + bookingDeposit;
+
+        return new ParkingSessionDto
+        {
+            Id = session.Id,
+            VehicleId = session.VehicleId,
+            AccountId = session.Vehicle?.AccountId,
+            BuildingId = session.BuildingId,
+            CardId = session.CardId,
+            ZoneId = session.ZoneId,
+            SlotId = session.SlotId,
+            BookingId = session.BookingId,
+            BookingCode = session.BookingId.HasValue ? FormatBookingCode(session.BookingId.Value) : null,
+            MonthlySubscriptionId = null,
+            InStaffId = session.InStaffId,
+            OutStaffId = session.OutStaffId,
+            CheckInTime = session.CheckInTime,
+            CheckOutTime = session.CheckOutTime,
+            LicensePlateIn = session.LicensePlateIn,
+            LicensePlateOut = session.LicensePlateOut,
+            ImageIn = session.ImageIn,
+            ImageOut = session.ImageOut,
+            SessionStatus = session.SessionStatus,
+            CardCode = session.Card?.CardCode,
+            ZoneCode = session.Zone?.Code,
+            SlotCode = session.ParkingSlot?.Code,
+            VehicleType = session.Vehicle?.VehicleType?.TypeName,
+            CustomerType = session.BookingId.HasValue ? "BOOKING" : "WALK_IN",
+            TotalFee = totalPaid > 0 ? totalPaid : null
+        };
+    }
 
     public async Task<BaseResponse<ParkingSessionDto>> ReplaceSessionCardAsync(int sessionId, string newCardCode)
     {
