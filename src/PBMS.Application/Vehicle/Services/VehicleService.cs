@@ -1,6 +1,7 @@
 using PBMS.Application.Common;
 using PBMS.Application.Vehicle.DTOs;
 using PBMS.Application.Vehicle.Interfaces;
+using PBMS.Application.Vehicle.Validation;
 using PBMS.Domain.Entities;
 
 namespace PBMS.Application.Vehicle.Services;
@@ -227,49 +228,12 @@ public class VehicleService : IVehicleService
 
     public static string NormalizeLicensePlate(string licensePlate)
     {
-        return new string(licensePlate
-            .Trim()
-            .ToUpperInvariant()
-            .Where(c => !char.IsWhiteSpace(c) && c != '-' && c != '.')
-            .ToArray());
+        return LicensePlateValidation.Normalize(licensePlate);
     }
 
     public static string DetectVehicleTypeFromPlate(string licensePlate)
     {
-        if (string.IsNullOrWhiteSpace(licensePlate)) return "Car";
-        var clean = new string(licensePlate
-            .Trim()
-            .ToUpperInvariant()
-            .Where(char.IsLetterOrDigit)
-            .ToArray());
-
-        if (clean.Length < 3) return "Car";
-
-        var match = System.Text.RegularExpressions.Regex.Match(clean, @"^(.*?)(\d{4,5})$");
-        if (!match.Success) return "Car";
-
-        var prefix = match.Groups[1].Value;
-
-        // 1. Motorcycle standard: 2 digits + 1 letter + 1 digit (e.g., 29G1, 59T2)
-        if (System.Text.RegularExpressions.Regex.IsMatch(prefix, @"^\d{2}[A-Z]\d$"))
-        {
-            return "Motorcycle";
-        }
-
-        // 2. Motorcycle electric / under 50cc: 2 digits + 2 letters (e.g., 29AA, 59AB, 29MD)
-        // Excluding special car prefixes: LD, DA, MK, HC, NG, QT, NN, KT
-        if (System.Text.RegularExpressions.Regex.IsMatch(prefix, @"^\d{2}[A-Z]{2}$"))
-        {
-            var letters = prefix.Substring(2);
-            var carSpecialLetters = new[] { "LD", "DA", "MK", "HC", "NG", "QT", "NN", "KT" };
-            if (carSpecialLetters.Contains(letters))
-            {
-                return "Car";
-            }
-            return "Motorcycle";
-        }
-
-        return "Car";
+        return LicensePlateValidation.DetectVehicleType(licensePlate);
     }
 
     private async Task<BaseResponse<VehicleDto>> ValidateVehicleInputAsync(
@@ -302,6 +266,13 @@ public class VehicleService : IVehicleService
         if (!string.Equals(vehicleType.VehicleTypeStatus, VehicleType.StatusActive, StringComparison.OrdinalIgnoreCase))
         {
             return BaseResponse<VehicleDto>.Fail("VEHICLE_TYPE_INACTIVE", "Vehicle type is not active.");
+        }
+
+        if (!LicensePlateValidation.IsValid(licensePlate))
+        {
+            return BaseResponse<VehicleDto>.Fail(
+                "INVALID_LICENSE_PLATE",
+                "Invalid Vietnamese license plate format. Examples: 51A-123.45 or 29G1-123.45.");
         }
 
         // Validate vehicle type against license plate format
