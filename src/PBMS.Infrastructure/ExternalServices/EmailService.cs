@@ -29,16 +29,17 @@ namespace PBMS.Infrastructure.ExternalServices
             var rawUsername = _configuration["Smtp:Username"] ?? throw new InvalidOperationException("SMTP Username is not configured.");
             var rawPassword = _configuration["Smtp:Password"] ?? throw new InvalidOperationException("SMTP Password is not configured.");
             var displayName = _configuration["Smtp:DisplayName"] ?? "PBMS Team";
+            var fromEmail = _configuration["Smtp:FromEmail"] ?? rawUsername;
 
             var username = rawUsername.Trim().Trim('"');
             var password = rawPassword.Replace(" ", "").Trim().Trim('"');
 
-            _logger.LogInformation("Attempting to send email via SMTP host {Host}:{Port} with SSL option for user {Username}", host, port, username);
+            _logger.LogInformation("Attempting to send email via SMTP host {Host}:{Port} for user {Username} (Sender: {FromEmail})", host, port, username, fromEmail);
 
             try
             {
                 var message = new MimeMessage();
-                message.From.Add(new MailboxAddress(displayName, username));
+                message.From.Add(new MailboxAddress(displayName, fromEmail.Trim().Trim('"')));
                 message.To.Add(MailboxAddress.Parse(toEmail));
                 message.Subject = subject;
                 message.Body = new TextPart(TextFormat.Html) { Text = body };
