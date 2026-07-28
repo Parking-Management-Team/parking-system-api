@@ -106,6 +106,34 @@ public class ParkingSessionServiceTests
     }
 
     [Fact]
+    public async Task GetActiveAsync_ShouldUseLightweightSummaryProjection()
+    {
+        _sessionRepositoryMock.GetActiveSessionSummariesAsync()
+            .Returns(new List<ParkingSessionDto>
+            {
+                new()
+                {
+                    Id = 12,
+                    BookingId = 34,
+                    LicensePlateIn = "51A12345",
+                    SessionStatus = "ACTIVE",
+                    ImageIn = null,
+                    ImageOut = null
+                }
+            });
+
+        var result = await _service.GetActiveAsync();
+
+        Assert.True(result.Success);
+        var session = Assert.Single(result.Data!);
+        Assert.Equal("BK-000034", session.BookingCode);
+        Assert.Null(session.ImageIn);
+        Assert.Null(session.ImageOut);
+        await _sessionRepositoryMock.DidNotReceive()
+            .GetActiveSessionsWithDetailsAsync();
+    }
+
+    [Fact]
     public async Task StartCheckoutAsync_ShouldRejectPlateThatDoesNotMatchCheckIn()
     {
         var session = new PBMS.Domain.Entities.ParkingSession
@@ -1046,4 +1074,3 @@ public class ParkingSessionServiceTests
         Assert.Equal("SLOT_NOT_FOUND", result.ErrorCode);
     }
 }
-

@@ -768,8 +768,15 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync()
     {
-        var sessions = await _sessionRepository.GetActiveSessionsWithDetailsAsync();
-        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
+        var sessions = (await _sessionRepository.GetActiveSessionSummariesAsync()).ToList();
+        foreach (var session in sessions)
+        {
+            session.BookingCode = session.BookingId.HasValue
+                ? FormatBookingCode(session.BookingId.Value)
+                : null;
+        }
+
+        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions);
     }
 
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetByAccountIdAsync(int accountId)
