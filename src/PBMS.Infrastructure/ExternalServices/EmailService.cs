@@ -1,12 +1,11 @@
-using MailKit.Net.Smtp;
-using MailKit.Security;
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using MimeKit;
-using MimeKit.Text;
 using PBMS.Application.Auth.Interfaces;
-using System;
-using System.Threading.Tasks;
 
 namespace PBMS.Infrastructure.ExternalServices
 {
@@ -14,61 +13,76 @@ namespace PBMS.Infrastructure.ExternalServices
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(
+            IConfiguration configuration,
+            ILogger<EmailService> logger,
+            IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
-            var host = _configuration["Smtp:Host"] ?? "smtp.gmail.com";
-            var port = int.Parse(_configuration["Smtp:Port"] ?? "587");
-            var enableSsl = bool.Parse(_configuration["Smtp:EnableSsl"] ?? "true");
-            var rawUsername = _configuration["Smtp:Username"] ?? throw new InvalidOperationException("SMTP Username is not configured.");
-            var rawPassword = _configuration["Smtp:Password"] ?? throw new InvalidOperationException("SMTP Password is not configured.");
-            var displayName = _configuration["Smtp:DisplayName"] ?? "PBMS Team";
+            var brevoApiKey = _configuration["Brevo:ApiKey"] ?? _configuration["BREVO_API_KEY"];
 
-            var username = rawUsername.Trim().Trim('"');
-            var password = rawPassword.Replace(" ", "").Trim().Trim('"');
-
-            _logger.LogInformation("Attempting to send email via SMTP host {Host}:{Port} with SSL option for user {Username}", host, port, username);
-
-            try
+            if (string.IsNullOrWhiteSpace(brevoApiKey) ||
+                brevoApiKey.Contains("YOUR_BREVO_API_KEY", StringComparison.OrdinalIgnoreCase))
             {
-                var message = new MimeMessage();
-                message.From.Add(new MailboxAddress(displayName, username));
-                message.To.Add(MailboxAddress.Parse(toEmail));
-                message.Subject = subject;
-                message.Body = new TextPart(TextFormat.Html) { Text = body };
+                throw new InvalidOperationException("Brevo API Key is not configured. Please set Brevo:ApiKey in appsettings.json.");
+            }
 
-                using var client = new SmtpClient();
-                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+            await SendViaBrevoRestApiAsync(toEmail, subject, body, brevoApiKey.Trim());
+        }
 
-                var socketOptions = port switch
+        /// <summary>
+        /// Gửi email thuần túy qua Brevo HTTP REST API v3 (Port 443 HTTPS)
+        /// </summary>
+        private async Task SendViaBrevoRestApiAsync(string toEmail, string subject, string body, string apiKey)
+        {
+            var displayName = _configuration["Smtp:DisplayName"] ?? _configuration["Brevo:DisplayName"] ?? "NexPark System";
+            var fromEmail = _configuration["Smtp:FromEmail"] ?? _configuration["Brevo:FromEmail"] ?? "noreply@nexpark.id.vn";
+
+            _logger.LogInformation("Sending email to {ToEmail} via Brevo HTTP REST API v3 (Sender: {FromEmail})", toEmail, fromEmail);
+
+            var payload = new
+            {
+                sender = new
                 {
-                    465 => SecureSocketOptions.SslOnConnect,
-                    587 => SecureSocketOptions.StartTls,
-                    _ => enableSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None
-                };
+                    name = displayName,
+                    email = fromEmail
+                },
+                to = new[]
+                {
+                    new { email = toEmail }
+                },
+                subject = subject,
+                htmlContent = body
+            };
 
-                await client.ConnectAsync(host, port, socketOptions);
-                _logger.LogInformation("SMTP connected successfully to {Host}:{Port}", host, port);
-
-                await client.AuthenticateAsync(username, password);
-                _logger.LogInformation("SMTP authenticated successfully for user {Username}", username);
-
-                await client.SendAsync(message);
-                _logger.LogInformation("Email sent successfully to {ToEmail}", toEmail);
-
-                await client.DisconnectAsync(true);
-            }
-            catch (Exception ex)
+            var jsonContent = JsonSerializer.Serialize(payload);
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email")
             {
-                _logger.LogError(ex, "FAILED to send email to {ToEmail}. Error: {ErrorMessage}", toEmail, ex.Message);
-                throw;
+                Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
+            };
+
+            httpRequest.Headers.Add("api-key", apiKey);
+            httpRequest.Headers.Add("accept", "application/json");
+
+            var client = _httpClientFactory.CreateClient("BrevoApiClient");
+            var response = await client.SendAsync(httpRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Brevo REST API failed with status code {StatusCode}. Error: {ErrorBody}", response.StatusCode, errorBody);
+                throw new InvalidOperationException($"Brevo REST API email delivery failed: {response.StatusCode} - {errorBody}");
             }
+
+            _logger.LogInformation("Email sent successfully to {ToEmail} via Brevo HTTP REST API v3", toEmail);
         }
     }
 }

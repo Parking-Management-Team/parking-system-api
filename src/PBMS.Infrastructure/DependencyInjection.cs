@@ -98,6 +98,9 @@ public static class DependencyInjection
         services.AddTransient<IEmailService, EmailService>();
         services.AddTransient<IOtpService, OtpService>();
 
+        // Đăng ký HttpClient
+        services.AddHttpClient();
+
         // Đăng ký dịch vụ nhận diện biển số xe
         services.AddHttpClient<ILicensePlateOcrService, PlateRecognizerOcrService>();
 
