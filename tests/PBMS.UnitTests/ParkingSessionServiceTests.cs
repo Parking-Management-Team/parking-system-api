@@ -89,6 +89,46 @@ public class ParkingSessionServiceTests
         );
     }
 
+    [Fact]
+    public async Task CheckInAsync_ShouldRejectRandomTextLicensePlate()
+    {
+        var result = await _service.CheckInAsync(new CheckInRequest
+        {
+            LicensePlate = "RANDOM TEXT",
+            CardCode = "CARD-001",
+            VehicleTypeId = 1
+        });
+
+        Assert.False(result.Success);
+        Assert.Equal("INVALID_LICENSE_PLATE", result.ErrorCode);
+        await _sessionRepositoryMock.DidNotReceive()
+            .AddAsync(Arg.Any<PBMS.Domain.Entities.ParkingSession>());
+    }
+
+    [Fact]
+    public async Task StartCheckoutAsync_ShouldRejectPlateThatDoesNotMatchCheckIn()
+    {
+        var session = new PBMS.Domain.Entities.ParkingSession
+        {
+            Id = 10,
+            VehicleId = 1,
+            BuildingId = 1,
+            CardId = 1,
+            LicensePlateIn = "51A12345",
+            SessionStatus = "ACTIVE"
+        };
+        _sessionRepositoryMock.GetSessionWithDetailsAsync(10).Returns(session);
+
+        var result = await _service.StartCheckoutAsync(10, new StartCheckoutRequest
+        {
+            LicensePlateOut = "30F-567.89"
+        });
+
+        Assert.False(result.Success);
+        Assert.Equal("LICENSE_PLATE_MISMATCH", result.ErrorCode);
+        _sessionRepositoryMock.DidNotReceive().Update(Arg.Any<PBMS.Domain.Entities.ParkingSession>());
+    }
+
 
 
     [Fact]
@@ -907,8 +947,8 @@ public class ParkingSessionServiceTests
         Assert.NotNull(result);
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
-        Assert.Equal("51B-999.99", result.Data.LicensePlateIn);
-        Assert.Equal("51B-999.99", session.Vehicle.LicensePlate);
+        Assert.Equal("51B99999", result.Data.LicensePlateIn);
+        Assert.Equal("51B99999", session.Vehicle.LicensePlate);
     }
 
     [Fact]

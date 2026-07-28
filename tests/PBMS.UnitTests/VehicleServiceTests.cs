@@ -2,6 +2,7 @@ using NSubstitute;
 using PBMS.Application.Vehicle.DTOs;
 using PBMS.Application.Vehicle.Interfaces;
 using PBMS.Application.Vehicle.Services;
+using PBMS.Application.Vehicle.Validation;
 using PBMS.Domain.Entities;
 
 namespace PBMS.UnitTests;
@@ -28,6 +29,36 @@ public class VehicleServiceTests
         var normalized = VehicleService.NormalizeLicensePlate(input);
 
         Assert.Equal(expected, normalized);
+    }
+
+    [Theory]
+    [InlineData("51A-123.45")]
+    [InlineData("30F-5678")]
+    [InlineData("29G1-123.45")]
+    [InlineData("29AA 12345")]
+    [InlineData("80NG-123.45")]
+    public void IsValid_AcceptsSupportedVietnameseLicensePlates(string input)
+    {
+        Assert.True(LicensePlateValidation.IsValid(input));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("ABCXYZ")]
+    [InlineData("123456")]
+    [InlineData("51A,12345")]
+    [InlineData("51A@12345")]
+    [InlineData("A1-234.56")]
+    public void IsValid_RejectsRandomTextAndUnsupportedFormats(string input)
+    {
+        Assert.False(LicensePlateValidation.IsValid(input));
+    }
+
+    [Fact]
+    public void Format_UsesDisplaySeparators_WhileNormalizeUsesCompactStorageValue()
+    {
+        Assert.Equal("51A-123.45", LicensePlateValidation.Format("51a12345"));
+        Assert.Equal("51A12345", LicensePlateValidation.Normalize("51a-123.45"));
     }
 
     [Theory]
