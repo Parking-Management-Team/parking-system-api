@@ -132,13 +132,14 @@ namespace PBMS.UnitTests
         }
 
         [Fact]
-        public async Task ReportIncidentAsync_ShouldMarkCardAsLost_WhenReportingLostCard()
+        public async Task ReportIncidentAsync_ShouldNotMarkCardAsLost_WhenReportingLostCard()
         {
             // Arrange
             var request = new ReportIncidentRequest
             {
                 SessionId = 1,
-                IncidentTypeId = 2
+                IncidentTypeId = 2,
+                Description = "Report lost card"
             };
 
             var session = new PBMS.Domain.Entities.ParkingSession
@@ -147,6 +148,7 @@ namespace PBMS.UnitTests
                 CardId = 55,
                 SessionStatus = "ACTIVE"
             };
+
 
             var incidentType = new IncidentType
             {
@@ -168,9 +170,9 @@ namespace PBMS.UnitTests
             // Act
             await _incidentService.ReportIncidentAsync(request);
 
-            // Assert
-            Assert.Equal(CardStatus.Lost.ToString(), card.CardStatus); // Phải chuyển sang Lost
-            _cardRepositoryMock.Received(1).Update(card);
+            // Assert: Thẻ giữ nguyên trạng thái Active, chỉ tạo bản ghi báo cáo cho Staff/Manager
+            Assert.Equal(CardStatus.Active.ToString(), card.CardStatus);
+            _cardRepositoryMock.DidNotReceive().Update(Arg.Any<Card>());
         }
 
         [Fact]
