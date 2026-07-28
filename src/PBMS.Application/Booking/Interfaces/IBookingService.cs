@@ -96,4 +96,10 @@ public interface IBookingService
     /// Trả về DTO chứa kết quả điều chỉnh thời gian tối đa và link thanh toán VNPay bổ sung.
     /// </summary>
     Task<BookingExtensionResultDto> RequestExtensionAsync(int id, DateTime requestedNewEndTime, bool payLater = false);
+
+    /// <summary>
+    /// Preview kết quả gia hạn: tính phí và kiểm tra buffer NHƯNG không ghi DB và không tạo payment.
+    /// Dùng để hiển thị fee breakdown trước khi người dùng xác nhận thanh toán VNPay.
+    /// </summary>
+    Task<BookingExtensionResultDto> PreviewExtensionAsync(int id, DateTime requestedNewEndTime);
 }

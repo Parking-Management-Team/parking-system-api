@@ -132,7 +132,7 @@ namespace PBMS.UnitTests
         }
 
         [Fact]
-        public async Task ReportIncidentAsync_ShouldMarkCardAsLost_WhenReportingLostCard()
+        public async Task ReportIncidentAsync_ShouldNotMarkCardAsLost_WhenReportingLostCard()
         {
             // Arrange
             var request = new ReportIncidentRequest
@@ -169,9 +169,9 @@ namespace PBMS.UnitTests
             await _incidentService.ReportIncidentAsync(request);
 
             // Assert
-            Assert.Equal(CardStatus.Lost.ToString(), card.CardStatus); // Phải chuyển sang Lost
-            _cardRepositoryMock.Received(1).Update(card);
+            Assert.Equal(CardStatus.Active.ToString(), card.CardStatus); // Giữ nguyên Active để Staff/Manager xử lý
         }
+
 
         [Fact]
         public async Task UpdateIncidentStatusAsync_ShouldBlockCard_WhenResolvingLostCardIncident()
