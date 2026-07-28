@@ -739,17 +739,66 @@ public class ParkingSessionService : IParkingSessionService
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
     }
 
+    private async Task<ParkingSessionDto> EnrichActiveSessionDtoAsync(ParkingSessionEntity session, ParkingSessionDto dto)
+    {
+        if (!string.Equals(session.SessionStatus, ActiveStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return dto;
+        }
+
+        try
+        {
+            var vehicleTypeId = session.Vehicle?.VehicleTypeId ?? 1;
+            var checkIn = session.CheckInTime;
+            var now = DateTime.UtcNow;
+
+            var pricingResult = await _pricingCalculationService.CalculateFeeAsync(vehicleTypeId, checkIn, now, session.Id);
+            decimal accruedFee = Math.Round(pricingResult.TotalAmount);
+            decimal penaltyFee = Math.Round(pricingResult.PenaltyAmount);
+
+            if (session.Booking != null && now > session.Booking.PlannedCheckoutTime)
+            {
+                var overstayResult = await _pricingCalculationService.CalculateFeeAsync(
+                    vehicleTypeId, session.Booking.PlannedCheckoutTime, now, session.Id);
+                penaltyFee += Math.Round(overstayResult.TotalAmount);
+            }
+
+            dto.TotalFee = accruedFee;
+            dto.PenaltyFee = penaltyFee > 0 ? penaltyFee : null;
+            dto.AmountDue = accruedFee + penaltyFee;
+        }
+        catch (Exception)
+        {
+            // Fallback gracefully on calculation error
+        }
+
+        return dto;
+    }
+
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync()
     {
         var sessions = await _sessionRepository.GetActiveSessionsWithDetailsAsync();
-        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
+        var dtoList = new List<ParkingSessionDto>();
+        foreach (var s in sessions)
+        {
+            var dto = Map(s);
+            dtoList.Add(await EnrichActiveSessionDtoAsync(s, dto));
+        }
+        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(dtoList);
     }
 
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetByAccountIdAsync(int accountId)
     {
         var sessions = await _sessionRepository.GetByAccountIdAsync(accountId);
-        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
+        var dtoList = new List<ParkingSessionDto>();
+        foreach (var s in sessions)
+        {
+            var dto = Map(s);
+            dtoList.Add(await EnrichActiveSessionDtoAsync(s, dto));
+        }
+        return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(dtoList);
     }
+
 
     public async Task<BaseResponse<ParkingSessionDto>> GetByIdAsync(int id)
     {

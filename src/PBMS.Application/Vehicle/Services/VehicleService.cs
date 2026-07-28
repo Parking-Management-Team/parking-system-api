@@ -341,6 +341,17 @@ public class VehicleService : IVehicleService
             return BaseResponse<VehicleDto>.Fail("INVALID_LICENSE_PLATE", "Normalized license plate cannot exceed 20 characters.");
         }
 
+        // ── Mục 2: Validate định dạng biển số Việt Nam chuẩn ────────────────
+        // Regex: 2 chữ số + 1-2 chữ hoa + 4-5 chữ số  (sau khi đã normalize)
+        // Ví dụ hợp lệ: 30A12345, 59AB1234, 29G11234, 51F12345
+        var plateFormatRegex = new System.Text.RegularExpressions.Regex(@"^\d{2}[A-Z]{1,2}\d{4,5}$");
+        if (!plateFormatRegex.IsMatch(NormalizeLicensePlate(licensePlate)))
+        {
+            return BaseResponse<VehicleDto>.Fail(
+                "INVALID_LICENSE_PLATE_FORMAT",
+                "License plate does not match Vietnamese standard format. Valid examples: 30A-123.45 or 59AB-1234.");
+        }
+
         if (!string.IsNullOrWhiteSpace(vehicleStatus) && !AllowedStatuses.Contains(vehicleStatus.Trim()))
         {
             return BaseResponse<VehicleDto>.Fail(

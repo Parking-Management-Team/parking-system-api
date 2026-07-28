@@ -75,17 +75,16 @@ public class IncidentService : IIncidentService
             }
         }
 
-        // 3. Lấy cấu hình giá phạt
+        // 3. Lấy cấu hình giá phạt (nếu người dùng không truyền PenaltyFee)
         var activePenaltyConfig = await _penaltyConfigRepository.GetActiveConfigByIncidentTypeAsync(request.IncidentTypeId);
-        var calculatedFee = activePenaltyConfig?.PenaltyFee ?? 0;
 
-        // 4. Tạo sự cố
+        // 4. Tạo bản ghi báo cáo sự cố (Status = Open) gửi về cho Staff/Manager tiếp nhận xử lý
         var incident = new PBMS.Domain.Entities.Incident
         {
             SessionId = request.SessionId,
             IncidentTypeId = request.IncidentTypeId,
             Description = request.Description,
-            PenaltyFee = request.PenaltyFee ?? calculatedFee,
+            PenaltyFee = request.PenaltyFee ?? activePenaltyConfig?.PenaltyFee,
             PenaltyConfigId = activePenaltyConfig?.Id,
             Status = IncidentStatus.Open
         };
@@ -93,20 +92,9 @@ public class IncidentService : IIncidentService
         await _incidentRepository.AddAsync(incident);
         await _incidentRepository.SaveChangesAsync();
 
-        // Tự động cập nhật trạng thái thẻ khi báo cáo mất thẻ
-        if (incidentType.IncidentCode != null && incidentType.IncidentCode.ToUpper() == "LOST_CARD")
-        {
-            var card = await _cardRepository.GetByIdAsync(session.CardId);
-            if (card != null)
-            {
-                card.CardStatus = CardStatus.Lost.ToString();
-                _cardRepository.Update(card);
-                await _cardRepository.SaveChangesAsync();
-            }
-        }
-
         return _mapper.Map<IncidentDto>(incident);
     }
+
 
     public async Task<IncidentDto> UpdateIncidentStatusAsync(int id, UpdateIncidentStatusRequest request)
     {
