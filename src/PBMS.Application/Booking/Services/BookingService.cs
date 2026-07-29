@@ -787,13 +787,13 @@ public class BookingService : IBookingService
         {
             throw new DomainException(
                 errorCode: "BOOKING_NOT_FOUND",
-                message: $"Đặt chỗ với ID {id} không tồn tại."
+                message: $"Booking with ID {id} does not exist."
             );
         }
 
         if (booking.BookingStatus != BookingStatus.Confirmed && booking.BookingStatus != BookingStatus.CheckedIn && booking.BookingStatus != BookingStatus.Pending)
         {
-            throw new DomainException("BOOKING_NOT_ELIGIBLE_FOR_EXTENSION", "Chỉ các đặt chỗ đang chờ thanh toán, đã được xác nhận hoặc đã check-in mới có thể gia hạn.");
+            throw new DomainException("BOOKING_NOT_ELIGIBLE_FOR_EXTENSION", "Only pending, confirmed, or checked-in bookings can be extended.");
         }
 
         // Keep requestedNewEndTime in standard UTC
@@ -801,9 +801,14 @@ public class BookingService : IBookingService
             ? requestedNewEndTime 
             : DateTime.SpecifyKind(requestedNewEndTime, DateTimeKind.Utc);
 
+        if (requestedEndUtc <= DateTime.UtcNow)
+        {
+            throw new DomainException("INVALID_EXTENSION_TIME", "New checkout time cannot be in the past.");
+        }
+
         if (requestedEndUtc <= booking.PlannedCheckoutTime)
         {
-            throw new DomainException("INVALID_EXTENSION_TIME", "Thời gian kết thúc mới phải sau thời gian checkout hiện tại.");
+            throw new DomainException("INVALID_EXTENSION_TIME", "New checkout time must be strictly after current checkout time.");
         }
 
         DateTime finalEndTime = requestedEndUtc;
@@ -848,15 +853,22 @@ public class BookingService : IBookingService
             }
         }
 
+        // Calculate overstay penalty fee if driver is currently overstayed
+        decimal penaltyFee = 0;
+        var nowUtc = DateTime.UtcNow;
+        if (nowUtc > booking.PlannedCheckoutTime)
+        {
+            var overstayResult = await _pricingCalculationService.CalculateFeeAsync(
+                booking.VehicleTypeId, booking.PlannedCheckoutTime, nowUtc);
+            penaltyFee = Math.Round(overstayResult.TotalAmount);
+        }
+
         // Tính toán chi phí bổ sung bằng pricing engine
         var oldFeeResult = await _pricingCalculationService.CalculateFeeAsync(booking.VehicleTypeId, booking.PlannedCheckinTime, booking.PlannedCheckoutTime);
         var newFeeResult = await _pricingCalculationService.CalculateFeeAsync(booking.VehicleTypeId, booking.PlannedCheckinTime, finalEndTime);
-        decimal additionalFee = newFeeResult.TotalAmount - oldFeeResult.TotalAmount;
+        decimal extensionFee = Math.Max(0, newFeeResult.TotalAmount - oldFeeResult.TotalAmount);
+        decimal additionalFee = extensionFee + penaltyFee;
 
-        if (additionalFee < 0)
-        {
-            additionalFee = 0;
-        }
 
         string? paymentUrl = null;
         int paymentId = 0;
@@ -908,7 +920,7 @@ public class BookingService : IBookingService
                 OrderCode = orderCode
             };
 
-            // Lưu thời gian checkout đề xuất tạm thời vào Booking
+            // Save temporary requested checkout time into Booking
             booking.ExtendedCheckoutTime = finalEndTime;
             
             await _paymentRepository.AddAsync(payment);
@@ -920,7 +932,7 @@ public class BookingService : IBookingService
             {
                 try
                 {
-                    paymentUrl = _vnpayGateway.CreatePaymentUrl(orderCode, additionalFee, $"Gia han dat cho #{booking.Id}", "127.0.0.1");
+                    paymentUrl = _vnpayGateway.CreatePaymentUrl(orderCode, additionalFee, $"Booking extension #{booking.Id}", "127.0.0.1");
                 }
                 catch (Exception)
                 {
@@ -955,5 +967,126 @@ public class BookingService : IBookingService
                     ? "Gia hạn đặt chỗ thành công (Thanh toán sau). Vui lòng thanh toán cọc trước khi check-in." 
                     : "Yêu cầu gia hạn của bạn đã được ghi nhận."
         };
+    }
+    public async Task<BookingExtensionResultDto> PreviewExtensionAsync(int id, DateTime requestedNewEndTime)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(id);
+        if (booking == null)
+        {
+            throw new DomainException(
+                errorCode: "BOOKING_NOT_FOUND",
+                message: $"Booking with ID {id} does not exist."
+            );
+        }
+
+        if (booking.BookingStatus != BookingStatus.Confirmed &&
+            booking.BookingStatus != BookingStatus.CheckedIn &&
+            booking.BookingStatus != BookingStatus.Pending)
+        {
+            throw new DomainException("BOOKING_NOT_ELIGIBLE_FOR_EXTENSION",
+                "Only pending, confirmed, or checked-in bookings can be extended.");
+        }
+
+        // Chuẩn hóa sang UTC
+        var requestedEndUtc = requestedNewEndTime.Kind == DateTimeKind.Utc
+            ? requestedNewEndTime
+            : DateTime.SpecifyKind(requestedNewEndTime, DateTimeKind.Utc);
+
+        if (requestedEndUtc <= DateTime.UtcNow)
+        {
+            throw new DomainException("INVALID_EXTENSION_TIME",
+                "New checkout time cannot be in the past.");
+        }
+
+        if (requestedEndUtc <= booking.PlannedCheckoutTime)
+        {
+            throw new DomainException("INVALID_EXTENSION_TIME",
+                "New checkout time must be strictly after current checkout time.");
+        }
+
+        DateTime finalEndTime = requestedEndUtc;
+        bool isCapped = false;
+        DateTime maxAllowedEndTime = DateTime.MinValue; // MinValue = không bị giới hạn
+
+        // Kiểm tra xung đột slot nếu booking có SlotId
+        if (booking.SlotId.HasValue)
+        {
+            var upcomingBookings = await _bookingRepository.FindAsync(b =>
+                b.SlotId == booking.SlotId &&
+                b.AccountId != booking.AccountId &&
+                b.Id != booking.Id &&
+                (b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Pending) &&
+                b.PlannedCheckinTime > booking.PlannedCheckoutTime);
+
+            var nextBooking = upcomingBookings
+                .OrderBy(b => b.PlannedCheckinTime)
+                .FirstOrDefault();
+
+            if (nextBooking != null)
+            {
+                var bufferMinutes = await _configService.GetIntConfigAsync("BUFFER_TIME_MINUTES", 30);
+                maxAllowedEndTime = nextBooking.PlannedCheckinTime.AddMinutes(-bufferMinutes);
+
+                if (requestedEndUtc > maxAllowedEndTime)
+                {
+                    finalEndTime = maxAllowedEndTime;
+                    isCapped = true;
+
+                    // Nếu thời gian tối đa <= thời gian checkout hiện tại → không thể extend
+                    if (finalEndTime <= booking.PlannedCheckoutTime)
+                    {
+                        return new BookingExtensionResultDto
+                        {
+                            Success = false,
+                            IsCapped = true,
+                            AdjustedEndTime = booking.PlannedCheckoutTime,
+                            MaxAllowedEndTime = maxAllowedEndTime,
+                            AdditionalFee = 0,
+                            OriginalFee = 0,
+                            NewTotalFee = 0,
+                            Message = $"Cannot extend booking further as it is too close to the next reserved booking (buffer rule: {bufferMinutes} minutes)."
+                        };
+                    }
+                }
+            }
+        }
+
+        // Calculate overstay penalty fee if driver is currently overstayed
+        decimal penaltyFee = 0;
+        var nowUtc = DateTime.UtcNow;
+        if (nowUtc > booking.PlannedCheckoutTime)
+        {
+            var overstayResult = await _pricingCalculationService.CalculateFeeAsync(
+                booking.VehicleTypeId, booking.PlannedCheckoutTime, nowUtc);
+            penaltyFee = Math.Round(overstayResult.TotalAmount);
+        }
+
+        // Tính phí gốc và phí mới (chỉ tính, không ghi DB)
+        var oldFeeResult = await _pricingCalculationService.CalculateFeeAsync(
+            booking.VehicleTypeId, booking.PlannedCheckinTime, booking.PlannedCheckoutTime);
+        var newFeeResult = await _pricingCalculationService.CalculateFeeAsync(
+            booking.VehicleTypeId, booking.PlannedCheckinTime, finalEndTime);
+
+        decimal originalFee = oldFeeResult.TotalAmount;
+        decimal extensionFee = Math.Max(0, newFeeResult.TotalAmount - originalFee);
+        decimal newTotalFee = originalFee + extensionFee + penaltyFee;
+        decimal additionalFee = extensionFee + penaltyFee;
+
+        return new BookingExtensionResultDto
+        {
+            Success = true,
+            IsCapped = isCapped,
+            AdjustedEndTime = finalEndTime,
+            MaxAllowedEndTime = maxAllowedEndTime,
+            AdditionalFee = additionalFee,
+            OriginalFee = originalFee,
+            PenaltyFee = penaltyFee,
+            NewTotalFee = newTotalFee,
+            PaymentUrl = null, // Preview: không tạo VNPay URL
+            Message = isCapped
+                ? $"Requested extension time conflicts with another reservation. Adjusted to maximum available time: {finalEndTime:dd/MM/yyyy HH:mm}."
+                : "Extension fee preview calculated successfully."
+        };
+
     }
 }

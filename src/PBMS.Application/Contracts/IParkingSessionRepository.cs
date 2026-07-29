@@ -1,4 +1,5 @@
 using PBMS.Domain.Entities;
+using PBMS.Application.ParkingSession.DTOs;
 using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
 using VehicleEntity = PBMS.Domain.Entities.Vehicle;
 
@@ -53,6 +54,13 @@ public interface IParkingSessionRepository : IRepository<ParkingSessionEntity>
     /// Returns all active parking sessions with full details (Vehicle, Card, etc.).
     /// </summary>
     Task<IEnumerable<ParkingSessionEntity>> GetActiveSessionsWithDetailsAsync();
+
+    /// <summary>
+    /// Returns a lightweight projection for the gate active-session list.
+    /// Camera images are intentionally excluded so PostgreSQL does not read large
+    /// base64 payloads for every active session.
+    /// </summary>
+    Task<IEnumerable<ActiveParkingSessionSummaryDto>> GetActiveSessionSummariesAsync();
 
     /// <summary>
     /// Returns the active parking session currently occupying the specified slot,

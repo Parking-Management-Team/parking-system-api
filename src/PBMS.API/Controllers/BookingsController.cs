@@ -162,6 +162,25 @@ public class BookingsController : ControllerBase
     }
 
     // -----------------------------------------------------------------------
+    // GET /api/bookings/{id}/extend-preview — Xem trước chi phí gia hạn đặt chỗ
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Preview chi phí và khả năng gia hạn (buffer check) mà KHÔNG tạo thanh toán hay lưu DB.
+    ///
+    /// Route  : GET /api/bookings/{id}/extend-preview?requestedNewEndTime=...
+    /// Returns: 200 OK + BookingExtensionResultDto
+    /// </summary>
+    [HttpGet("{id:int}/extend-preview")]
+    public async Task<ActionResult<BaseResponse<BookingExtensionResultDto>>> PreviewExtension(
+        int id,
+        [FromQuery] DateTime requestedNewEndTime)
+    {
+        var result = await _bookingService.PreviewExtensionAsync(id, requestedNewEndTime);
+        return Ok(BaseResponse<BookingExtensionResultDto>.Ok(result));
+    }
+
+    // -----------------------------------------------------------------------
     // POST /api/bookings/{id}/extend — Gia hạn đặt chỗ
     // -----------------------------------------------------------------------
 
