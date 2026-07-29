@@ -174,9 +174,10 @@ public class BookingsController : ControllerBase
     [HttpGet("{id:int}/extend-preview")]
     public async Task<ActionResult<BaseResponse<BookingExtensionResultDto>>> PreviewExtension(
         int id,
-        [FromQuery] DateTime requestedNewEndTime)
+        [FromQuery] DateTimeOffset requestedNewEndTime)
     {
-        var result = await _bookingService.PreviewExtensionAsync(id, requestedNewEndTime);
+        // Convert to UTC DateTime for service layer
+        var result = await _bookingService.PreviewExtensionAsync(id, requestedNewEndTime.UtcDateTime);
         return Ok(BaseResponse<BookingExtensionResultDto>.Ok(result));
     }
 
@@ -194,10 +195,11 @@ public class BookingsController : ControllerBase
     [HttpPost("{id:int}/extend")]
     public async Task<ActionResult<BaseResponse<BookingExtensionResultDto>>> RequestExtension(
         int id,
-        [FromQuery] DateTime requestedNewEndTime,
+        [FromQuery] DateTimeOffset requestedNewEndTime,
         [FromQuery] bool payLater = false)
     {
-        var result = await _bookingService.RequestExtensionAsync(id, requestedNewEndTime, payLater);
+        // Convert to UTC DateTime for service layer
+        var result = await _bookingService.RequestExtensionAsync(id, requestedNewEndTime.UtcDateTime, payLater);
         return Ok(BaseResponse<BookingExtensionResultDto>.Ok(result));
     }
 
