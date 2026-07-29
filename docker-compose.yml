@@ -15,6 +15,8 @@ services:
       - Jwt__Key=${JWT_KEY:-YourSuperSecretJwtKeyMinimum256BitsLengthForSecurity123!}
       - Jwt__Issuer=${JWT_ISSUER:-PBMS.API}
       - Jwt__Audience=${JWT_AUDIENCE:-PBMS.Web}
+      - VNPay__ReturnUrl=${VNPAY_RETURN_URL:-https://api.nexpark.id.vn/api/payments/vnpay-return}
+      - VNPay__FrontendReturnUrl=${VNPAY_FRONTEND_RETURN_URL:-https://www.nexpark.id.vn/payment-result}
     restart: unless-stopped
     networks:
       - pbms-network
