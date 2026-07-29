@@ -3,6 +3,7 @@ using PBMS.Application.Contracts;
 using PBMS.Domain.Entities;
 using PBMS.Domain.Enums;
 using PBMS.Infrastructure.Data;
+using PBMS.Application.ParkingSession.DTOs;
 using ParkingSessionEntity = PBMS.Domain.Entities.ParkingSession;
 
 namespace PBMS.Infrastructure.Repositories;
@@ -254,6 +255,50 @@ public class ParkingSessionRepository : BaseRepository<ParkingSessionEntity>, IP
             .Include(s => s.Zone)
             .Include(s => s.ParkingSlot)
             .Where(s => s.SessionStatus.ToUpper() == "ACTIVE")
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<ActiveParkingSessionSummaryDto>> GetActiveSessionSummariesAsync()
+    {
+        return await _context.ParkingSessions
+            .AsNoTracking()
+            .Where(s => s.SessionStatus.ToUpper() == "ACTIVE")
+            .OrderByDescending(s => s.CheckInTime)
+            .Select(s => new ActiveParkingSessionSummaryDto
+            {
+                Id = s.Id,
+                VehicleId = s.VehicleId,
+                AccountId = s.Vehicle.AccountId,
+                BuildingId = s.BuildingId,
+                CardId = s.CardId,
+                ZoneId = s.ZoneId,
+                SlotId = s.SlotId,
+                BookingId = s.BookingId,
+                MonthlySubscriptionId = null,
+                InStaffId = s.InStaffId,
+                OutStaffId = s.OutStaffId,
+                CheckInTime = s.CheckInTime,
+                CheckOutTime = s.CheckOutTime,
+                LicensePlateIn = s.LicensePlateIn,
+                LicensePlateOut = s.LicensePlateOut,
+                SessionStatus = s.SessionStatus,
+                CardCode = s.Card.CardCode,
+                ZoneCode = s.Zone != null ? s.Zone.Code : null,
+                SlotCode = s.ParkingSlot != null ? s.ParkingSlot.Code : null,
+                VehicleType = s.Vehicle.VehicleType.TypeName,
+                CustomerType = s.BookingId.HasValue ? "BOOKING" : "WALK_IN",
+                PricingVehicleTypeId = s.Vehicle.VehicleTypeId,
+                BookingPlannedCheckoutTime = s.BookingId.HasValue
+                    ? s.Booking!.PlannedCheckoutTime
+                    : null,
+                TotalFee =
+                    s.Payments.Where(p => p.PaymentStatus.ToUpper() == "PAID").Sum(p => (decimal?)p.Amount) +
+                    (s.BookingId.HasValue
+                        ? s.Booking!.Payments.Where(p => p.PaymentStatus.ToUpper() == "PAID").Sum(p => (decimal?)p.Amount)
+                        : 0),
+                ImageIn = null,
+                ImageOut = null
+            })
             .ToListAsync();
     }
 

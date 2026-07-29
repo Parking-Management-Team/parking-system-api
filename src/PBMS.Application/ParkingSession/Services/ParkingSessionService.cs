@@ -766,27 +766,29 @@ public class ParkingSessionService : IParkingSessionService
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(sessions.Select(Map).ToList());
     }
 
-    private async Task<ParkingSessionDto> EnrichActiveSessionDtoAsync(ParkingSessionEntity session, ParkingSessionDto dto)
+    private async Task<ParkingSessionDto> EnrichActiveSessionDtoAsync(
+        int vehicleTypeId,
+        DateTime? bookingPlannedCheckoutTime,
+        ParkingSessionDto dto)
     {
-        if (!string.Equals(session.SessionStatus, ActiveStatus, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(dto.SessionStatus, ActiveStatus, StringComparison.OrdinalIgnoreCase))
         {
             return dto;
         }
 
         try
         {
-            var vehicleTypeId = session.Vehicle?.VehicleTypeId ?? 1;
-            var checkIn = session.CheckInTime;
+            var checkIn = dto.CheckInTime;
             var now = DateTime.UtcNow;
 
-            var pricingResult = await _pricingCalculationService.CalculateFeeAsync(vehicleTypeId, checkIn, now, session.Id);
+            var pricingResult = await _pricingCalculationService.CalculateFeeAsync(vehicleTypeId, checkIn, now, dto.Id);
             decimal accruedFee = Math.Round(pricingResult.TotalAmount);
             decimal penaltyFee = Math.Round(pricingResult.PenaltyAmount);
 
-            if (session.Booking != null && now > session.Booking.PlannedCheckoutTime)
+            if (bookingPlannedCheckoutTime.HasValue && now > bookingPlannedCheckoutTime.Value)
             {
                 var overstayResult = await _pricingCalculationService.CalculateFeeAsync(
-                    vehicleTypeId, session.Booking.PlannedCheckoutTime, now, session.Id);
+                    vehicleTypeId, bookingPlannedCheckoutTime.Value, now, dto.Id);
                 penaltyFee += Math.Round(overstayResult.TotalAmount);
             }
 
@@ -804,13 +806,19 @@ public class ParkingSessionService : IParkingSessionService
 
     public async Task<BaseResponse<IEnumerable<ParkingSessionDto>>> GetActiveAsync()
     {
-        var sessions = await _sessionRepository.GetActiveSessionsWithDetailsAsync();
+        var sessions = (await _sessionRepository.GetActiveSessionSummariesAsync()).ToList();
         var dtoList = new List<ParkingSessionDto>();
-        foreach (var s in sessions)
+        foreach (var session in sessions)
         {
-            var dto = Map(s);
-            dtoList.Add(await EnrichActiveSessionDtoAsync(s, dto));
+            session.BookingCode = session.BookingId.HasValue
+                ? FormatBookingCode(session.BookingId.Value)
+                : null;
+            dtoList.Add(await EnrichActiveSessionDtoAsync(
+                session.PricingVehicleTypeId,
+                session.BookingPlannedCheckoutTime,
+                session));
         }
+
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(dtoList);
     }
 
@@ -821,7 +829,10 @@ public class ParkingSessionService : IParkingSessionService
         foreach (var s in sessions)
         {
             var dto = Map(s);
-            dtoList.Add(await EnrichActiveSessionDtoAsync(s, dto));
+            dtoList.Add(await EnrichActiveSessionDtoAsync(
+                s.Vehicle?.VehicleTypeId ?? 1,
+                s.Booking?.PlannedCheckoutTime,
+                dto));
         }
         return BaseResponse<IEnumerable<ParkingSessionDto>>.Ok(dtoList);
     }
